@@ -1,0 +1,1848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RMFI Tool Library System - B25 Drill Decimal + Alt Size Fix</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js">
+document.addEventListener('DOMContentLoaded', function(){
+  const ls = document.getElementById('loadStatus');
+  const ss = document.getElementById('searchStatus');
+  const rb = document.getElementById('resultsBody');
+  if(ls) ls.innerHTML = '<span class="warn">Manual mode only.</span> Browse to your real .xlsx or .csv file to start.';
+  if(ss) ss.innerHTML = 'Waiting for manual file load.';
+  if(rb && !rb.innerHTML.trim()){
+    rb.innerHTML = '<tr><td colspan="18" class="muted">Manual mode: browse to your real RMFI master file to populate results.</td></tr>';
+  }
+});
+</script>
+<style>
+  :root{
+    --bg:#10365f; --panel:#17436f; --text:#eef6ff; --muted:#b9d0e7; --accent:#d5bf8f;
+    --good:#39d26b; --warn:#e6b34c; --bad:#ff6b6b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
+  .header{background:#173f6b;padding:16px 18px 12px;font-size:28px;font-weight:800;border-bottom:1px solid #254f7b}
+  .sub{background:var(--accent);color:#7a4b00;padding:6px 10px;font-size:14px;font-weight:700}
+  .wrap{display:grid;grid-template-columns:255px minmax(0,1.92fr) 285px 300px;gap:8px;padding:8px;align-items:start;max-width:1980px;margin:0 auto}
+  .panel{background:#17436f;border:1px solid #295b88;border-radius:16px;padding:12px;box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);min-width:0;overflow:hidden}
+  .title{font-size:17px;font-weight:800;margin-bottom:10px}
+  .row{display:flex;gap:8px;margin-bottom:8px}.field{flex:1}
+  label{display:block;font-size:12px;font-weight:700;color:#d8e7f7;margin:0 0 4px}
+  input,select,textarea,button{width:100%;border:none;border-radius:10px;padding:9px 10px;font-size:14px}
+  input,select,textarea{background:#12395f;color:white;border:1px solid #2c628f}
+  textarea{min-height:66px;resize:vertical}
+  button{font-weight:800;cursor:pointer;margin-top:6px}
+  .btn-blue{background:linear-gradient(#6ea9ff,#4e83dc);color:white}
+  .btn-green{background:linear-gradient(#47d96e,#22b651);color:white}
+  .btn-gray{background:linear-gradient(#8898ab,#6c7f95);color:white}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+  .chip{background:#285989;color:#ecf5ff;font-size:12px;font-weight:800;border-radius:999px;padding:7px 11px}
+  .notice,.status,.top-result-bar{background:#12395f;border:1px solid #2b618f;border-radius:10px;padding:8px 10px;color:#dbeaf8;font-size:13px}
+  .status{margin-top:10px}
+  .ok{color:#98ffb1;font-weight:800}.warn{color:#ffd47b;font-weight:800}.bad{color:#ff9f9f;font-weight:800}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .kv{display:grid;grid-template-columns:120px 1fr;row-gap:6px;column-gap:10px;font-size:13px}
+  .bigbox{margin-top:12px;background:#12395f;border:1px solid #2c638f;border-radius:12px;padding:12px;min-height:140px}
+  .center-panel{display:flex;flex-direction:column;gap:8px}
+  .top-result-grid{display:grid;grid-template-columns:110px 1fr 100px 1fr;gap:4px 12px;font-size:13px}
+  .top-result-grid .k{color:#d6e6f7;font-weight:800}
+  .live-table-box{border:1px solid #2b628f;border-radius:12px;overflow:hidden;background:#12395f;display:flex;flex-direction:column;min-height:420px;min-width:0;flex:1 1 auto}
+  .live-table-head{padding:10px 12px;background:#234e7b;font-weight:800}
+  .table-scroller{overflow:auto;max-height:720px;max-width:100%}
+
+  /* B52.5: keep Fit + Score visible at the right edge of the live results grid */
+  .live-table-box table{table-layout:auto; min-width:max-content;}
+  .live-table-box th:nth-child(17),
+  .live-table-box td:nth-child(17){
+    position:sticky;
+    right:78px;
+    z-index:2;
+    background:#12395f;
+    box-shadow:-1px 0 0 #275680;
+  }
+  .live-table-box th:nth-child(18),
+  .live-table-box td:nth-child(18){
+    position:sticky;
+    right:0;
+    z-index:3;
+    background:#12395f;
+    box-shadow:-1px 0 0 #275680;
+  }
+  .live-table-box thead th:nth-child(17),
+  .live-table-box thead th:nth-child(18){
+    background:#234e7b;
+    z-index:5;
+  }
+  .live-table-box tbody tr.active-row td:nth-child(17),
+  .live-table-box tbody tr.active-row td:nth-child(18){
+    background:#245a7d;
+  }
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:6px 7px;border-bottom:1px solid #275680;text-align:left;white-space:nowrap}
+  th{background:#234e7b;position:sticky;top:0;z-index:1}
+  tbody tr.active-row{background:#245a7d}
+  .fit{font-weight:800;padding:6px 10px;border-radius:999px;display:inline-block;font-size:12px}
+  .exact{background:#42d96b;color:white}.close{background:#90b4ff;color:white}.fallback{background:#ff7a7a;color:white}
+  .tiny{font-size:12px}.muted{color:var(--muted)}
+  .card{background:#2a5a89;border-radius:12px;padding:8px 10px;margin-bottom:8px}
+.card{min-height:48px}
+#cutTapCard,#rollTapCard{display:none}
+  .card .small{font-size:12px;color:#d8e6f7;font-weight:700}.card .big{font-size:16px;font-weight:900;margin-top:3px}
+  .hidden{display:none}
+#sizeDepthRow.hidden-by-tool{display:none}
+#reamerSimpleMode .row.hide-in-simple{display:none}
+  .special-box{background:#204d79;border:1px solid #2c6795;border-radius:12px;padding:10px;margin-bottom:8px}
+  .special-head{font-size:12px;font-weight:800;color:#ffdf9a;margin-bottom:8px}
+
+  .hidden{display:none}
+  .special-box{background:#204d79;border:1px solid #2c6795;border-radius:12px;padding:10px;margin:8px 0}
+  .special-head{font-size:12px;font-weight:800;color:#ffdf9a;margin-bottom:8px}
+
+  @media (max-width:1700px){
+    .wrap{grid-template-columns:250px minmax(760px,1fr) 280px}
+    .wrap > .panel:nth-child(2){grid-column:2 / 3}
+    .wrap > .panel:nth-child(3){grid-column:3 / 4}
+    .wrap > .panel:nth-child(4){grid-column:3 / 4}
+    .header{font-size:24px}
+    table{font-size:12px}
+    th,td{padding:7px 6px}
+  }
+
+  @media (max-width:1450px){
+    .wrap{grid-template-columns:240px minmax(760px,1fr)}
+    .wrap > .panel:nth-child(2){grid-column:2 / 3}
+    .wrap > .panel:nth-child(3),
+    .wrap > .panel:nth-child(4){grid-column:1 / -1}
+    .top-result-grid{grid-template-columns:110px 1fr}
+    .two-col{grid-template-columns:1fr}
+  }
+
+  @media (max-width:1150px){
+    .wrap{grid-template-columns:1fr}
+    .wrap > .panel{grid-column:1 / -1}
+    .row{flex-direction:column}
+    .header{font-size:20px}
+    .sub{font-size:12px}
+  }
+
+
+  .kv{
+    display:grid;
+    grid-template-columns:88px minmax(0,1fr);
+    row-gap:8px;
+    column-gap:12px;
+    font-size:13px;
+  }
+  .kv > div{
+    min-width:0;
+    overflow-wrap:anywhere;
+    word-break:break-word;
+    white-space:normal;
+    line-height:1.25;
+  }
+  #folderBox{
+    min-height:220px;
+  }
+  .wrap > .panel:nth-child(3){
+    align-self:stretch;
+  }
+  .wrap > .panel:nth-child(4){
+    min-width:280px;
+  }
+  .card .big{
+    overflow-wrap:anywhere;
+    word-break:break-word;
+  }
+
+
+  /* B48.1 locked-layout content tune only */
+  .wrap > .panel:nth-child(3) .two-col{
+    grid-template-columns:1fr;
+    gap:12px;
+  }
+  .wrap > .panel:nth-child(3) .kv{
+    grid-template-columns:96px minmax(0,1fr);
+    row-gap:8px;
+    column-gap:12px;
+    font-size:12px;
+  }
+  .wrap > .panel:nth-child(3) .kv > div{
+    min-width:0;
+    overflow-wrap:anywhere;
+    word-break:break-word;
+    white-space:normal;
+    line-height:1.2;
+  }
+  .wrap > .panel:nth-child(3) .title{
+    line-height:1.1;
+  }
+
+
+  #feedsBox{min-height:220px;margin-top:12px}
+
+
+  /* B50.1: keep current-search-context DOM alive, but hide it visually */
+  .wrap{
+    grid-template-columns:255px minmax(0,2.45fr) 335px !important;
+    max-width:1985px !important;
+  }
+  .wrap > .panel:nth-child(3){
+    display:none !important;
+  }
+  .wrap > .panel:nth-child(2){
+    min-width:0;
+  }
+  .wrap > .panel:nth-child(4){
+    min-width:310px;
+  }
+  #feedsBox{
+    min-height:230px;
+  }
+  .table-scroller{
+    max-height:620px;
+  }
+
+
+  /* B50.2 cleanup */
+  .center-panel > .field:first-of-type{display:none !important;}
+  #feedsBox{
+    min-height:148px;
+    margin-top:0;
+    margin-bottom:8px;
+  }
+  #feedsBox .tiny{
+    font-size:12px;
+  }
+  body.hide-endmill-table-cols table th:nth-child(7),
+  body.hide-endmill-table-cols table td:nth-child(7),
+  body.hide-endmill-table-cols table th:nth-child(8),
+  body.hide-endmill-table-cols table td:nth-child(8){
+    display:none;
+  }
+
+
+  /* B50.3 cleanup */
+  .center-panel > .field:first-of-type{display:none !important;}
+  #feedsBox{
+    display:block !important;
+    min-height:165px;
+    margin:8px 0 10px 0;
+    background:#12395f;
+    border:1px solid #2b618f;
+    border-radius:12px;
+    padding:12px;
+  }
+  #feedsBox .tiny{
+    font-size:12px;
+    line-height:1.55;
+  }
+  .table-scroller{
+    max-height:560px;
+  }
+
+
+  #feedsBox{
+    display:block !important;
+    min-height:180px;
+    margin:8px 0 12px 0;
+    background:#12395f;
+    border:1px solid #2b618f;
+    border-radius:12px;
+    padding:12px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);
+  }
+  #feedsBox .tiny{
+    font-size:13px !important;
+  }
+
+
+  /* B50.5 cleanup */
+  .center-panel > .field:first-of-type{
+    display:none !important;
+  }
+  /* Keep current-search-context DOM alive, but hide it visually */
+  .wrap{
+    grid-template-columns:255px minmax(0,2.35fr) 320px !important;
+    max-width:1980px !important;
+  }
+  .wrap > .panel:nth-child(3){
+    display:none !important;
+  }
+  .wrap > .panel:nth-child(4){
+    min-width:310px;
+  }
+  #feedsBox{
+    display:block !important;
+    min-height:170px;
+    margin:0 0 12px 0 !important;
+    background:#12395f;
+    border:1px solid #2b618f;
+    border-radius:12px;
+    padding:12px;
+  }
+  #feedsBox .tiny{
+    font-size:13px !important;
+    line-height:1.6 !important;
+  }
+  .table-scroller{
+    max-height:640px;
+  }
+
+
+  /* B50.7 */
+
+  /* B51 locked cleanup */
+  .wrap{
+    grid-template-columns:255px minmax(0,2.55fr) 320px !important;
+    max-width:1980px !important;
+  }
+  .center-panel{
+    gap:8px;
+  }
+  #feedsBox{
+    min-height:118px !important;
+    margin:8px 0 10px 0 !important;
+    padding:10px 12px !important;
+  }
+  .table-scroller{
+    max-height:700px !important;
+  }
+
+  .center-panel > .field:first-of-type{
+    display:none !important;
+  }
+  #feedsBox{
+    display:block !important;
+    min-height:150px;
+    margin:8px 0 10px 0 !important;
+    background:#12395f;
+    border:1px solid #2b618f;
+    border-radius:12px;
+    padding:12px;
+  }
+  #feedsBox .tiny{
+    font-size:13px !important;
+    line-height:1.6 !important;
+  }
+
+
+  /* B52 left-feeds recovery */
+  .wrap{
+    grid-template-columns:255px minmax(0,2.75fr) 320px !important;
+    max-width:1985px !important;
+  }
+  .center-panel{
+    min-width:0;
+  }
+  #feedsBox{
+    display:block !important;
+    min-height:0 !important;
+    margin:12px 0 0 0 !important;
+    background:#12395f;
+    border:1px solid #2b618f;
+    border-radius:12px;
+    padding:10px 10px 12px 10px;
+  }
+  #feedsBox .tiny{
+    font-size:12px !important;
+    line-height:1.45 !important;
+  }
+  #feedsBox .feeds-line{
+    margin-top:4px;
+  }
+  #feedsBox .feeds-title{
+    font-weight:800;
+    margin-bottom:6px;
+    line-height:1.15;
+  }
+  .left-feeds-note{
+    color:#dbeaf8;
+  }
+  @media (max-width:1450px){
+    .wrap{grid-template-columns:240px minmax(760px,1fr) !important;}
+    .wrap > .panel:nth-child(3){grid-column:1 / -1;}
+  }
+
+
+  .right-panel{
+    align-self:start;
+  }
+  .right-panel #feedsBox{
+    margin:0 0 12px 0 !important;
+    min-height:0;
+  }
+  .right-panel .title{
+    margin-top:0;
+  }
+  .center-panel .top-result-bar{
+    min-height:0;
+  }
+
+
+
+  /* B52.2 full-width right-feeds tune */
+  body{overflow-x:hidden;}
+  .wrap{
+    width:calc(100vw - 16px) !important;
+    max-width:none !important;
+    margin:0 8px !important;
+    grid-template-columns:255px minmax(0,1fr) 320px !important;
+    gap:8px !important;
+    align-items:start !important;
+  }
+  .panel.right-panel{
+    display:flex;
+    flex-direction:column;
+    align-self:start;
+    min-width:320px;
+    max-width:320px;
+  }
+  .right-panel #feedsBox{
+    order:0;
+    margin:0 0 10px 0 !important;
+  }
+  .right-panel .title{
+    order:1;
+    margin:0 0 10px 0;
+  }
+  .right-panel .card,
+  .right-panel #cutTapCard,
+  .right-panel #rollTapCard,
+  .right-panel #decodeText,
+  .right-panel .notice{
+    order:2;
+  }
+  .center-panel{min-width:0;}
+  .live-table-box{min-width:0;}
+  .table-scroller{max-height:740px !important;}
+  @media (max-width:1450px){
+    .wrap{width:calc(100vw - 16px) !important; grid-template-columns:240px minmax(0,1fr) 300px !important;}
+    .panel.right-panel{min-width:300px; max-width:300px;}
+  }
+  @media (max-width:1150px){
+    .wrap{grid-template-columns:1fr !important; width:auto !important; margin:0 auto !important;}
+    .panel.right-panel{max-width:none; min-width:0;}
+  }
+
+
+
+  /* B52.3 right-panel visibility fix */
+  .wrap > .panel:nth-child(3){
+    display:block !important;
+    grid-column:auto !important;
+  }
+  .wrap > .panel:nth-child(4){
+    display:block !important;
+  }
+  .panel.right-panel{
+    display:flex !important;
+    flex-direction:column !important;
+    align-self:start !important;
+    min-width:320px !important;
+    max-width:320px !important;
+    visibility:visible !important;
+    opacity:1 !important;
+  }
+  .right-panel #feedsBox{
+    display:block !important;
+    order:0 !important;
+    margin:0 0 10px 0 !important;
+  }
+  .right-panel .title,
+  .right-panel .card,
+  .right-panel #cutTapCard,
+  .right-panel #rollTapCard,
+  .right-panel #decodeText,
+  .right-panel .notice{
+    display:block !important;
+  }
+  .wrap{
+    width:calc(100vw - 16px) !important;
+    max-width:none !important;
+    margin:0 8px !important;
+    grid-template-columns:255px minmax(0,1fr) 320px !important;
+  }
+
+</style>
+</head>
+<body>
+<div class="header">RMFI Tool Library System - B52.5 Sticky Fit + Score</div>
+<div class="sub">B52.5 cleanup: kept the right feeds panel, and locked Fit + Score as sticky right columns so they stay visible without horizontal scanning.</div>
+
+<div class="wrap">
+  <div class="panel">
+    <div class="title">Search Inputs</div>
+    <div id="loadStatus" class="status hidden"></div>
+    <div id="searchStatus" class="status hidden"></div>
+    <div class="field"><label>Load RMFI Master File</label><input id="fileInput" type="file" accept=".xlsx,.xls,.csv" /></div>
+    <div class="row"><div class="field"><label>Manufacturer Filter</label><select id="manufacturer"><option value="">All</option></select></div></div>
+    <div class="row"><div class="field"><label>Tool Type</label><select id="toolType"><option>End Mill</option><option>Drill</option><option>Tap</option><option>Reamer</option><option>Countersink</option><option>Spot Drill</option><option>Chamfer Mill</option><option>Carbide Burr</option></select></div></div>
+
+    <div class="row">
+      <div class="field"><label>Material Focus</label><select id="material"><option selected>Aluminum</option><option>Steel</option><option>Stainless</option></select></div>
+      <div class="field" id="operationField"><label>Operation</label><select id="operation"></select></div>
+    </div>
+
+    <div class="row" id="sizeDepthRow">
+      <div class="field"><label>Requested Diameter / Search Size</label><input id="reqDia" value=".375" /></div>
+      <div class="field"><label>Required Depth / Reach</label><input id="reqDepth" value=".750" /></div>
+    </div>
+
+    <div class="special-box hidden" id="reamerBox">
+      <div class="special-head">Reamer decimal only</div>
+      <div id="reamerSimpleMode">
+      <div class="row hide-in-simple">
+        <div class="field"><label>Reamer Designation</label><select id="reamerDesignation"><option value="">All</option></select></div>
+        <div class="field"><label>Reamer Material</label><select id="reamerMaterial"><option value="">All</option><option>HSS</option><option>Powdered Metal</option><option>Carbide</option></select></div>
+      </div>
+      <div class="row hide-in-simple">
+        <div class="field"><label>Reamer Unit</label><select id="reamerUnit"><option value="">All</option><option value="inch">Inch</option><option value="metric">Metric</option></select></div>
+        <div class="field"><label>Reamer Size</label><select id="reamerSize"><option value="">All</option></select></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Reamer Decimal</label><input id="reamerText" placeholder=".3125" /></div>
+      </div>
+      </div>
+    </div>
+
+    <div class="special-box hidden" id="tapBox">
+      <div class="special-head">Tap size search</div>
+      <div class="row">
+        <div class="field"><label>Tap Unit</label><select id="tapUnit"><option value="">All</option><option value="inch">Inch</option><option value="metric">Metric</option></select></div>
+        <div class="field"><label>Tap Size</label><select id="tapSize"><option value="">All</option></select></div>
+      </div>
+      <div class="row"><div class="field"><label>Tap Search String</label><input id="threadText" placeholder="1/4-20 or M6x1 or T34" /></div></div>
+    </div>
+
+    <div class="special-box hidden" id="countersinkBox">
+      <div class="special-head">Countersink search</div>
+      <div class="row">
+        <div class="field"><label>Countersink Unit</label><select id="cskUnit"><option value="">All</option><option value="inch">Inch</option><option value="metric">Metric</option></select></div>
+        <div class="field"><label>Countersink Size</label><select id="cskSize"><option value="">All</option></select></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Included Angle</label><select id="cskAngle"><option value="">All</option><option value="60">60 deg</option><option value="82">82 deg</option><option value="90">90 deg</option><option value="100">100 deg</option><option value="120">120 deg</option></select></div>
+        <div class="field"><label>Countersink Search String</label><input id="countersinkText" placeholder=".375 or 82 deg" /></div>
+      </div>
+    </div>
+
+    <div class="special-box hidden" id="spotDrillBox">
+      <div class="special-head">Spot drill search</div>
+      <div class="row">
+        <div class="field"><label>Spot Drill Unit</label><select id="spotUnit"><option value="">All</option><option value="inch">Inch</option><option value="metric">Metric</option></select></div>
+        <div class="field"><label>Spot Drill Size</label><select id="spotSize"><option value="">All</option></select></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Included Angle</label><select id="spotAngle"><option value="">All</option><option value="90">90 deg</option><option value="120">120 deg</option><option value="140">140 deg</option><option value="150">150 deg</option></select></div>
+        <div class="field"><label>Spot Drill Search String</label><input id="spotText" placeholder=".375 or 90 deg" /></div>
+      </div>
+    </div>
+
+    <div class="special-box hidden" id="drillBox">
+      <div class="special-head">Drill size search</div>
+      <div class="row">
+        <div class="field"><label>Drill Unit</label><select id="drillUnit"><option value="">All</option><option value="inch">Inch</option><option value="metric">Metric</option></select></div>
+        <div class="field"><label>Drill Size</label><select id="drillSize"><option value="">All</option></select></div>
+      </div>
+      <div class="row"><div class="field"><label>Drill Search String</label><input id="drillText" placeholder=".2010 or 5.105 mm" /></div></div>
+    </div>
+
+    <div class="row">
+      <div class="field"><label>Machine Profile</label><select id="machine"><option>Haas VF-2 (10k)</option><option>Haas VF-2 (12k)</option><option>Standard VMC</option><option>Heavy</option></select></div>
+      <div class="field"><label>Coating Preference</label><select id="coating"><option value="">Auto</option><option>Uncoated</option><option>TiB2</option><option>AlTiN</option><option>TiCN</option></select></div>
+    </div>
+
+    <div class="row">
+      <div class="field"><label>Manual RPM Cap</label><input id="rpmCap" placeholder="leave blank for now" /></div>
+      <div class="field"><label>Shorthand / John Search</label><input id="johnSearch" placeholder="T34 or 3/8 3F EM ALT" /></div>
+    </div>
+
+    <div class="field"><label>Folder / Build Notes</label><textarea id="notes">Preserve shell. Real folders. Clean import flow. No toy app.</textarea></div>
+
+    <button class="btn-blue" id="runSearch">RUN SEARCH</button>
+    <button class="btn-green" id="showFlow">SHOW FOLDER FLOW</button>
+    <button class="btn-gray" id="resetBtn">RESET</button>
+
+  </div>
+
+  <div class="panel center-panel">
+    <div class="title">Tool Family Workspace</div>
+<div class="top-result-bar">
+      <div style="font-weight:800;margin-bottom:8px;">Current Search Winner</div>
+      <div class="top-result-grid">
+        <div class="k">Part #</div><div id="topPart">--</div>
+        <div class="k">Manufacturer</div><div id="topMfg">--</div>
+        <div class="k">Tool Type</div><div id="topType">--</div>
+        <div class="k">Family</div><div id="topFamily">--</div>
+        <div class="k">Series</div><div id="topSeries">--</div>
+        <div class="k">Score</div><div id="topScore">--</div>
+        <div class="k">Diameter</div><div id="topDia">--</div>
+        <div class="k">Designation / Thread</div><div id="topDesignation">--</div>
+        <div class="k">LOC</div><div id="topLoc">--</div>
+        <div class="k">OAL</div><div id="topOal">--</div>
+        <div class="k">Shank</div><div id="topShank">--</div>
+        <div class="k">Material</div><div id="topMaterial">--</div>
+        <div class="k">Alt Size</div><div id="topAlt">--</div>
+        <div class="k">Coating</div><div id="topCoating">--</div>
+      </div>
+    </div>
+
+    <div class="chips">
+      <div class="chip" id="chipFamily">Family: Waiting</div>
+      <div class="chip" id="chipMode">Mode: Real Master Pending</div>
+      <div class="chip" id="chipRows">Loaded Tools: 0</div>
+      <div class="chip" id="chipMatches">Matches: 0</div>
+    </div>
+    <div class="notice" id="familyNote">Load your master file to activate live search against real imported tool rows. Countersink and spot drill now use a basic inch-size list, and taps now match by real thread size without material focus blocking valid tap rows.</div>
+    <div class="notice" id="winnerNote">Current winner will appear here after search. Feeds / speeds advisor is now shown directly above the live ranked results table.</div>
+
+
+
+    <div class="live-table-box">
+      <div class="live-table-head">Live Ranked Results</div>
+      <div class="table-scroller">
+        <table>
+          <thead>
+            <tr>
+              <th>Rank</th><th>Mfg</th><th>Tool Type</th><th>Family</th><th>Series</th><th>Part #</th><th>Designation</th><th>Thread</th>
+              <th>Dia (Dec)</th><th>Alt Size</th><th>Shank</th><th>LOC</th><th>OAL</th><th>Flutes</th><th>Coating</th><th>Material</th><th>Fit</th><th>Score</th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody">
+            <tr><td colspan="18" class="muted">Load your real RMFI master file to populate results.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<div class="panel right-panel">
+    <div id="feedsBox">
+      <div class="feeds-title">Manufacturer Feeds &amp; Speeds</div>
+      <div id="feedsStatus" class="tiny muted left-feeds-note">Waiting for a valid manufacturer baseline row.</div>
+      <div id="feedsDetails" class="tiny" style="margin-top:8px; color:#eef6ff;">
+        <div class="feeds-line"><b>Manufacturer:</b> --</div>
+        <div class="feeds-line"><b>Series:</b> --</div>
+        <div class="feeds-line"><b>Manufacturer SFM:</b> --</div>
+        <div class="feeds-line"><b>Manufacturer Chip Load:</b> --</div>
+        <div class="feeds-line"><b>Starting RPM:</b> --</div>
+        <div class="feeds-line"><b>Starting Feed:</b> --</div>
+        <div class="feeds-line"><b>Source:</b> --</div>
+      </div>
+    </div>
+
+    <div class="title">Recommendation / Search Winner</div>
+<div class="card"><div class="small">Recommended Part</div><div class="big" id="recPart">--</div></div>
+    <div class="card"><div class="small">Manufacturer</div><div class="big" id="recMfg">--</div></div>
+    <div class="card"><div class="small">Tool Family</div><div class="big" id="recFamily">--</div></div>
+    <div class="card"><div class="small">Score</div><div class="big" id="recScore">--</div></div>
+    <div class="card" id="cutTapCard"><div class="small">Cut Tap Drill</div><div class="big" id="cutTapDrill">--</div></div>
+    <div class="card" id="rollTapCard"><div class="small">Roll Tap Drill</div><div class="big" id="rollTapDrill">--</div></div>
+    <div style="margin-top:12px;font-weight:800;">Selection Decode</div>
+    <div class="tiny muted" id="decodeText" style="line-height:1.45;margin-top:6px;">Waiting for your real master file.</div>
+
+    <div style="margin-top:14px;font-weight:800;">Jon Tool Code Rules</div>
+    <div class="notice tiny" style="line-height:1.45; max-height:560px; overflow:auto; margin-top:6px;">
+      <b>Material application</b><br>
+      N = Aluminum / Non-Ferrous<br>
+      P = Steel<br>
+      M = Stainless Steel<br>
+      S = Super Alloy<br>
+      K = Cast Iron<br>
+      H = Hardened Material above 60 HRC<br><br>
+
+      <b>Coating / condition</b><br>
+      T = TiN<br>
+      TC = TiCN<br>
+      A = AlTiN / FireX / TiAlN<br>
+      B = AlCrN<br>
+      D = DLC<br>
+      Z = Zirconia<br>
+      P = Uncoated &amp; Polished<br>
+      U = Uncoated<br><br>
+
+      <b>Examples</b><br>
+      SCBC = Super Counter Bore Carbide<br>
+      NCBH = Alum Counter Bore HSS<br>
+      PCBH = Steel Counter Bore Pilot<br><br>
+
+      MCSH = Counter Sink HSS<br>
+      SCSC = Super Counter Sink Carbide<br><br>
+
+      NRMRCT = Alum Reamer Carbide Tipped<br>
+      KRMRC = Cast Iron Reamer Carbide<br>
+      PRMRH = Steel Reamer HSS<br><br>
+
+      MTAPPP = Plug Tap Powder Metal<br>
+      NTAPBH = Alum Bottom HSS<br>
+      KTAPTH = Cast Iron Taper HSS<br>
+      HTAPGC = HRC60 Gun<br><br>
+
+      PDRILLSSC = Steel Stub Solid Carbide<br>
+      MDRILLCJC = Jobber Coolant Thru Carbide<br>
+      KDRILLCTP = Cast Iron Taper Length Coolant Thru Powder Metal<br>
+      NDRILLCXC = Non-Fer Xtra Length Coolant Carbide<br><br>
+
+      PCHMH = Steel Chamfer Mill HSS<br>
+      KCHMC = Cast Iron Chamfer Mill Carbide<br><br>
+
+      MCRCF = Flared Corner Rounder Carbide<br>
+      PCRH = Steel 90 Degree Corner Rounder<br><br>
+
+      PSPDH = Steel Spot Drill HSS<br>
+      MSPDC = Spot Drill Carbide<br><br>
+
+      NEMR = Non-Fer End Mill HSS Knuckle Rougher<br>
+      PEMRF = Steel End Mill HSS Fine Knuckle Rougher<br>
+      MEMB = Ball End Mill HSS<br>
+      KEM = Cast Iron Square End Mill HSS<br>
+      NEMC = Non-Fer End Mill Carbide<br>
+      PEMCNR = Steel End Mill Necked Relief<br>
+      PEMCR = Steel End Mill Carbide Knuckle Rougher<br>
+      PEMCRF = Steel End Mill Fine Knuckle Rougher<br>
+      PEMCB = Steel Ball End Mill Carbide<br>
+      PEMCFC = Steel Chip Splitter Carbide<br>
+      PEMCFCNR = Steel Chip Splitter Carbide Necked Relief
+    </div>
+  </div>
+</div>
+
+<script>
+const EMBEDDED_MASTER_CSV = "";
+let normalizedRows = [];
+let lastRenderedRows = [];
+
+const BASE_TOOL_TYPES = [
+  'End Mill',
+  'Drill',
+  'Tap',
+  'Reamer',
+  'Countersink',
+  'Spot Drill',
+  'Chamfer Mill',
+  'Carbide Burr'
+];
+
+const COMMON_BASIC_INCH_SIZES = [
+  0.1250, 0.1875, 0.2500, 0.3125, 0.3750, 0.5000, 0.6250, 0.7500, 0.8750, 1.0000
+];
+
+function fractionLabelFromDecimal(dec){
+  const map = {
+    '0.1250':'1/8',
+    '0.1875':'3/16',
+    '0.2500':'1/4',
+    '0.3125':'5/16',
+    '0.3750':'3/8',
+    '0.5000':'1/2',
+    '0.6250':'5/8',
+    '0.7500':'3/4',
+    '0.8750':'7/8',
+    '1.0000':'1'
+  };
+  return map[Number(dec).toFixed(4)] || fmtDec(dec);
+}
+
+function setFractionSizeOpts(sel, rows){
+  const keep = sel.value;
+  const rowSizes = new Set(
+    rows
+      .map(r => r.diameterNum)
+      .filter(v => !isNaN(v))
+      .map(v => Number(v).toFixed(4))
+  );
+  const options = COMMON_BASIC_INCH_SIZES
+    .map(v => Number(v).toFixed(4))
+    .filter(v => rowSizes.has(v));
+
+  sel.innerHTML = '<option value="">All</option>' + options.map(v => {
+    const label = fractionLabelFromDecimal(Number(v));
+    return `<option value="${esc(v)}">${esc(label)}</option>`;
+  }).join('');
+
+  if([...sel.options].some(o => o.value === keep)) sel.value = keep;
+}
+
+function parseRequestedDecimal(v){
+  const s = String(v || '').trim();
+  if(!s) return NaN;
+  const first = s.split('|')[0].trim();
+  return num(first);
+}
+
+function closeDecimalMatch(a, b, tol=0.002){
+  if(isNaN(a) || isNaN(b)) return false;
+  return Math.abs(a - b) <= tol;
+}
+
+function normalizeTapThread(v){
+  let s = String(v || '').trim().toUpperCase().replace(/\s+/g,'').replace(/×/g,'X');
+  if(!s) return '';
+  if(s.startsWith('M')){
+    return s.replace(/-/g,'X');
+  }
+  return s;
+}
+
+function tapMatches(row, wanted){
+  const rowThread = normalizeTapThread(row.threadSize || '');
+  const ask = normalizeTapThread(wanted || '');
+  if(!ask) return true;
+  if(!rowThread) return false;
+  if(rowThread === ask) return true;
+
+  const rowDigits = rowThread.replace(/[^0-9]/g,'');
+  const askDigits = ask.replace(/[^0-9]/g,'');
+  if(askDigits && rowDigits === askDigits) return true;
+
+  return false;
+}
+
+
+function tapDrillRecommendations(thread){
+  const raw = String(thread || '').trim();
+  const norm = normalizeTapThread(raw);
+  if(!norm) return {cut:'--', roll:'--'};
+
+  const inchMap = {
+    '0-80': {cut:'3/64 | .0469', roll:'#54 | .0550'},
+    '1-64': {cut:'#53 | .0595', roll:'#51 | .0670'},
+    '1-72': {cut:'#53 | .0595', roll:'#51 | .0670'},
+    '2-56': {cut:'#50 | .0700', roll:'5/64 | .0781'},
+    '2-64': {cut:'#50 | .0700', roll:'#47 | .0785'},
+    '3-48': {cut:'#47 | .0785', roll:'#43 | .0890'},
+    '3-56': {cut:'#46 | .0810', roll:'2.30 mm | .0905'},
+    '4-40': {cut:'#43 | .0890', roll:'#38 | .1015'},
+    '4-48': {cut:'#42 | .0935', roll:'2.60 mm | .1024'},
+    '5-40': {cut:'#38 | .1015', roll:'#33 | .1130'},
+    '5-44': {cut:'#37 | .1040', roll:'2.90 mm | .1142'},
+    '6-32': {cut:'#36 | .1065', roll:'1/8 | .1250'},
+    '6-40': {cut:'#33 | .1130', roll:'3.25 mm | .1280'},
+    '8-32': {cut:'#29 | .1360', roll:'#25 | .1495'},
+    '8-36': {cut:'#29 | .1360', roll:'#24 | .1520'},
+    '10-24': {cut:'#26 | .1470', roll:'11/64 | .1719'},
+    '10-32': {cut:'#21 | .1590', roll:'#16 | .1770'},
+    '12-24': {cut:'#16 | .1770', roll:'#8 | .1990'},
+    '12-28': {cut:'#15 | .1800', roll:'#7 | .2010'},
+    '1/4-20': {cut:'#7 | .2010', roll:'#1 | .2280'},
+    '1/4-28': {cut:'#3 | .2130', roll:'15/64 | .2340'},
+    '5/16-18': {cut:'F | .2570', roll:'L | .2900'},
+    '5/16-24': {cut:'I | .2720', roll:'M | .2950'},
+    '3/8-16': {cut:'5/16 | .3125', roll:'S | .3480'},
+    '3/8-24': {cut:'Q | .3320', roll:'T | .3580'},
+    '7/16-14': {cut:'U | .3680', roll:'Y | .4040'},
+    '7/16-20': {cut:'25/64 | .3906', roll:'Z | .4130'},
+    '1/2-13': {cut:'27/64 | .4219', roll:'15/32 | .4682'},
+    '1/2-20': {cut:'29/64 | .4531', roll:'12.25 mm | .4823'},
+    '9/16-12': {cut:'31/64 | .4844', roll:'17/32 | .5312'},
+    '9/16-18': {cut:'33/64 | .5156', roll:'13.50 mm | .5315'},
+    '5/8-11': {cut:'17/32 | .5312', roll:'14.75 mm | .5807'},
+    '5/8-18': {cut:'37/64 | .5781', roll:'15.25 mm | .6004'},
+    '3/4-10': {cut:'21/32 | .6562', roll:'45/64 | .7031'},
+    '3/4-16': {cut:'11/16 | .6875', roll:'23/32 | .7188'}
+  };
+  if(inchMap[norm]) return inchMap[norm];
+
+  const metricMap = {
+    'M1.6X0.35': {cut:'1.25 mm | .0492', roll:'1.45 mm | .0571'},
+    'M1.8X0.35': {cut:'1.45 mm | .0571', roll:'1.65 mm | .0650'},
+    'M2X0.40': {cut:'1.60 mm | .0630', roll:'1.80 mm | .0709'},
+    'M2.2X0.45': {cut:'1.75 mm | .0689', roll:'2.00 mm | .0787'},
+    'M2.5X0.45': {cut:'2.05 mm | .0807', roll:'2.30 mm | .0906'},
+    'M3X0.50': {cut:'2.50 mm | .0984', roll:'7/64 | .1094'},
+    'M3.5X0.60': {cut:'2.90 mm | .1142', roll:'3.20 mm | .1260'},
+    'M4X0.70': {cut:'3.30 mm | .1299', roll:'3.70 mm | .1476'},
+    'M4.5X0.75': {cut:'3.70 mm | .1476', roll:'4.10 mm | .1614'},
+    'M5X0.80': {cut:'4.20 mm | .1654', roll:'#14 | .1820'},
+    'M6X1.00': {cut:'5.00 mm | .1969', roll:'7/32 | .2188'},
+    'M7X1.00': {cut:'6.00 mm | .2362', roll:'F | .2570'},
+    'M8X1.25': {cut:'6.70 mm | .2638', roll:'7.40 mm | .2913'},
+    'M8X1.00': {cut:'7.00 mm | .2756', roll:'19/64 | .2969'},
+    'M10X1.50': {cut:'8.50 mm | .3346', roll:'U | .3680'},
+    'M10X1.25': {cut:'8.70 mm | .3425', roll:'9.40 mm | .3701'},
+    'M12X1.75': {cut:'10.20 mm | .4016', roll:'11.20 mm | .4409'},
+    'M12X1.25': {cut:'10.80 mm | .4252', roll:'11.50 mm | .4528'},
+    'M14X2.00': {cut:'12.00 mm | .4724', roll:'33/64 | .5156'},
+    'M16X2.00': {cut:'14.00 mm | .5512', roll:'19/32 | .5938'},
+    'M16X1.50': {cut:'14.50 mm | .5709', roll:'15.25 mm | .6004'},
+    'M18X2.50': {cut:'15.50 mm | .6102', roll:'39/64 | .6094'},
+    'M18X1.50': {cut:'16.50 mm | .6496', roll:'17.25 mm | .6791'},
+    'M20X2.50': {cut:'17.50 mm | .6890', roll:'*'},
+    'M20X1.50': {cut:'18.50 mm | .7283', roll:'*'},
+    'M22X2.50': {cut:'19.50 mm | .7677', roll:'*'},
+    'M22X1.50': {cut:'20.50 mm | .8071', roll:'*'},
+    'M24X3.00': {cut:'21.00 mm | .8268', roll:'*'},
+    'M24X2.00': {cut:'22.00 mm | .8661', roll:'*'},
+    'M27X3.00': {cut:'24.00 mm | .9449', roll:'*'},
+    'M27X2.00': {cut:'25.00 mm | .9843', roll:'*'},
+    'M30X3.50': {cut:'26.50 mm | 1.0433', roll:'*'},
+    'M30X2.00': {cut:'28.00 mm | 1.1024', roll:'*'},
+    'M33X3.50': {cut:'29.50 mm | 1.1614', roll:'*'},
+    'M33X2.00': {cut:'31.00 mm | 1.2205', roll:'*'},
+    'M36X4.00': {cut:'32.00 mm | 1.2598', roll:'*'},
+    'M36X3.00': {cut:'33.00 mm | 1.2992', roll:'*'},
+    'M39X4.00': {cut:'35.00 mm | 1.3780', roll:'*'},
+    'M39X3.00': {cut:'36.00 mm | 1.4173', roll:'*'}
+  };
+  if(metricMap[norm]) return metricMap[norm];
+
+  return {cut:'--', roll:'--'};
+}
+
+
+const fields = {
+  manufacturer:['Manufacturer','Mfg'],
+  toolType:['Tool Type','ToolType'],
+  family:['Tool Family','Family','Description'],
+  series:['Series'],
+  partNumber:['Part Number','Part #','Part#'],
+  diameter:['Diameter','Dia'],
+  shank:['Shank Dia','Shank','Shank Diameter'],
+  loc:['LOC','Flute Length'],
+  oal:['OAL','Overall Length'],
+  flutes:['Flutes'],
+  coating:['Coating'],
+  material:['Material','Material Focus'],
+  threadSize:['Thread Size','ThreadSize','Thread'],
+  subtype:['Tool Subtype','Subtype','Subtype / Style','Style'],
+  altSize:['Alt Size','Alternate Size','Fractional / Metric','Fractional Size','Metric Size'],
+  designation:['Designation','Reamer Designation','Designator','Code'],
+  reamerMaterial:['Reamer Material','Tool Material','Substrate']
+};
+
+function pick(row, names){for(const n of names){if(row[n]!==undefined&&row[n]!==null&&String(row[n]).trim()!=='') return String(row[n]).trim()} return ''}
+function num(v){let s=String(v??'').trim(); if(!s) return NaN; s=s.replace(/"/g,'').replace(/[^0-9.\-]/g,''); if(s.startsWith('.')) s='0'+s; let n=parseFloat(s); return isNaN(n)?NaN:n}
+function fmt4(v){if(isNaN(v)) return '--'; let s=Number(v).toFixed(4); return s.replace(/^0/,'')}
+function fmtDec(v){if(isNaN(v)) return ''; let s=Number(v).toFixed(4); return s.replace(/^0/,'')}
+function esc(s){return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;')}
+function reamer4(v){
+  const n = num(v);
+  if(isNaN(n)) return '';
+  return Number(n).toFixed(4);
+}
+function uniq(vals){return [...new Set(vals.filter(v=>String(v).trim()!==''))].sort((a,b)=>String(a).localeCompare(String(b)))}
+function normalizeThread(s){return String(s||'').trim().toUpperCase().replace(/\s+/g,'')}
+
+function typeNorm(s){
+  const raw = (s||'').trim();
+  const l = raw.toLowerCase();
+  if(l.includes('spot')) return 'Spot Drill';
+  if(l.includes('chamfer') || l.includes('countersink') || l.includes('counter sink')) return 'Countersink';
+  if(l.includes('ream')) return 'Reamer';
+  if(l.includes('tap')) return 'Tap';
+  if(l === 'drill' || (l.includes('drill') && !l.includes('spot'))) return 'Drill';
+  if(l.includes('annular')) return 'Annular Cutter';
+  if(l.includes('hole cutter')) return 'Hole Cutter';
+  if(l.includes('burr')) return 'Carbide Burr';
+  if(l.includes('mill')) return 'End Mill';
+
+  const knownVendors = ['imco','osg','guhring','ma ford','m.a. ford','yg-1','walter','harvey tool','cleveland','drillco','cle-line','chicago-latrobe'];
+  if(knownVendors.includes(l)) return 'Unknown';
+
+  return raw || 'Unknown';
+}
+
+function gcd(a,b){while(b){[a,b]=[b,a%b]} return a}
+function decimalToFractionString(dec){
+  if(isNaN(dec) || dec<=0 || dec>=2) return '';
+  const denom = 64;
+  let nume = Math.round(dec * denom);
+  if(nume===0) return '';
+  let g = gcd(nume, denom);
+  nume/=g;
+  let d=denom/g;
+  if(nume===d) return '1';
+  return `${nume}/${d}`;
+}
+function decimalToMetricString(dec){
+  if(isNaN(dec)) return '';
+  return (dec*25.4).toFixed(3).replace(/\.?0+$/,'') + ' mm';
+}
+function classifyThreadUnit(v){
+  const s = normalizeThread(v);
+  if(!s) return '';
+  if(s.startsWith('M')) return 'metric';
+  return 'inch';
+}
+function classifyNumericUnit(v){
+  const n = num(v);
+  if(isNaN(n)) return '';
+  return n > 2 ? 'metric' : 'inch';
+}
+function roundedLoc(dec){
+  if(isNaN(dec)) return NaN;
+  return Math.round(dec * 64) / 64;
+}
+function altSizeForRow(toolType, diameterNum, existingAlt){
+  if(existingAlt) return existingAlt;
+  if(isNaN(diameterNum)) return '';
+  if(toolType === 'Drill'){
+    const frac = decimalToFractionString(diameterNum);
+    const mm = decimalToMetricString(diameterNum);
+    if(frac && mm) return `${frac} | ${mm}`;
+    return frac || mm;
+  }
+  const frac = decimalToFractionString(diameterNum);
+  const mm = decimalToMetricString(diameterNum);
+  return frac && mm ? `${frac} | ${mm}` : (frac || mm);
+}
+
+function normalize(rows){
+  return rows.map((r,i)=>{
+    const toolType = typeNorm(pick(r,fields.toolType));
+    const family = pick(r,fields.family)||toolType;
+    const subtype = pick(r,fields.subtype);
+    const threadSize = pick(r,fields.threadSize);
+    const dia = pick(r,fields.diameter);
+    const diaNum = num(dia);
+    const locNumRaw = num(pick(r,fields.loc));
+    const locNum = toolType === 'Drill' ? roundedLoc(locNumRaw) : locNumRaw;
+    const altSize = altSizeForRow(toolType, diaNum, pick(r,fields.altSize));
+    const searchBlob = [pick(r,fields.partNumber),family,pick(r,fields.series),toolType,pick(r,fields.coating),pick(r,fields.material),pick(r,fields.flutes),threadSize,subtype,altSize].join(' ').toUpperCase();
+    return {
+      rowIndex:i+1,
+      manufacturer:pick(r,fields.manufacturer),
+      toolType, family, subtype,
+      series:pick(r,fields.series),
+      partNumber:pick(r,fields.partNumber),
+      diameter:dia,
+      diameterNum:diaNum,
+      altSize,
+      shank:pick(r,fields.shank),
+      shankNum:num(pick(r,fields.shank)),
+      loc:pick(r,fields.loc),
+      locNum,
+      oal:pick(r,fields.oal),
+      oalNum:num(pick(r,fields.oal)),
+      flutes:pick(r,fields.flutes),
+      coating:pick(r,fields.coating),
+      material:pick(r,fields.material),
+      threadSize,
+      threadNorm: normalizeThread(threadSize),
+      designation: pick(r,fields.designation),
+      reamerMaterial: pick(r,fields.reamerMaterial),
+      searchBlob
+    };
+  }).map(r => {
+    if(r.toolType === 'Reamer'){
+      if(!r.designation){
+        const blob = `${r.series} ${r.partNumber}`;
+        const m = blob.match(/R0?\d{2,3}/i);
+        if(m) r.designation = m[0].toUpperCase();
+      }
+      if(!r.reamerMaterial){
+        const b = r.searchBlob;
+        if(b.includes('POWDER')) r.reamerMaterial = 'Powdered Metal';
+        else if(b.includes('CARBIDE')) r.reamerMaterial = 'Carbide';
+        else if(b.includes('HSS')) r.reamerMaterial = 'HSS';
+      }
+      if(!isNaN(r.diameterNum)){
+        r.diameterDisplay = reamer4(r.diameterNum);
+      } else {
+        r.diameterDisplay = r.diameter || '--';
+      }
+    } else {
+      r.diameterDisplay = !isNaN(r.diameterNum) ? fmt4(r.diameterNum) : (r.diameter || '--');
+    }
+    r.designationNorm = (r.designation||'').toUpperCase();
+    r.searchBlob = `${r.searchBlob} ${r.designation||''} ${r.reamerMaterial||''} ${r.diameterDisplay||''}`.toUpperCase();
+    return r;
+  }).filter(r=>r.partNumber||r.family||!isNaN(r.diameterNum)||r.threadSize)
+}
+
+function setOptsNoAll(sel, vals){
+  const cur = sel.value;
+  sel.innerHTML = vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
+  if([...sel.options].some(o=>o.value===cur)) sel.value = cur;
+  else if(sel.options.length) sel.value = sel.options[0].value;
+}
+
+function setOpts(sel, vals){
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">All</option>' + vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
+  sel.value = [...sel.options].some(o=>o.value===cur) ? cur : '';
+}
+
+const TOOL_UI = {
+  'End Mill': {operations:['Pocketing','Finishing']},
+  'Carbide Burr': {operations:['Deburring','Finishing']},
+  'Drill': {operations:['Drilling']},
+  'Tap': {operations:['Tapping']},
+  'Reamer': {operations:['Reaming']},
+  'Countersink': {operations:['Countersinking']},
+  'Spot Drill': {operations:['Spotting']},
+  'Chamfer Mill': {operations:['Chamfering']}
+};
+
+function getToolMode(){
+  return toolType.value || '';
+}
+
+function extractAngle(text){
+  const s = String(text || '').toUpperCase();
+  const m = s.match(/(?:^|[^0-9])(60|82|90|100|120|140|150)(?:\s*(?:DEG|°))?(?:[^0-9]|$)/);
+  return m ? m[1] : '';
+}
+
+function syncOperationOptions(){
+  const tt = getToolMode();
+  const ops = (TOOL_UI[tt] && TOOL_UI[tt].operations) ? TOOL_UI[tt].operations : ['Pocketing','Finishing','Drilling','Tapping','Spotting','Countersinking','Chamfering','Reaming'];
+  const current = operation.value;
+  operation.innerHTML = ops.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+  operation.value = ops.includes(current) ? current : ops[0];
+  if(typeof operationField !== 'undefined') operationField.classList.toggle('hidden', ops.length <= 1);
+}
+
+function syncToolVisualState(){
+  const tt = getToolMode();
+  const noDepth = ['Spot Drill','Countersink','Tap'].includes(tt);
+  const noMaterial = ['Reamer','Spot Drill','Countersink'].includes(tt);
+  reqDepth.closest('.field').classList.toggle('hidden', noDepth);
+  material.closest('.field').classList.toggle('hidden', noMaterial);
+}
+
+function matchesAngle(row, angle){
+  if(!angle) return true;
+  return (row.searchBlob || '').includes(angle) || String(row.series || '').toUpperCase().includes(angle);
+}
+
+function getWorkspaceMaterialValue(){
+  const tt = toolType.value || '';
+  return material.value || 'All';
+}
+
+function getRequestedDisplayValue(){
+  const tt = toolType.value || '';
+  if(tt === 'Tap'){
+    return tapSize.value || (String(threadText.value || '').trim() && String(threadText.value || '').trim() !== '1/4-20 or M6x1 or T34' ? String(threadText.value || '').trim() : '');
+  }
+  if(tt === 'Reamer'){
+    return reamerText.value || reamerSize.value || '';
+  }
+  if(tt === 'Countersink' || tt === 'Chamfer Mill'){
+    return cskSize.value || countersinkText.value || reqDia.value || '';
+  }
+  if(tt === 'Spot Drill'){
+    return spotSize.value || spotText.value || reqDia.value || '';
+  }
+  if(tt === 'Drill'){
+    return drillSize.value || drillText.value || reqDia.value || '';
+  }
+  return reqDia.value || '';
+}
+
+function syncToolFieldVisibility(){
+  const tt = toolType.value || '';
+  if(typeof sizeDepthRow !== 'undefined'){
+    sizeDepthRow.classList.toggle('hidden-by-tool', tt === 'Tap' || tt === 'Spot Drill' || tt === 'Reamer');
+  }
+}
+
+function syncKV(){
+  if(window.kvMfg) kvMfg.textContent=manufacturer.value||'All';
+  if(window.kvMat) kvMat.textContent=material.value||'Aluminum';
+  if(window.kvDia) kvDia.textContent=reqDia.value||threadText.value||reamerText.value||countersinkText.value||spotText.value||drillText.value||cskSize.value||spotSize.value||'';
+  if(window.kvMachine) kvMachine.textContent=machine.value||'';
+  if(window.kvType) kvType.textContent=toolType.value||'All';
+  if(window.kvOp) kvOp.textContent=operation.value||'';
+  if(window.kvDepth) kvDepth.textContent=reqDepth.value||'';
+  if(window.kvCoat) kvCoat.textContent=coating.value||'Auto';
+}
+
+function updateTopWinner(top){
+  if(!top){
+    [topPart,topMfg,topType,topFamily,topSeries,topScore,topDia,topDesignation,topAlt,topLoc,topOal,topShank,topMaterial,topCoating].forEach(el=>el.textContent='--');
+    return;
+  }
+  topPart.textContent=top.partNumber||'--';
+  topMfg.textContent=top.manufacturer||'--';
+  topType.textContent=top.toolType||'--';
+  topFamily.textContent=top.family||'--';
+  topSeries.textContent=top.series||'--';
+  topScore.textContent=top.score ?? '--';
+  topDia.textContent=top.toolType==='Reamer' ? (top.diameterDisplay||'--') : (!isNaN(top.diameterNum)?fmt4(top.diameterNum):(top.diameter||'--'));
+  topDesignation.textContent=top.designation || top.threadSize || '--';
+  topAlt.textContent=top.altSize||'--';
+  topLoc.textContent=!isNaN(top.locNum)?fmt4(top.locNum):(top.loc||'--');
+  topOal.textContent=!isNaN(top.oalNum)?fmt4(top.oalNum):(top.oal||'--');
+  topShank.textContent=!isNaN(top.shankNum)?fmt4(top.shankNum):(top.shank||'--');
+  topMaterial.textContent=top.material||'--';
+  topCoating.textContent=top.coating||'--';
+}
+
+function score(r, req){
+  let s=0, fit='Fallback';
+  if(req.toolType && r.toolType===req.toolType) s+=900; else if(req.toolType) s-=650;
+  if(req.family && r.toolType===req.family) s+=250; else if(req.family) s-=160;
+  if(req.mfg && r.manufacturer===req.mfg) s+=220;
+
+  if(req.toolType === 'Reamer'){
+    // Reamers are decimal-first only
+    if(!isNaN(req.reamerNorm) && !isNaN(r.diameterNum)){
+      const d = Math.abs(r.diameterNum - req.reamerNorm);
+      s += Math.max(0, 2600 - d*120000);
+      if(d <= 0.00005) fit='Exact';
+      else if(d <= 0.0005) fit='Close';
+      else s -= 900;
+    } else {
+      s -= 1200;
+    }
+
+    // Designation and substrate are secondary tie-breakers
+    if(req.reamerDesignation){
+      if((r.designationNorm||'') === req.reamerDesignation) s += 240;
+      else if(r.searchBlob.includes(req.reamerDesignation)) s += 120;
+      else s -= 80;
+    }
+    if(req.reamerMaterial){
+      if((r.reamerMaterial||'') === req.reamerMaterial) s += 160;
+      else s -= 80;
+    }
+    if(req.reamerSearch && r.searchBlob.includes(req.reamerSearch)) s += 180;
+
+    if(req.operation === 'Reaming') s += 120;
+  } else if(req.toolType === 'Countersink' || req.toolType === 'Chamfer Mill'){
+    if(!isNaN(req.cskNorm) && !isNaN(r.diameterNum)) {
+      const d=Math.abs(r.diameterNum-req.cskNorm);
+      s+=Math.max(0,2200-(d*12000));
+      if(d<=0.0006) fit='Exact'; else if(d<=0.015) fit='Close';
+    }
+    if(req.cskAngle && matchesAngle(r, req.cskAngle)) s += 280;
+    else if(req.cskAngle) s -= 180;
+
+    if(req.toolType === 'Chamfer Mill'){
+      if(r.toolType === 'Chamfer Mill') s += 260;
+      else if(r.toolType === 'Countersink') s += 120;
+      else if(r.toolType === 'Spot Drill') s += 80;
+      if(req.operation === 'Chamfering') s += 120;
+    } else {
+      if(req.operation === 'Countersinking') s += 120;
+    }
+  } else if(req.toolType === 'Spot Drill'){
+    if(!isNaN(req.spotNorm) && !isNaN(r.diameterNum)) {
+      const d=Math.abs(r.diameterNum-req.spotNorm);
+      s+=Math.max(0,2200-(d*12000));
+      if(d<=0.0006) fit='Exact'; else if(d<=0.015) fit='Close';
+    }
+    if(req.spotAngle && matchesAngle(r, req.spotAngle)) s += 280;
+    else if(req.spotAngle) s -= 180;
+    if(req.operation === 'Spotting') s += 120;
+  } else if(req.toolType === 'Tap'){
+    if(req.threadNorm){
+      if(tapMatches(r, req.threadNorm)) {
+        s += 2600;
+        fit = 'Exact';
+      } else {
+        s -= 900;
+      }
+    }
+
+    if(req.coating){
+      const rc = (r.coating||'').toLowerCase();
+      if(rc.includes(req.coating.toLowerCase())) s += 60;
+    }
+  } else {
+    if(req.material){
+      const rm = (r.material||'').toLowerCase();
+      if(rm === req.material.toLowerCase()) s += 170;
+    }
+    if(req.coating){
+      const rc = (r.coating||'').toLowerCase();
+      if(rc === req.coating.toLowerCase()) s += 80;
+    }
+    if(!isNaN(req.dia) && !isNaN(r.diameterNum)) {
+      const d=Math.abs(r.diameterNum-req.dia);
+      s+=Math.max(0,500-(d*12000));
+      if(d<=0.0006) fit='Exact'; else if(d<=0.015 && fit!=='Exact') fit='Close';
+    }
+    if(!isNaN(req.depth) && !isNaN(r.locNum)){
+      if(r.locNum>=req.depth) s+=170; else s-=Math.min(300,(req.depth-r.locNum)*450);
+    }
+  }
+
+  const js=(req.johnSearch||'').toUpperCase();
+  if(js) js.split(/\s+/).filter(Boolean).forEach(t=>{ if(r.searchBlob.includes(t)) s+=70; });
+
+  return {score:Math.round(s), fit};
+}
+
+function filteredRows(){
+  let rows=normalizedRows.slice();
+  const mfg=manufacturer.value.trim(), mat=material.value.trim(), tt=toolType.value.trim();
+  if(mfg) rows=rows.filter(r=>r.manufacturer===mfg);
+
+  if(tt === 'Chamfer Mill'){
+    rows = rows.filter(r=>['Chamfer Mill','Countersink','Spot Drill'].includes(r.toolType));
+  } else if(tt) {
+    rows=rows.filter(r=>r.toolType===tt);
+  }
+
+  // Material focus is not a hard blocker for reamers, countersinks, spot drills, or taps.
+  if(mat && !['Reamer','Countersink','Spot Drill','Tap'].includes(tt)) {
+    rows = rows.filter(r => (r.material || '').toLowerCase().includes(mat.toLowerCase()));
+  }
+
+  if(tt === 'Reamer'){
+    const wantedRaw = reamerText.value || reamerSize.value || reqDia.value;
+    const wanted = reamer4(wantedRaw);
+    const wantedNum = num(wantedRaw);
+
+    if(wanted){
+      let exactRows = rows.filter(r => (r.diameterDisplay||'') === wanted || (r.searchBlob||'').includes(wanted));
+      if(exactRows.length){
+        rows = exactRows;
+      } else if(!isNaN(wantedNum)){
+        let closeRows = rows.filter(r => !isNaN(r.diameterNum) && Math.abs(r.diameterNum - wantedNum) <= 0.0010);
+        if(!closeRows.length){
+          closeRows = rows.filter(r => !isNaN(r.diameterNum) && Math.abs(r.diameterNum - wantedNum) <= 0.0020);
+        }
+        if(closeRows.length){
+          rows = closeRows;
+        } else {
+          rows = [];
+        }
+      }
+    }
+    if(reamerDesignation.value) rows = rows.filter(r=>(r.designationNorm||'') === reamerDesignation.value.toUpperCase() || r.searchBlob.includes(reamerDesignation.value.toUpperCase()));
+    if(reamerMaterial.value) rows = rows.filter(r=>(r.reamerMaterial||'') === reamerMaterial.value);
+  }
+  if(tt === 'Countersink' || tt === 'Chamfer Mill'){
+    const wantedNum = parseRequestedDecimal(cskSize.value || countersinkText.value || reqDia.value);
+    const ang = cskAngle.value || extractAngle(countersinkText.value);
+
+    if(!isNaN(wantedNum)){
+      rows = rows.filter(r => closeDecimalMatch(r.diameterNum, wantedNum, 0.002));
+    }
+
+    // Angle is a soft filter for now. Only use it when the row actually exposes an angle.
+    if(ang){
+      const angleAware = rows.filter(r => extractAngle((r.searchBlob || '') + ' ' + (r.series || '') + ' ' + (r.partNumber || '')));
+      if(angleAware.length){
+        rows = angleAware.filter(r => matchesAngle(r, ang));
+      }
+    }
+  }
+  if(tt === 'Spot Drill'){
+    const wantedNum = parseRequestedDecimal(spotSize.value || spotText.value || reqDia.value);
+    const ang = spotAngle.value || extractAngle(spotText.value);
+
+    if(!isNaN(wantedNum)){
+      rows = rows.filter(r => closeDecimalMatch(r.diameterNum, wantedNum, 0.002));
+    }
+
+    if(ang){
+      const angleAware = rows.filter(r => extractAngle((r.searchBlob || '') + ' ' + (r.series || '') + ' ' + (r.partNumber || '')));
+      if(angleAware.length){
+        rows = angleAware.filter(r => matchesAngle(r, ang));
+      }
+    }
+  }
+  if(tt === 'Tap'){
+    const selectedSize = tapSize.value;
+    const typed = String(threadText.value || '').trim();
+    const useTyped = typed && typed !== '1/4-20 or M6x1 or T34';
+
+    if(selectedSize){
+      rows = rows.filter(r => tapMatches(r, selectedSize));
+    } else if(useTyped){
+      rows = rows.filter(r => tapMatches(r, typed));
+    }
+  }
+  return rows;
+}
+
+function run(){
+  syncOperationOptions();
+  syncToolVisualState();
+  syncToolFieldVisibility();
+  syncKV();
+  updateSpecialDropdowns();
+  if(!normalizedRows.length){
+    const ss=document.getElementById('searchStatus'); if(ss) ss.innerHTML='<span class="bad">Nothing to search yet.</span> Load your real RMFI master file first.';
+    render([]);
+    return;
+  }
+  const req = {
+    mfg:manufacturer.value.trim(),
+    toolType:toolType.value.trim(),
+    family:'',
+    material:material.value.trim(),
+    operation:operation.value.trim(),
+    dia:num(reqDia.value),
+    depth:num(reqDepth.value),
+    coating:coating.value.trim(),
+    johnSearch:johnSearch.value.trim(),
+    threadNorm: normalizeTapThread(
+      tapSize.value || (
+        (String(threadText.value || '').trim() && String(threadText.value || '').trim() !== '1/4-20 or M6x1 or T34')
+          ? threadText.value
+          : ''
+      )
+    ),
+    tapSearch: (threadText.value || '').toUpperCase().trim(),
+    threadSearch: (threadText.value || '').toUpperCase().trim(),
+    reamerNorm: num(reamerSize.value || reamerText.value),
+    reamerSearch: (reamerText.value || '').toUpperCase().trim(),
+    cskNorm: num((cskSize.value || countersinkText.value || reqDia.value || '').split('|')[0].trim()),
+    cskSearch: (countersinkText.value || cskSize.value || '').toUpperCase().trim(),
+    cskAngle: cskAngle.value || extractAngle(countersinkText.value),
+    spotNorm: num((spotSize.value || spotText.value || reqDia.value || '').split('|')[0].trim()),
+    spotSearch: (spotText.value || spotSize.value || '').toUpperCase().trim(),
+    spotAngle: spotAngle.value || extractAngle(spotText.value),
+    drillNorm: num((drillSize.value || reqDia.value || '').split('|')[0].trim() || drillText.value),
+    drillSearch: (drillText.value || drillSize.value || '').toUpperCase().trim()
+  };
+  let rows = filteredRows().map(r=>{ const x=score(r,req); return {...r, score:x.score, fit:x.fit}; }).sort((a,b)=>b.score-a.score);
+  render(rows);
+  chipFamily.textContent=`Family: ${req.toolType||'All Tools'}`;
+  chipMode.textContent='Mode: Real Master Live';
+  chipRows.textContent=`Loaded Tools: ${normalizedRows.length}`;
+  familyNote.textContent=rows.length
+    ? `Live search complete. Family ${req.toolType||'All Tools'}. Top result: ${rows[0].partNumber||'(blank PN)'}.`
+    : `Live search complete. No rows matched.`;
+  if(req.toolType === 'Chamfer Mill' && rows.length){
+    familyNote.textContent += ' Chamfer lane is currently using countersink/spot-drill proxy logic until dedicated chamfer rows are ingested.';
+  }
+  { const ss=document.getElementById('searchStatus'); if(ss) ss.innerHTML=`<span class="ok">Search ready.</span> Ranked ${rows.length} matching row(s) from your real loaded master file.`; }
+}
+
+
+function render(rows){
+  lastRenderedRows = rows.slice();
+  chipRows.textContent = `Loaded Tools: ${normalizedRows.length}`;
+  chipMatches.textContent = `Matches: ${rows.length}`;
+  const top = rows.length ? rows[0] : null;
+  updateTopWinner(top);
+
+  recPart.textContent = top?.partNumber || top?.series || '--';
+  recMfg.textContent = top?.manufacturer || '--';
+  recFamily.textContent = top?.family || '--';
+  recScore.textContent = top?.score ?? '--';
+
+  const tapDrills = (top && top.toolType === 'Tap') ? tapDrillRecommendations(top.threadSize) : {cut:'--', roll:'--'};
+  cutTapDrill.textContent = tapDrills.cut;
+  rollTapDrill.textContent = tapDrills.roll;
+  cutTapCard.style.display = (top && top.toolType === 'Tap') ? 'block' : 'none';
+  rollTapCard.style.display = (top && top.toolType === 'Tap') ? 'block' : 'none';
+
+  if(top){
+    winnerNote.textContent = `Current winner: ${top.partNumber || '(blank PN)'} | ${top.manufacturer || '--'} | ${top.toolType || '--'} | score ${top.score}`;
+    if(top.toolType === 'Tap'){
+      const td = tapDrillRecommendations(top.threadSize);
+      decodeText.textContent = `Best row won on tool type and thread match. Suggested cut tap drill: ${td.cut}. Suggested roll tap drill: ${td.roll}.`;
+    } else {
+      decodeText.textContent = `Best row won on tool type, family alignment, diameter closeness, usable depth, and any matching manufacturer/material/coating preferences.`;
+    }
+  } else {
+    winnerNote.textContent = 'Current winner will appear here after search. Feeds / speeds advisor is now shown directly above the live ranked results table.';
+    decodeText.textContent = 'Waiting for your real master file.';
+  }
+
+  if(!rows.length){
+    resultsBody.innerHTML = '<tr><td colspan="18" class="muted">No matching rows found from the loaded master.</td></tr>';
+    return;
+  }
+
+  resultsBody.innerHTML = rows.slice(0, 200).map((r, idx) => `
+    <tr class="${idx===0 ? 'active-row' : ''}">
+      <td>${idx + 1}</td>
+      <td>${esc(r.manufacturer || '')}</td>
+      <td>${esc(r.toolType || '')}</td>
+      <td>${esc(r.family || '')}</td>
+      <td>${esc(r.series || '')}</td>
+      <td>${esc(r.partNumber || '')}</td>
+      <td>${esc(r.designation || '')}</td>
+      <td>${esc(r.threadSize || '')}</td>
+      <td>${esc(r.diameterDisplay || (!isNaN(r.diameterNum) ? fmt4(r.diameterNum) : (r.diameter || '')))}</td>
+      <td>${esc(r.altSize || '')}</td>
+      <td>${esc(!isNaN(r.shankNum) ? fmt4(r.shankNum) : (r.shank || ''))}</td>
+      <td>${esc(!isNaN(r.locNum) ? fmt4(r.locNum) : (r.loc || ''))}</td>
+      <td>${esc(!isNaN(r.oalNum) ? fmt4(r.oalNum) : (r.oal || ''))}</td>
+      <td>${esc(r.flutes || '')}</td>
+      <td>${esc(r.coating || '')}</td>
+      <td>${esc(r.material || '')}</td>
+      <td><span class="fit ${String(r.fit || '').toLowerCase()}">${esc(r.fit || '')}</span></td>
+      <td>${esc(r.score ?? '')}</td>
+    </tr>
+  `).join('');
+}
+
+function hydrateFilters(){
+  setOpts(manufacturer, uniq(normalizedRows.map(r=>r.manufacturer)));
+  const loadedTypes = uniq(normalizedRows.map(r=>r.toolType).filter(v => v && v !== 'Unknown'));
+  const types = uniq([...BASE_TOOL_TYPES, ...loadedTypes]);
+
+  const keepTool = toolType.value;
+
+  setOptsNoAll(toolType, types);
+
+  if(types.includes(keepTool)) toolType.value = keepTool;
+  else if(types.includes('End Mill')) toolType.value = 'End Mill';
+  else if(types.length) toolType.value = types[0];
+
+  syncOperationOptions();
+  syncToolVisualState();
+  syncToolFieldVisibility();
+  updateSpecialDropdowns();
+}
+
+function updateSpecialDropdowns(){
+  showSpecialBoxes();
+  syncOperationOptions();
+  syncToolVisualState();
+  const tt = getToolMode();
+
+  if(tt === 'Chamfer Mill'){
+    if(typeof cskBox !== 'undefined'){
+      const head = cskBox.querySelector('.special-head');
+      if(head) head.textContent = 'Chamfer / countersink search';
+    }
+  } else if(typeof cskBox !== 'undefined'){
+    const head = cskBox.querySelector('.special-head');
+    if(head) head.textContent = 'Countersink size search';
+  }
+
+  if(tt === 'Tap'){
+    let rows = normalizedRows.filter(r=>r.toolType==='Tap' && r.threadSize);
+    if(tapUnit.value) rows = rows.filter(r=>classifyThreadUnit(r.threadSize)===tapUnit.value);
+    const keep = tapSize.value;
+    const opts = uniq(rows.map(r=>r.threadSize));
+    tapSize.innerHTML = '<option value="">All</option>' + opts.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
+    if([...tapSize.options].some(o => o.value === keep)) tapSize.value = keep;
+  }
+  if(tt === 'Reamer'){
+    let rows = normalizedRows.filter(r=>r.toolType==='Reamer' && !isNaN(r.diameterNum));
+    if(reamerUnit.value) rows = rows.filter(r=>classifyNumericUnit(r.diameterNum)===reamerUnit.value);
+    setOpts(reamerSize, uniq(rows.map(r=>fmtDec(r.diameterNum))));
+    setOpts(reamerDesignation, uniq(rows.map(r=>r.designation)));
+  }
+  if(tt === 'Countersink'){
+    let rows = normalizedRows.filter(r=>r.toolType==='Countersink');
+    if(cskUnit.value) rows = rows.filter(r=>classifyNumericUnit(r.diameterNum)===cskUnit.value);
+    if((cskUnit.value || 'inch') === 'inch') setFractionSizeOpts(cskSize, rows);
+    else setOpts(cskSize, uniq(rows.map(r=>fmtDec(r.diameterNum)).filter(Boolean)));
+  }
+  if(tt === 'Spot Drill'){
+    let rows = normalizedRows.filter(r=>r.toolType==='Spot Drill');
+    if(spotUnit.value) rows = rows.filter(r=>classifyNumericUnit(r.diameterNum)===spotUnit.value);
+    if((spotUnit.value || 'inch') === 'inch') setFractionSizeOpts(spotSize, rows);
+    else setOpts(spotSize, uniq(rows.map(r=>fmtDec(r.diameterNum)).filter(Boolean)));
+  }
+  if(tt === 'Drill'){
+    let rows = normalizedRows.filter(r=>r.toolType==='Drill' && !isNaN(r.diameterNum));
+    if(drillUnit.value){
+      rows = rows.filter(r=>{
+        const alt = (r.altSize || '').toLowerCase();
+        if(drillUnit.value === 'metric') return alt.includes('mm');
+        if(drillUnit.value === 'inch') return !alt.includes('mm') || alt.includes('/');
+        return true;
+      });
+    }
+    setOpts(drillSize, uniq(rows.map(r=>{
+      const dec = fmtDec(r.diameterNum);
+      return r.altSize ? `${dec} | ${r.altSize}` : dec;
+    })));
+  }
+}
+
+function loadEmbeddedMaster(){
+  try{
+    const wb = XLSX.read(EMBEDDED_MASTER_CSV, {type:'string'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws,{defval:''});
+    normalizedRows = normalize(rows);
+    hydrateFilters();
+    { const ls=document.getElementById('loadStatus'); if(ls) ls.innerHTML=`<span class="ok">Embedded master loaded.</span> File: <b>RMFI_Tool_Database_Master_CLEANED.csv</b> | Sheet: <b>${esc(wb.SheetNames[0])}</b> | Parsed rows: <b>${rows.length}</b> | Searchable tool rows: <b>${normalizedRows.length}</b>`; }
+    return true;
+  } catch(err){
+    console.warn('Embedded master load failed:', err);
+    return false;
+  }
+}
+
+async function autoLoadMaster(){
+  const ls = document.getElementById('loadStatus');
+  const ss = document.getElementById('searchStatus');
+  if(ls) ls.innerHTML = '<span class="warn">Loading toolbox automatically...</span>';
+  if(ss) ss.innerHTML = 'Pulling live CSV from this repo...';
+  try{
+    const response = await fetch('./RMFI_Tool_Database_Master_CLEANED_app_ready_PLUS_Series140.csv', {cache:'no-store'});
+    if(!response.ok) throw new Error('HTTP ' + response.status);
+    const csvText = await response.text();
+    const blob = new Blob([csvText], {type:'text/csv'});
+    const autoFile = new File([blob], 'RMFI_Tool_Database_Master_CLEANED_app_ready_PLUS_Series140.csv', {type:'text/csv'});
+    load(autoFile);
+  }catch(err){
+    console.error('Auto-load failed:', err);
+    if(ls) ls.innerHTML = '<span class="warn">Auto-load failed.</span> Browse to your real .xlsx or .csv file to start.';
+    if(ss) ss.innerHTML = 'Automatic CSV load failed. Manual browse still available.';
+  }
+}
+
+function load(file){
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const wb=file.name.toLowerCase().endsWith('.csv') ? XLSX.read(e.target.result,{type:'binary'}) : XLSX.read(e.target.result,{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+    normalizedRows=normalize(rows);
+    hydrateFilters();
+    { const ls=document.getElementById('loadStatus'); if(ls) ls.innerHTML=`<span class="ok">Master loaded.</span> File: <b>${esc(file.name)}</b> | Sheet: <b>${esc(wb.SheetNames[0])}</b> | Parsed rows: <b>${rows.length}</b> | Searchable tool rows: <b>${normalizedRows.length}</b>`; }
+    run();
+  };
+  if(file.name.toLowerCase().endsWith('.csv')) reader.readAsBinaryString(file); else reader.readAsArrayBuffer(file);
+}
+
+fileInput.addEventListener('change', e=>{ const f=e.target.files[0]; if(f) load(f); });
+runSearch.addEventListener('click', run);
+showFlow.addEventListener('click', ()=>{ const fb=document.getElementById('folderBox'); if(fb){ fb.innerHTML=`<div style="font-weight:800;margin-bottom:8px;">Current File / Pipeline Notes</div><div class="tiny"><b>1.</b> Drop batch into imports<br><b>2.</b> Clean / normalize full rows<br><b>3.</b> Deduplicate exact duplicates only<br><b>4.</b> Update RMFI_Tool_Database_Master.xlsx<br><b>5.</b> Archive processed batch + write report<br><b>6.</b> Load master here and search real rows<br><br>Drill column now shows decimal first, then alternate fractional/metric size side-by-side.</div>`; } });
+
+resetBtn.addEventListener('click', ()=>{
+  manufacturer.value=''; material.value='Aluminum';
+  reqDia.value='.375'; reqDepth.value='.750'; machine.value='Haas VF-2 (10k)'; coating.value='';
+  rpmCap.value=''; johnSearch.value=''; threadText.value=''; reamerText.value=''; countersinkText.value=''; spotText.value=''; drillText.value='';
+  tapUnit.value=''; reamerUnit.value=''; cskUnit.value=''; spotUnit.value=''; drillUnit.value=''; tapSize.value=''; reamerSize.value=''; cskSize.value=''; spotSize.value=''; drillSize.value=''; cskAngle.value=''; spotAngle.value=''; reamerDesignation.value=''; reamerMaterial.value='';
+  notes.value='Preserve shell. Real folders. Clean import flow. No toy app.';
+  if(normalizedRows.length){
+    const types = uniq(normalizedRows.map(r=>r.toolType));
+    toolType.value=types.includes('End Mill')?'End Mill':'';
+    updateSpecialDropdowns();
+    run();
+  } else {
+    hydrateFilters();
+    syncOperationOptions();
+    syncToolVisualState();
+    showSpecialBoxes();
+    syncKV();
+  }
+});
+
+toolType.addEventListener('change', ()=>{ syncToolFieldVisibility(); updateSpecialDropdowns(); run(); });
+
+['manufacturer','material','operation','reqDia','reqDepth','machine','coating','johnSearch','threadText','reamerText','countersinkText','drillText','spotText','tapUnit','reamerUnit','cskUnit','drillUnit','spotUnit','tapSize','reamerSize','cskSize','drillSize','spotSize','reamerDesignation','reamerMaterial','cskAngle','spotAngle'].forEach(id=>{
+  if(window[id]){
+    window[id].addEventListener('change', ()=>{ syncToolFieldVisibility(); updateSpecialDropdowns(); syncKV(); run(); });
+    window[id].addEventListener('input', ()=>{ syncToolFieldVisibility(); syncKV(); });
+  }
+});
+
+function showSpecialBoxes(){
+  const tt = getToolMode();
+  if(typeof tapBox !== 'undefined') tapBox.classList.toggle('hidden', tt !== 'Tap');
+  if(typeof reamerBox !== 'undefined') reamerBox.classList.toggle('hidden', tt !== 'Reamer');
+  if(typeof countersinkBox !== 'undefined') countersinkBox.classList.toggle('hidden', tt !== 'Countersink');
+  if(typeof spotDrillBox !== 'undefined') spotDrillBox.classList.toggle('hidden', tt !== 'Spot Drill');
+}
+
+syncOperationOptions();
+syncToolVisualState();
+syncKV();
+showSpecialBoxes();
+
+document.addEventListener('DOMContentLoaded', function(){
+  const rb = document.getElementById('resultsBody');
+  if(rb && !rb.innerHTML.trim()){
+    rb.innerHTML = '<tr><td colspan="18" class="muted">Loading live RMFI master file...</td></tr>';
+  }
+  autoLoadMaster();
+});
+</script>
+
+
+
+
+
+
+
+<script>
+(function(){
+  const MA_FORD_TABLES = {"main_profile": {"series_group": ["116", "116C", "111", "140", "114", "121", "150", "164", "169", "163", "165", "122", "132"], "diameters": [0.3125, 0.375, 0.5, 0.625, 0.75, 1.0], "materials": {"Steel": {"sfm": [630, 420, 320, 250, 210, 0], "ipt": [0.0027, 0.0032, 0.0045, 0.0054, 0.0063, 0.009]}, "Tool Steel": {"sfm": [525, 350, 300, 275, 250, 0], "ipt": [0.0027, 0.0032, 0.0045, 0.0054, 0.0063, 0.009]}, "Stainless Easy": {"sfm": [650, 600, 550, 500, 450, 0], "ipt": [0.0027, 0.0032, 0.0045, 0.0054, 0.0063, 0.009]}, "Stainless Moderate": {"sfm": [525, 400, 350, 300, 250, 0], "ipt": [0.0027, 0.0032, 0.0045, 0.0054, 0.0063, 0.009]}, "Stainless Difficult": {"sfm": [525, 400, 350, 300, 250, 0], "ipt": [0.0027, 0.0032, 0.0045, 0.0054, 0.0063, 0.009]}, "Aluminum": {"sfm": [1000, 960, 920, 880, 840, 0], "ipt": [0.0027, 0.0032, 0.0045, 0.0054, 0.0063, 0.009]}}, "source": "MA Ford GP End Mills inch speeds and feeds, page 242-243"}, "micro_profile": {"series_group": ["116", "116C", "111", "140", "114", "121", "150", "122", "132"], "diameters": [0.015, 0.031, 0.047, 0.062, 0.078, 0.093, 0.125, 0.187, 0.25], "materials": {"Steel": {"sfm": 300, "ipt": [7e-05, 0.00015, 0.00023, 0.00027, 0.00034, 0.0004, 0.00054, 0.00081, 0.001]}, "Tool Steel": {"sfm": 200, "ipt": [7e-05, 0.00015, 0.00023, 0.00027, 0.00034, 0.0004, 0.00054, 0.00081, 0.001]}, "Stainless Easy": {"sfm": 400, "ipt": [7e-05, 0.00015, 0.00023, 0.00027, 0.00034, 0.0004, 0.00054, 0.00081, 0.001]}, "Stainless Moderate": {"sfm": 200, "ipt": [7e-05, 0.00015, 0.00023, 0.00027, 0.00034, 0.0004, 0.00054, 0.00081, 0.001]}, "Stainless Difficult": {"sfm": 150, "ipt": [7e-05, 0.00015, 0.00023, 0.00027, 0.00034, 0.0004, 0.00054, 0.00081, 0.001]}, "Aluminum": {"sfm": 750, "ipt": [7e-05, 0.00015, 0.00023, 0.00027, 0.00034, 0.0004, 0.00054, 0.00081, 0.001]}}, "source": "MA Ford GP End Mills inch speeds and feeds, page 251"}};
+
+  function num(v){
+    const n = parseFloat(String(v || '').replace(/[^0-9.\-]/g,''));
+    return isNaN(n) ? NaN : n;
+  }
+  function val(id){
+    const el = document.getElementById(id);
+    return el ? (el.value || '').trim() : '';
+  }
+  function text(id){
+    const el = document.getElementById(id);
+    return el ? (el.textContent || '').trim() : '';
+  }
+  function winnerFlutes(){
+    const row = document.querySelector('#resultsBody tr');
+    if(!row) return NaN;
+    const cells = row.querySelectorAll('td');
+    if(cells.length >= 12) return num(cells[11].textContent);
+    return NaN;
+  }
+  function seriesAlias(raw){
+    raw = String(raw || '').trim().toUpperCase();
+    return raw;
+  }
+  function diameterFromWinnerOrInput(){
+    const d = num(val('reqDia'));
+    if(!isNaN(d) && d > 0) return d;
+    return num(text('topDia'));
+  }
+  function nearestIndex(arr, target){
+    let best = 0;
+    let bestDiff = Infinity;
+    for(let i=0;i<arr.length;i++){
+      const diff = Math.abs(arr[i]-target);
+      if(diff < bestDiff){
+        bestDiff = diff;
+        best = i;
+      }
+    }
+    return best;
+  }
+  function normalizedMaterial(){
+    const m = String(val('material') || '').toLowerCase();
+    if(m.includes('aluminum')) return 'Aluminum';
+    if(m.includes('stainless')) return 'Stainless Easy';
+    if(m.includes('tool')) return 'Tool Steel';
+    if(m.includes('steel')) return 'Steel';
+    return '';
+  }
+  function maFordManufacturerName(s){
+    const v = String(s || '').trim();
+    return (v === 'M.A. Ford' || v === 'MA Ford') ? 'MA Ford' : '';
+  }
+  function maFordSeriesSupported(series){
+    const s = seriesAlias(series);
+    return ['116','116C','111','114','121','140','150'].includes(s);
+  }
+  function materialTableKey(material){
+    const m = String(material || '').toLowerCase();
+    if(m.includes('aluminum')) return 'Aluminum';
+    if(m.includes('stainless')) return 'Stainless Easy';
+    if(m.includes('tool')) return 'Tool Steel';
+    if(m.includes('steel')) return 'Steel';
+    return '';
+  }
+  function computeMaFordBaseline(row){
+    if(!row) return {ok:false, reason:'No ranked row available.'};
+    const manufacturer = maFordManufacturerName(row.manufacturer || text('topMfg'));
+    if(!manufacturer) return {ok:false, reason:'Current winner is not MA Ford and no MA Ford fallback row was selected.'};
+    const material = materialTableKey(material.value || row.material || text('topMaterial'));
+    if(!material) return {ok:false, reason:'Choose Aluminum, Steel, or Stainless to activate the manufacturer baseline.'};
+    const series = seriesAlias(row.series || text('topSeries'));
+    if(!maFordSeriesSupported(series)) return {ok:false, reason:'MA Ford row found, but series ' + (series || '--') + ' is not wired yet. Current live tables only cover 116, 116C, 111, 114, 121, 140, and 150.'};
+    const dia = !isNaN(row.diameterNum) ? row.diameterNum : diameterFromWinnerOrInput();
+    if(isNaN(dia) || dia <= 0) return {ok:false, reason:'Enter a valid decimal diameter.'};
+    const table = dia <= 0.2500 ? MA_FORD_TABLES.micro_profile : MA_FORD_TABLES.main_profile;
+    const matRow = table.materials[material];
+    if(!matRow) return {ok:false, reason:'No MA Ford table row found for material ' + material + '.'};
+    const idx = nearestIndex(table.diameters, dia);
+    const sfm = Array.isArray(matRow.sfm) ? matRow.sfm[idx] : matRow.sfm;
+    const ipt = matRow.ipt[idx];
+    const rpmCap = num(val('rpmCap'));
+    let rpm = (sfm * 3.82) / dia;
+    let rpmNote = '';
+    if(!isNaN(rpmCap) && rpmCap > 0 && rpm > rpmCap){
+      rpm = rpmCap;
+      rpmNote = ' (RPM cap applied)';
+    }
+    const flutes = num(row.flutes || winnerFlutes());
+    let feedText = '--';
+    if(!isNaN(flutes) && flutes > 0){
+      feedText = (rpm * ipt * flutes).toFixed(1) + ' IPM';
+    }
+    return {
+      ok:true,
+      manufacturer: manufacturer,
+      series: series,
+      material: material,
+      sfm: sfm,
+      ipt: ipt,
+      rpm: rpm,
+      rpmNote: rpmNote,
+      feedText: feedText,
+      source: table.source,
+      bucket: table.diameters[idx].toFixed(4),
+      partNumber: row.partNumber || '--'
+    };
+  }
+  function findBestMaFordRow(){
+    if(!Array.isArray(lastRenderedRows) || !lastRenderedRows.length) return null;
+    for(const row of lastRenderedRows){
+      if(maFordManufacturerName(row.manufacturer) && maFordSeriesSupported(row.series)) return row;
+    }
+    for(const row of lastRenderedRows){
+      if(maFordManufacturerName(row.manufacturer)) return row;
+    }
+    return null;
+  }
+  function setFeedsBox(){
+    const status = document.getElementById('feedsStatus');
+    const details = document.getElementById('feedsDetails');
+    if(!status || !details) return;
+
+    const toolType = val('toolType');
+    if(toolType !== 'End Mill'){
+      status.innerHTML = 'Manufacturer feeds / speeds are currently wired for <b>End Mill</b> only.';
+      details.innerHTML = '<div class="feeds-line"><b>Manufacturer:</b> --</div><div class="feeds-line"><b>Series:</b> --</div><div class="feeds-line"><b>Manufacturer SFM:</b> --</div><div class="feeds-line"><b>Manufacturer Chip Load:</b> --</div><div class="feeds-line"><b>Starting RPM:</b> --</div><div class="feeds-line"><b>Starting Feed:</b> --</div><div class="feeds-line"><b>Source:</b> --</div>';
+      return;
+    }
+
+    const topRow = Array.isArray(lastRenderedRows) && lastRenderedRows.length ? lastRenderedRows[0] : null;
+    const useTop = topRow && maFordManufacturerName(topRow.manufacturer) && maFordSeriesSupported(topRow.series);
+    const fallbackRow = useTop ? null : findBestMaFordRow();
+    const chosenRow = useTop ? topRow : fallbackRow;
+    const result = computeMaFordBaseline(chosenRow);
+
+    if(!chosenRow){
+      status.innerHTML = '<span class="warn">No MA Ford baseline row found in the current ranked results.</span>';
+      details.innerHTML = '<div class="feeds-line"><b>Manufacturer:</b> --</div><div class="feeds-line"><b>Series:</b> --</div><div class="feeds-line"><b>Manufacturer SFM:</b> --</div><div class="feeds-line"><b>Manufacturer Chip Load:</b> --</div><div class="feeds-line"><b>Starting RPM:</b> --</div><div class="feeds-line"><b>Starting Feed:</b> --</div><div class="feeds-line"><b>Source:</b> MA Ford page 242-243 and page 251</div>';
+      return;
+    }
+
+    if(!result.ok){
+      const prefix = useTop ? 'Top winner selected. ' : 'Showing first MA Ford row in ranked results. ';
+      status.innerHTML = '<span class="warn">' + prefix + '</span>' + result.reason;
+      details.innerHTML = '<div class="feeds-line"><b>Manufacturer:</b> ' + (maFordManufacturerName(chosenRow.manufacturer) || '--') + '</div>' +
+        '<div class="feeds-line"><b>Series:</b> ' + (seriesAlias(chosenRow.series) || '--') + '</div>' +
+        '<div class="feeds-line"><b>Manufacturer SFM:</b> --</div>' +
+        '<div class="feeds-line"><b>Manufacturer Chip Load:</b> --</div>' +
+        '<div class="feeds-line"><b>Starting RPM:</b> --</div>' +
+        '<div class="feeds-line"><b>Starting Feed:</b> --</div>' +
+        '<div class="feeds-line"><b>Source:</b> MA Ford page 242-243 and page 251</div>';
+      return;
+    }
+
+    const lead = useTop
+      ? '<span class="ok">Top winner baseline active.</span> '
+      : '<span class="ok">Top winner is not MA Ford.</span> Showing first supported MA Ford row in the ranked results.';
+    status.innerHTML = lead + ' Bucket ' + result.bucket + ', material ' + result.material + ', part ' + result.partNumber + '.';
+    details.innerHTML =
+      '<div class="feeds-line"><b>Manufacturer:</b> ' + result.manufacturer + '</div>' +
+      '<div class="feeds-line"><b>Series:</b> ' + result.series + '</div>' +
+      '<div class="feeds-line"><b>Manufacturer SFM:</b> ' + result.sfm + '</div>' +
+      '<div class="feeds-line"><b>Manufacturer Chip Load:</b> ' + Number(result.ipt).toFixed(4) + ' IPT</div>' +
+      '<div class="feeds-line"><b>Starting RPM:</b> ' + result.rpm.toFixed(0) + result.rpmNote + '</div>' +
+      '<div class="feeds-line"><b>Starting Feed:</b> ' + result.feedText + '</div>' +
+      '<div class="feeds-line"><b>Source:</b> ' + result.source + '</div>';
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    ['toolType','material','reqDia','rpmCap'].forEach(function(id){
+      const el = document.getElementById(id);
+      if(el){
+        el.addEventListener('change', function(){ setTimeout(setFeedsBox, 20); });
+        el.addEventListener('input', function(){ setTimeout(setFeedsBox, 20); });
+      }
+    });
+    const runBtn = document.getElementById('runSearch');
+    if(runBtn){
+      runBtn.addEventListener('click', function(){ setTimeout(setFeedsBox, 40); });
+    }
+    setTimeout(setFeedsBox, 80);
+  });
+})();
+</script>
+
+</body>
+</html>
