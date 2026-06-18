@@ -293,7 +293,7 @@ function renderGrid() {
     const name = NAMES[sym] || COINS[sym] || sym;
     const yr1pct = (d.price && h.price1yAgo)
       ? ((d.price - h.price1yAgo) / h.price1yAgo) * 100
-      : null;
+      : (d.change1y ?? null);
 
     return `<div class="coin-card${loading ? ' loading' : ''}">
       <button class="remove-btn" onclick="removeCoin('${sym}')" title="Remove">&#x2715;</button>
@@ -314,20 +314,20 @@ function renderGrid() {
 async function fetchLive() {
   const ids = portfolio.map(s => COINS[s]).filter(Boolean).join(',');
   if (!ids) return;
-  const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true&include_7d_change=true&include_market_cap=true&include_24hr_vol=true`;
+  const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${encodeURIComponent(ids)}&price_change_percentage=24h,7d,1y&per_page=50`;
   const res = await fetch(url);
   if (!res.ok) throw new Error('CoinGecko ' + res.status);
   const data = await res.json();
-  portfolio.forEach(sym => {
-    const id = COINS[sym];
-    if (!id || !data[id]) return;
-    const d = data[id];
+  data.forEach(c => {
+    const sym = Object.keys(COINS).find(k => COINS[k] === c.id);
+    if (!sym) return;
     liveData[sym] = {
-      price:     d.usd,
-      change24h: d.usd_24h_change,
-      change7d:  d.usd_7d_change,
-      marketCap: d.usd_market_cap,
-      vol24h:    d.usd_24h_vol,
+      price:     c.current_price,
+      change24h: c.price_change_percentage_24h,
+      change7d:  c.price_change_percentage_7d_in_currency,
+      change1y:  c.price_change_percentage_1y_in_currency,
+      marketCap: c.market_cap,
+      vol24h:    c.total_volume,
     };
   });
 }
@@ -419,9 +419,10 @@ function generateReport() {
     const d = liveData[sym] || {};
     const h = histData[sym] || {};
     const name = NAMES[sym] || sym;
-    const yr1pct = (d.price && h.price1yAgo)
-      ? ((d.price - h.price1yAgo) / h.price1yAgo * 100).toFixed(2)
-      : 'N/A';
+    const yr1pctRaw = (d.price && h.price1yAgo)
+      ? (d.price - h.price1yAgo) / h.price1yAgo * 100
+      : (d.change1y ?? null);
+    const yr1pct = yr1pctRaw != null ? yr1pctRaw.toFixed(2) : 'N/A';
     const yr1pctLabel = yr1pct !== 'N/A'
       ? (parseFloat(yr1pct) >= 0 ? '+' : '') + yr1pct + '%'
       : 'N/A';
