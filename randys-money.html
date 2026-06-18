@@ -184,7 +184,7 @@ const COINS = {
   WIF:'dogwifcoin', BONK:'bonk', PEPE:'pepe', SHIB:'shiba-inu',
   TON:'the-open-network', TRX:'tron', XLM:'stellar', HBAR:'hedera-hashgraph',
   VET:'vechain', ALGO:'algorand', ETC:'ethereum-classic', BCH:'bitcoin-cash',
-  QNT:'quant-network', XDC:'xdc-network',
+  QNT:'quant-network', XDC:'xdce-crowd-sale',
 };
 
 const NAMES = {
@@ -314,7 +314,7 @@ async function refreshAll() {
     setStatus('loading', 'Loading 1-year history...');
     for (const sym of portfolio) {
       try { await fetchHistory(sym); } catch (e) { console.warn('hist error', sym, e); }
-      await new Promise(r => setTimeout(r, 300));
+      await new Promise(r => setTimeout(r, 600));
     }
     renderGrid();
     const now = new Date().toLocaleTimeString();
