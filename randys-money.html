@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Randy's Money</title>
+<style>
+  :root {
+    --bg: #0d1f35;
+    --panel: #132840;
+    --border: #1e4060;
+    --text: #eef6ff;
+    --muted: #7a9bbf;
+    --accent: #f0c060;
+    --good: #3dd68c;
+    --bad: #ff5f5f;
+    --flat: #7a9bbf;
+    --input-bg: #0d1f35;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Segoe UI, Arial, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  .header {
+    background: linear-gradient(135deg, #0d2a4a, #1a3f6b);
+    padding: 18px 24px;
+    border-bottom: 2px solid var(--accent);
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+  }
+  .header h1 { font-size: 28px; font-weight: 900; color: var(--accent); letter-spacing: .5px; }
+  .header .sub { font-size: 13px; color: var(--muted); }
+
+  .topbar {
+    background: #0d1f35;
+    border-bottom: 1px solid var(--border);
+    padding: 10px 24px;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  }
+  .status-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); display: inline-block; flex-shrink: 0; }
+  .status-dot.ok { background: var(--good); }
+  .status-dot.loading { background: var(--accent); animation: blink .8s ease-in-out infinite; }
+  .status-dot.error { background: var(--bad); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+  #statusText { font-size: 13px; color: var(--muted); }
+  .btn { border: none; border-radius: 9px; padding: 8px 16px; font-size: 13px; font-weight: 800; cursor: pointer; transition: opacity .15s; }
+  .btn:hover { opacity: .85; }
+  .btn-gold { background: linear-gradient(135deg, #f0c060, #d4a030); color: #1a0f00; }
+  .btn-blue { background: linear-gradient(135deg, #4a8fff, #2060cc); color: white; }
+  .btn-green { background: linear-gradient(135deg, #3dd68c, #22a865); color: #001a0d; }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+  .main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 60px; }
+
+  /* Coin Cards */
+  .coin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; }
+
+  .coin-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    position: relative;
+    transition: border-color .2s, transform .15s;
+  }
+  .coin-card:hover { border-color: #4a8fff; transform: translateY(-1px); }
+  .coin-card .ticker { font-size: 20px; font-weight: 900; color: var(--accent); }
+  .coin-card .cname { font-size: 11px; color: var(--muted); margin-bottom: 12px; }
+  .coin-card .price { font-size: 24px; font-weight: 800; margin-bottom: 6px; }
+  .coin-card .row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; }
+  .coin-card .label { color: var(--muted); }
+  .coin-card .val { font-weight: 700; }
+  .up { color: var(--good); }
+  .down { color: var(--bad); }
+  .flat { color: var(--muted); }
+  .coin-card .remove-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--muted); font-size: 15px; cursor: pointer; padding: 3px 6px; border-radius: 6px; }
+  .coin-card .remove-btn:hover { color: var(--bad); background: rgba(255,95,95,.1); }
+  .coin-card.loading .price { background: #1e3d5a; border-radius: 6px; color: transparent; animation: pulse 1.2s infinite; }
+  .coin-card.loading .val { background: #1e3d5a; border-radius: 4px; color: transparent; animation: pulse 1.2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:.9} }
+
+  /* Add coin */
+  .add-row {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 28px;
+  }
+  .add-row input {
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 8px 12px;
+    font-size: 14px;
+    color: var(--text);
+    width: 140px;
+    text-transform: uppercase;
+  }
+  .add-row input::placeholder { color: var(--muted); text-transform: none; }
+  .add-row .hint { font-size: 12px; color: var(--muted); }
+
+  /* Report box */
+  .report-section { margin-top: 10px; }
+  .report-section .rhead {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+    margin-bottom: 12px;
+  }
+  .report-section h2 { font-size: 17px; font-weight: 800; }
+  #reportBox {
+    background: #081525;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #c8dff5;
+    white-space: pre-wrap;
+    min-height: 120px;
+    max-height: 500px;
+    overflow-y: auto;
+  }
+  .copied-msg { font-size: 12px; color: var(--good); font-weight: 700; display: none; }
+
+  .section-label { font-size: 13px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 10px; }
+
+  @media (max-width: 600px) {
+    .header h1 { font-size: 22px; }
+    .coin-card .price { font-size: 19px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Randy's Money</h1>
+    <div class="sub">Crypto Portfolio Tracker &amp; Report Generator</div>
+  </div>
+  <div class="sub" id="lastUpdated">Not loaded yet</div>
+</div>
+
+<div class="topbar">
+  <span class="status-dot" id="statusDot"></span>
+  <span id="statusText">Ready</span>
+  <button class="btn btn-gold" onclick="refreshAll()">&#8635; Refresh Data</button>
+  <button class="btn btn-green" onclick="generateReport()">Generate Report for Claude</button>
+</div>
+
+<div class="main">
+
+  <div class="section-label" style="margin-top:4px;">Your Portfolio</div>
+  <div class="coin-grid" id="coinGrid"></div>
+
+  <div class="add-row">
+    <span style="font-size:13px;font-weight:700;color:var(--muted);">Add a coin:</span>
+    <input id="addInput" placeholder="e.g. BTC, SOL..." maxlength="12" />
+    <button class="btn btn-blue btn-sm" onclick="addCoin()">Add</button>
+    <span class="hint">Supported: BTC, ETH, SOL, ADA, DOT, LINK, LTC, MATIC, TRX, XLM, and more</span>
+  </div>
+
+  <div class="report-section">
+    <div class="rhead">
+      <h2>Report for Claude</h2>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="copied-msg" id="copiedMsg">Copied!</span>
+        <button class="btn btn-blue btn-sm" onclick="copyReport()">Copy to Clipboard</button>
+      </div>
+    </div>
+    <div id="reportBox">Hit "Generate Report for Claude" above to build your report.\n\nThis will show current prices, 24h and 7-day changes, and the past year of performance for each coin — formatted so you can paste it straight into your chat with Claude.</div>
+  </div>
+
+</div>
+
+<script>
+// ── Coin registry ─────────────────────────────────────────────────────────────
+const COINS = {
+  BTC:'bitcoin', ETH:'ethereum', SOL:'solana', XRP:'ripple',
+  BNB:'binancecoin', DOGE:'dogecoin', ADA:'cardano', AVAX:'avalanche-2',
+  DOT:'polkadot', MATIC:'matic-network', LINK:'chainlink', LTC:'litecoin',
+  UNI:'uniswap', ATOM:'cosmos', NEAR:'near', ICP:'internet-computer',
+  FIL:'filecoin', APT:'aptos', ARB:'arbitrum', OP:'optimism',
+  INJ:'injective-protocol', SUI:'sui', TIA:'celestia',
+  WIF:'dogwifcoin', BONK:'bonk', PEPE:'pepe', SHIB:'shiba-inu',
+  TON:'the-open-network', TRX:'tron', XLM:'stellar', HBAR:'hedera-hashgraph',
+  VET:'vechain', ALGO:'algorand', ETC:'ethereum-classic', BCH:'bitcoin-cash',
+  QNT:'quant-network', XDC:'xdc-network',
+};
+
+const NAMES = {
+  XRP:'Ripple', QNT:'Quant', XDC:'XDC Network', ALGO:'Algorand', HBAR:'Hedera',
+  BTC:'Bitcoin', ETH:'Ethereum', SOL:'Solana', BNB:'BNB', DOGE:'Dogecoin',
+  ADA:'Cardano', AVAX:'Avalanche', DOT:'Polkadot', MATIC:'Polygon', LINK:'Chainlink',
+  LTC:'Litecoin', UNI:'Uniswap', ATOM:'Cosmos', NEAR:'NEAR', TRX:'Tron',
+  XLM:'Stellar', VET:'VeChain', ALGO:'Algorand', ETC:'Ethereum Classic',
+  BCH:'Bitcoin Cash', SHIB:'Shiba Inu', PEPE:'Pepe', TON:'Toncoin',
+};
+
+// ── State ─────────────────────────────────────────────────────────────────────
+const DEFAULT_PORTFOLIO = ['XRP','QNT','XDC','ALGO','HBAR'];
+
+function load(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } }
+function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+
+let portfolio = load('rm_portfolio', DEFAULT_PORTFOLIO);
+let liveData  = {};   // sym -> { price, change24h, change7d, marketCap, vol24h }
+let histData  = {};   // sym -> { price1yAgo, high1y, low1y, priceData[] }
+
+// ── Formatting ─────────────────────────────────────────────────────────────────
+function fmtPrice(n) {
+  if (n == null || isNaN(n)) return '--';
+  if (n >= 1000) return '$' + n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  if (n >= 1)    return '$' + n.toFixed(2);
+  if (n >= 0.01) return '$' + n.toFixed(4);
+  return '$' + n.toFixed(6);
+}
+function fmtPct(n) {
+  if (n == null || isNaN(n)) return '--';
+  return (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
+}
+function fmtBig(n) {
+  if (n == null || isNaN(n)) return '--';
+  if (n >= 1e12) return '$' + (n/1e12).toFixed(2) + 'T';
+  if (n >= 1e9)  return '$' + (n/1e9).toFixed(2)  + 'B';
+  if (n >= 1e6)  return '$' + (n/1e6).toFixed(2)  + 'M';
+  return '$' + n.toLocaleString();
+}
+function cls(n) { return n == null ? 'flat' : n > 0 ? 'up' : n < 0 ? 'down' : 'flat'; }
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function renderGrid() {
+  const grid = document.getElementById('coinGrid');
+  if (!portfolio.length) {
+    grid.innerHTML = '<div style="color:var(--muted);font-size:14px;">No coins yet. Add one below.</div>';
+    return;
+  }
+  grid.innerHTML = portfolio.map(sym => {
+    const d = liveData[sym] || {};
+    const h = histData[sym] || {};
+    const loading = !d.price;
+    const name = NAMES[sym] || COINS[sym] || sym;
+    const yr1pct = (d.price && h.price1yAgo)
+      ? ((d.price - h.price1yAgo) / h.price1yAgo) * 100
+      : null;
+
+    return `<div class="coin-card${loading ? ' loading' : ''}">
+      <button class="remove-btn" onclick="removeCoin('${sym}')" title="Remove">&#x2715;</button>
+      <div class="ticker">${sym}</div>
+      <div class="cname">${name}</div>
+      <div class="price">${fmtPrice(d.price)}</div>
+      <div class="row"><span class="label">24h</span><span class="val ${cls(d.change24h)}">${fmtPct(d.change24h)}</span></div>
+      <div class="row"><span class="label">7d</span><span class="val ${cls(d.change7d)}">${fmtPct(d.change7d)}</span></div>
+      <div class="row"><span class="label">1 Year</span><span class="val ${cls(yr1pct)}">${fmtPct(yr1pct)}</span></div>
+      <div class="row"><span class="label">1Y High</span><span class="val">${fmtPrice(h.high1y)}</span></div>
+      <div class="row"><span class="label">1Y Low</span><span class="val">${fmtPrice(h.low1y)}</span></div>
+      <div class="row"><span class="label">Mkt Cap</span><span class="val">${fmtBig(d.marketCap)}</span></div>
+    </div>`;
+  }).join('');
+}
+
+// ── API: Live prices ──────────────────────────────────────────────────────────
+async function fetchLive() {
+  const ids = portfolio.map(s => COINS[s]).filter(Boolean).join(',');
+  if (!ids) return;
+  const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true&include_7d_change=true&include_market_cap=true&include_24hr_vol=true`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('CoinGecko ' + res.status);
+  const data = await res.json();
+  portfolio.forEach(sym => {
+    const id = COINS[sym];
+    if (!id || !data[id]) return;
+    const d = data[id];
+    liveData[sym] = {
+      price:     d.usd,
+      change24h: d.usd_24h_change,
+      change7d:  d.usd_7d_change,
+      marketCap: d.usd_market_cap,
+      vol24h:    d.usd_24h_vol,
+    };
+  });
+}
+
+// ── API: 1-year history ───────────────────────────────────────────────────────
+async function fetchHistory(sym) {
+  const id = COINS[sym];
+  if (!id) return;
+  const url = `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=365&interval=daily`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('history ' + res.status);
+  const data = await res.json();
+  const prices = (data.prices || []).map(p => p[1]);
+  if (!prices.length) return;
+  histData[sym] = {
+    price1yAgo: prices[0],
+    high1y:     Math.max(...prices),
+    low1y:      Math.min(...prices),
+  };
+}
+
+// ── Status helpers ────────────────────────────────────────────────────────────
+function setStatus(state, text) {
+  const dot = document.getElementById('statusDot');
+  dot.className = 'status-dot ' + state;
+  document.getElementById('statusText').textContent = text;
+}
+
+// ── Refresh all ───────────────────────────────────────────────────────────────
+async function refreshAll() {
+  setStatus('loading', 'Fetching live prices...');
+  renderGrid();
+  try {
+    await fetchLive();
+    renderGrid();
+    setStatus('loading', 'Loading 1-year history...');
+    for (const sym of portfolio) {
+      try { await fetchHistory(sym); } catch (e) { console.warn('hist error', sym, e); }
+      await new Promise(r => setTimeout(r, 300));
+    }
+    renderGrid();
+    const now = new Date().toLocaleTimeString();
+    document.getElementById('lastUpdated').textContent = 'Updated ' + now;
+    setStatus('ok', 'All data loaded — ' + now);
+  } catch (e) {
+    setStatus('error', 'Error: ' + e.message + '. CoinGecko may be rate-limiting. Try again in a minute.');
+    console.error(e);
+  }
+}
+
+// ── Add / Remove ──────────────────────────────────────────────────────────────
+function addCoin() {
+  const inp = document.getElementById('addInput');
+  const sym = inp.value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if (!sym) return;
+  if (!COINS[sym]) {
+    alert(`"${sym}" isn't in the supported coin list.\n\nSupported coins:\n${Object.keys(COINS).join(', ')}`);
+    return;
+  }
+  if (!portfolio.includes(sym)) {
+    portfolio.push(sym);
+    save('rm_portfolio', portfolio);
+    renderGrid();
+    fetchLive().then(() => { fetchHistory(sym).then(() => renderGrid()); });
+  }
+  inp.value = '';
+}
+
+function removeCoin(sym) {
+  portfolio = portfolio.filter(s => s !== sym);
+  save('rm_portfolio', portfolio);
+  renderGrid();
+}
+
+// ── Generate Report ───────────────────────────────────────────────────────────
+function generateReport() {
+  const now = new Date().toLocaleString();
+  let out = `RANDY'S MONEY — CRYPTO REPORT\n`;
+  out += `Generated: ${now}\n`;
+  out += `${'═'.repeat(50)}\n\n`;
+
+  if (!portfolio.length) {
+    out += 'No coins in portfolio.\n';
+    document.getElementById('reportBox').textContent = out;
+    return;
+  }
+
+  portfolio.forEach(sym => {
+    const d = liveData[sym] || {};
+    const h = histData[sym] || {};
+    const name = NAMES[sym] || sym;
+    const yr1pct = (d.price && h.price1yAgo)
+      ? ((d.price - h.price1yAgo) / h.price1yAgo * 100).toFixed(2)
+      : 'N/A';
+    const yr1pctLabel = yr1pct !== 'N/A'
+      ? (parseFloat(yr1pct) >= 0 ? '+' : '') + yr1pct + '%'
+      : 'N/A';
+
+    out += `${sym} (${name})\n`;
+    out += `  Current Price : ${fmtPrice(d.price)}\n`;
+    out += `  24h Change    : ${fmtPct(d.change24h)}\n`;
+    out += `  7-Day Change  : ${fmtPct(d.change7d)}\n`;
+    out += `  1-Year Change : ${yr1pctLabel}\n`;
+    out += `  1Y High       : ${fmtPrice(h.high1y)}\n`;
+    out += `  1Y Low        : ${fmtPrice(h.low1y)}\n`;
+    out += `  1Y Ago Price  : ${fmtPrice(h.price1yAgo)}\n`;
+    out += `  Market Cap    : ${fmtBig(d.marketCap)}\n`;
+    out += `  24h Volume    : ${fmtBig(d.vol24h)}\n`;
+    out += '\n';
+  });
+
+  out += `${'═'.repeat(50)}\n`;
+  out += `Note: Data from CoinGecko. Paste this into Claude for analysis.\n`;
+
+  document.getElementById('reportBox').textContent = out;
+}
+
+function copyReport() {
+  const box = document.getElementById('reportBox');
+  navigator.clipboard.writeText(box.textContent).then(() => {
+    const msg = document.getElementById('copiedMsg');
+    msg.style.display = 'inline';
+    setTimeout(() => { msg.style.display = 'none'; }, 2500);
+  });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.getElementById('addInput').addEventListener('keydown', e => { if (e.key === 'Enter') addCoin(); });
+renderGrid();
+refreshAll();
+</script>
+</body>
+</html>
