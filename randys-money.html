@@ -274,14 +274,8 @@
 
   <!-- CONGRESSIONAL TRADES -->
   <div class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-    <span>&#127963; Congress Trades <span style="font-size:10px;color:var(--muted);font-weight:400;">— STOCK Act disclosures &bull; last 90 days &bull; updates 2&times;/day</span></span>
-    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-      <button class="filter-btn active" id="cAll"   onclick="setCongFilter('all')">All</button>
-      <button class="filter-btn" id="cPurch"         onclick="setCongFilter('purchase')">&#9650; Purchases</button>
-      <button class="filter-btn" id="cSale"          onclick="setCongFilter('sale')">&#9660; Sales</button>
-      <button class="filter-btn" id="cWatch"         onclick="setCongFilter('watchlist')">&#9733; Watchlist Only</button>
-      <button class="btn btn-sm" onclick="fetchCongress(true)" style="background:#1e4060;color:var(--text);border:1px solid var(--border);">&#8635; Refresh</button>
-    </div>
+    <span>&#127963; Congress Trades <span style="font-size:10px;color:var(--muted);font-weight:400;">— STOCK Act stories &bull; news-based &bull; updates 2&times;/day</span></span>
+    <button class="btn btn-sm" onclick="fetchCongress(true)" style="background:#1e4060;color:var(--text);border:1px solid var(--border);">&#8635; Refresh</button>
   </div>
   <div id="congErrorMsg" style="display:none;font-size:12px;color:var(--bad);padding:10px 0;"></div>
   <div class="news-wrap" id="congList" style="margin-bottom:28px;">
@@ -944,70 +938,39 @@ async function fetchStocks() {
   }
 }
 
-// ── Congressional Trades (STOCK Act) ──────────────────────────────────────────
+// ── Congressional Trades (news-based via Google RSS) ──────────────────────────
+// Raw STOCK Act bulk data files are too large to proxy — using Google News
+// RSS which reliably surfaces congressional trading stories & disclosures.
 async function fetchCongress(force = false) {
   if (!force && Date.now() - lastCongressFetch < CONGRESS_TTL) { renderCongressList(); return; }
   const errEl = document.getElementById('congErrorMsg');
   if (errEl) errEl.style.display = 'none';
-  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 90);
-  const parseDate = s => { try { return new Date(s + 'T12:00:00'); } catch { return null; } };
-  const proxy = 'https://api.allorigins.win/get?url=';
-  let trades = [];
+  let items = [];
 
-  const fetchJson = async (url) => {
-    const r = await fetch(proxy + encodeURIComponent(url));
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const w = await r.json();
-    return JSON.parse(w.contents);
-  };
+  const queries = [
+    'STOCK Act senator representative stock purchase sale disclosure',
+    'congress stock trade insider buy sell 2026',
+    'senator representative stock portfolio trade SEC filing',
+  ];
 
-  try {
-    const data = await fetchJson('https://house-stock-watcher-data.s3-us-west-2.amazonaws.com/data/all_transactions.json');
-    data.forEach(t => {
-      if (!t.ticker || t.ticker === 'N/A' || t.ticker === '--') return;
-      const d = parseDate(t.transaction_date);
-      if (!d || d < cutoff) return;
-      trades.push({
-        ticker:  t.ticker.replace(/[^A-Z]/g,'').toUpperCase(),
-        desc:    t.asset_description || '',
-        type:    (t.type || '').toLowerCase(),
-        amount:  t.amount || '',
-        member:  t.representative || 'Unknown',
-        chamber: 'House',
-        party:   null,
-        state:   (t.district || '').slice(0,2),
-        date:    t.transaction_date,
-      });
-    });
-  } catch(e) { console.warn('House congress data:', e.message); }
+  for (const q of queries) {
+    try {
+      const batch = await fetchNewsQuery(q);
+      batch.forEach(i => { i.tag = 'CONGRESS'; items.push(i); });
+    } catch(e) { console.warn('Congress RSS:', e.message); }
+    await new Promise(r => setTimeout(r, 400));
+  }
 
-  try {
-    const data = await fetchJson('https://senate-stock-watcher-data.s3-us-west-2.amazonaws.com/aggregate/all_transactions.json');
-    data.forEach(t => {
-      if (!t.ticker || t.ticker === 'N/A' || t.ticker === '--') return;
-      const d = parseDate(t.transaction_date);
-      if (!d || d < cutoff) return;
-      const member = t.first_name ? `${t.first_name} ${t.last_name}` : (t.senator || 'Unknown');
-      trades.push({
-        ticker:  (t.ticker || '').replace(/[^A-Z]/g,'').toUpperCase(),
-        desc:    t.asset_description || '',
-        type:    (t.type || '').toLowerCase(),
-        amount:  t.amount || '',
-        member,
-        chamber: 'Senate',
-        party:   t.party || null,
-        state:   t.state || '',
-        date:    t.transaction_date,
-      });
-    });
-  } catch(e) { console.warn('Senate congress data:', e.message); }
+  // Deduplicate by title
+  const seen = new Set();
+  items = items.filter(i => { if (seen.has(i.title)) return false; seen.add(i.title); return true; });
+  items.sort((a,b) => new Date(b.pubDate) - new Date(a.pubDate));
 
-  if (!trades.length) {
-    if (errEl) { errEl.style.display='block'; errEl.textContent='⚠ Congressional trade data unavailable — data source may be slow. Try the ↻ Refresh button in a few minutes.'; }
+  if (!items.length) {
+    if (errEl) { errEl.style.display='block'; errEl.textContent='⚠ No congressional trading stories loaded — try ↻ Refresh.'; }
     return;
   }
-  trades.sort((a,b) => new Date(b.date) - new Date(a.date));
-  congressTrades = trades;
+  congressTrades = items; // reusing congressTrades for news items
   lastCongressFetch = Date.now();
   renderCongressList();
 }
@@ -1025,42 +988,25 @@ function renderCongressList() {
   const el = document.getElementById('congList');
   if (!el) return;
   if (!congressTrades.length) {
-    el.innerHTML = '<div class="news-empty">No congressional trade data yet — click &#8635; Refresh above.</div>';
+    el.innerHTML = '<div class="news-empty">No congressional trading stories loaded yet — click &#8635; Refresh above.</div>';
     return;
   }
-  const watchSet = new Set([...stockWatchlist, ...portfolio]);
-  let filtered = congressTrades;
-  if (congFilter === 'purchase')  filtered = filtered.filter(t => t.type.includes('purchase') || t.type.includes('buy'));
-  if (congFilter === 'sale')      filtered = filtered.filter(t => t.type.includes('sale')     || t.type.includes('sell'));
-  if (congFilter === 'watchlist') filtered = filtered.filter(t => watchSet.has(t.ticker));
-  if (!filtered.length) {
-    el.innerHTML = '<div class="news-empty">No trades match this filter in the last 90 days.</div>';
-    return;
-  }
-  const show = filtered.slice(0, 60);
-  el.innerHTML = show.map(t => {
-    const isWatch = watchSet.has(t.ticker);
-    const isBuy   = t.type.includes('purchase') || t.type.includes('buy');
-    const isSell  = t.type.includes('sale')     || t.type.includes('sell');
-    const pClass  = t.party === 'R' ? 'cong-party-r' : t.party === 'D' ? 'cong-party-d' : '';
-    const badge   = isBuy  ? '<span class="cong-badge cong-buy">BUY</span>'
-                  : isSell ? '<span class="cong-badge cong-sell">SELL</span>'
-                  : `<span class="cong-badge" style="background:#1e3050;color:var(--muted);">${(t.type||'???').toUpperCase().slice(0,8)}</span>`;
-    const ds = t.date ? new Date(t.date + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
-    return `<div class="cong-item${isWatch?' watchlist-match':''}">
-      <div class="cong-ticker${isWatch?' watchlist':''}">${t.ticker}${isWatch?' &#9733;':''}</div>
+  el.innerHTML = congressTrades.slice(0, 40).map(item => {
+    const ticker = detectTicker(item.title) || '';
+    const watchSet = new Set([...stockWatchlist, ...portfolio]);
+    const isWatch = ticker && watchSet.has(ticker);
+    const src = item.source || '';
+    return `<div class="news-item${isWatch?' watchlist-match':''}" onclick="window.open('${item.link}','_blank')" style="${isWatch?'border-left:3px solid var(--accent);':''}">
       <div style="flex:1;min-width:0;">
-        <div class="cong-member"><span class="${pClass}">${t.party?'['+t.party+'] ':''}</span>${t.member} <span style="color:var(--muted);font-weight:400;">&middot; ${t.chamber}${t.state?' &middot; '+t.state:''}</span></div>
-        <div class="cong-detail">${t.desc?t.desc+' &middot; ':''}<span style="color:var(--accent);">${t.amount}</span></div>
+        <div class="news-headline">${item.title}${isWatch?` <span style="color:var(--accent);font-size:10px;font-weight:800;">[${ticker} &#9733;]</span>`:''}</div>
+        ${src?`<div class="news-src">${src}</div>`:''}
       </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
-        ${badge}<span style="font-size:10px;color:var(--muted);">${ds}</span>
+      <div class="news-meta">
+        <span class="news-time">${timeAgo(item.pubDate)}</span>
+        <span class="news-tag">CONGRESS</span>
       </div>
     </div>`;
   }).join('');
-  if (filtered.length > 60) {
-    el.innerHTML += `<div class="news-empty" style="font-size:11px;">Showing 60 of ${filtered.length} — use filters to narrow.</div>`;
-  }
 }
 
 function renderStockGrid() {
