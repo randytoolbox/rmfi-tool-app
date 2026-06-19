@@ -147,6 +147,23 @@
     .header h1 { font-size: 22px; }
     .coin-card .price { font-size: 19px; }
   }
+
+  /* Price alert inputs on coin cards */
+  .coin-card .alert-row { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 6px; }
+  .coin-card .alert-input { background: var(--input-bg); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 11px; color: var(--text); width: 90px; }
+  .coin-card .alert-input.active { border-color: var(--accent); background: rgba(240,192,96,.07); }
+  .coin-card .alert-label { font-size: 10px; color: var(--muted); white-space: nowrap; }
+  .coin-card.alert-hit { border-color: var(--accent) !important; box-shadow: 0 0 18px rgba(240,192,96,.55); }
+
+  /* Alert toast */
+  #alertToast { display:none; position:fixed; top:80px; right:20px; background:linear-gradient(135deg,#2a1f00,#4a3500); border:2px solid var(--accent); border-radius:14px; padding:16px 44px 16px 18px; z-index:9999; max-width:320px; box-shadow:0 8px 32px rgba(0,0,0,.7); }
+  #alertToast .at-title { font-size:16px; font-weight:900; color:var(--accent); margin-bottom:5px; }
+  #alertToast .at-body { font-size:13px; color:var(--text); line-height:1.6; }
+  #alertToast .at-close { position:absolute; top:10px; right:13px; background:none; border:none; color:var(--muted); cursor:pointer; font-size:20px; line-height:1; }
+
+  /* Auto-refresh countdown */
+  #arCountdown { font-size:12px; color:var(--good); }
+  #arCountdown.paused { color:var(--muted); }
 </style>
 </head>
 <body>
@@ -165,6 +182,14 @@
   <button class="btn btn-gold" onclick="refreshAll()">&#8635; Refresh Data</button>
   <button class="btn btn-blue" onclick="scanMarket()">&#128269; Scan Market</button>
   <button class="btn btn-green" onclick="generateReport()">Generate Report for Claude</button>
+  <button class="btn btn-sm" id="arToggle" onclick="toggleAutoRefresh()" style="background:#1e4060;color:var(--text);border:1px solid var(--border);">&#9646;&#9646; Pause</button>
+  <span id="arCountdown">Auto-refresh in <b id="arSecs">60</b>s</span>
+</div>
+
+<div id="alertToast">
+  <button class="at-close" onclick="document.getElementById('alertToast').style.display='none'">&#x2715;</button>
+  <div class="at-title">&#128276; Price Alert!</div>
+  <div class="at-body" id="alertToastBody"></div>
 </div>
 
 <div class="main">
@@ -254,9 +279,13 @@ const DEFAULT_PORTFOLIO = ['XRP','QNT','XDC','ALGO','HBAR'];
 function load(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } }
 function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
 
-let portfolio = load('rm_portfolio', DEFAULT_PORTFOLIO);
-let liveData  = {};   // sym -> { price, change24h, change7d, marketCap, vol24h }
-let histData  = {};   // sym -> { price1yAgo, high1y, low1y, priceData[] }
+let portfolio     = load('rm_portfolio', DEFAULT_PORTFOLIO);
+let liveData      = {};
+let histData      = {};
+let alertTargets  = load('rm_alertTargets', {});
+let triggeredAlerts = {};
+let arCountdownVal  = 60;
+let arEnabled       = true;
 
 // ── Formatting ─────────────────────────────────────────────────────────────────
 function fmtPrice(n) {
@@ -294,8 +323,10 @@ function renderGrid() {
     const yr1pct = (d.price && h.price1yAgo)
       ? ((d.price - h.price1yAgo) / h.price1yAgo) * 100
       : (d.change1y ?? null);
+    const alertTarget = alertTargets[sym];
+    const hitTarget = alertTarget && d.price && d.price >= parseFloat(alertTarget);
 
-    return `<div class="coin-card${loading ? ' loading' : ''}">
+    return `<div class="coin-card${loading ? ' loading' : ''}${hitTarget ? ' alert-hit' : ''}">
       <button class="remove-btn" onclick="removeCoin('${sym}')" title="Remove">&#x2715;</button>
       <div class="ticker">${sym}</div>
       <div class="cname">${name}</div>
@@ -306,6 +337,13 @@ function renderGrid() {
       <div class="row"><span class="label">1Y High</span><span class="val">${fmtPrice(h.high1y)}</span></div>
       <div class="row"><span class="label">1Y Low</span><span class="val">${fmtPrice(h.low1y)}</span></div>
       <div class="row"><span class="label">Mkt Cap</span><span class="val">${fmtBig(d.marketCap)}</span></div>
+      <div class="alert-row">
+        <span class="alert-label">&#128276; Sell at:</span>
+        <input class="alert-input${alertTarget ? ' active' : ''}" type="number" step="any" min="0"
+          value="${alertTarget || ''}" placeholder="$ target"
+          onchange="setAlert('${sym}', this.value)"
+          onclick="event.stopPropagation()" />
+      </div>
     </div>`;
   }).join('');
 }
@@ -372,6 +410,8 @@ async function refreshAll() {
     const now = new Date().toLocaleTimeString();
     document.getElementById('lastUpdated').textContent = 'Updated ' + now;
     setStatus('ok', 'All data loaded — ' + now);
+    checkAlerts();
+    arCountdownVal = 60;
   } catch (e) {
     setStatus('error', 'Error: ' + e.message + '. CoinGecko may be rate-limiting. Try again in a minute.');
     console.error(e);
@@ -463,6 +503,66 @@ function generateReport() {
   out += `Note: Data from CoinGecko. Paste this into Claude for analysis.\n`;
 
   document.getElementById('reportBox').textContent = out;
+}
+
+// ── Price Alerts ──────────────────────────────────────────────────────────────
+function setAlert(sym, val) {
+  const v = String(val).trim();
+  if (v === '' || isNaN(parseFloat(v))) {
+    delete alertTargets[sym];
+    delete triggeredAlerts[sym];
+  } else {
+    alertTargets[sym] = v;
+    delete triggeredAlerts[sym];
+  }
+  save('rm_alertTargets', alertTargets);
+  renderGrid();
+}
+
+function playAlertSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [[880,0],[1100,.15],[880,.3]].forEach(([freq,t]) => {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.3, ctx.currentTime + t);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.12);
+      osc.start(ctx.currentTime + t);
+      osc.stop(ctx.currentTime + t + 0.15);
+    });
+  } catch(e) {}
+}
+
+function showAlertToast(messages) {
+  document.getElementById('alertToastBody').innerHTML = messages.join('<br>');
+  const toast = document.getElementById('alertToast');
+  toast.style.display = 'block';
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { toast.style.display = 'none'; }, 10000);
+}
+
+function checkAlerts() {
+  const hits = [];
+  portfolio.forEach(sym => {
+    const target = alertTargets[sym];
+    if (!target) return;
+    const d = liveData[sym];
+    if (!d || !d.price) return;
+    const targetPrice = parseFloat(target);
+    if (d.price >= targetPrice && !triggeredAlerts[sym]) {
+      triggeredAlerts[sym] = true;
+      hits.push(`<b>${sym}</b> is at ${fmtPrice(d.price)} — your target was ${fmtPrice(targetPrice)}`);
+    }
+  });
+  if (!hits.length) return;
+  playAlertSound();
+  showAlertToast(hits);
+  if (Notification.permission === 'granted') {
+    hits.forEach(h => new Notification("Randy's Money — Price Alert!", {
+      body: h.replace(/<[^>]+>/g, ''),
+    }));
+  }
 }
 
 function copyReport() {
@@ -567,10 +667,36 @@ function addFromMarket(sym, cgId) {
   renderMarket();
 }
 
-// update report to include market scanner findings
-const _origGenerateReport = generateReport;
+// ── Auto-refresh ──────────────────────────────────────────────────────────────
+function updateArDisplay() {
+  const el = document.getElementById('arSecs');
+  if (el) el.textContent = arCountdownVal;
+}
+
+function toggleAutoRefresh() {
+  arEnabled = !arEnabled;
+  const btn = document.getElementById('arToggle');
+  const cd  = document.getElementById('arCountdown');
+  if (arEnabled) {
+    btn.innerHTML = '&#9646;&#9646; Pause';
+    cd.classList.remove('paused');
+    arCountdownVal = 60;
+    updateArDisplay();
+  } else {
+    btn.innerHTML = '&#9654; Resume';
+    cd.classList.add('paused');
+  }
+}
+
+setInterval(() => {
+  if (!arEnabled) return;
+  arCountdownVal = Math.max(0, arCountdownVal - 1);
+  updateArDisplay();
+  if (arCountdownVal === 0) { arCountdownVal = 60; refreshAll(); }
+}, 1000);
 
 // ── Init ──────────────────────────────────────────────────────────────────────
+if (Notification.permission === 'default') Notification.requestPermission();
 document.getElementById('addInput').addEventListener('keydown', e => { if (e.key === 'Enter') addCoin(); });
 renderGrid();
 refreshAll();
