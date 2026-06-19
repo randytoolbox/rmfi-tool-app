@@ -393,6 +393,21 @@ const STOCK_NAMES = {
   HON:'Honeywell', URI:'United Rentals', PWR:'Quanta Services',
   // Energy
   XOM:'ExxonMobil', CVX:'Chevron', COP:'ConocoPhillips',
+  // AI Infrastructure — picks & shovels
+  AMD:'AMD (AI GPUs)', ANET:'Arista Networks (Data Center Networking)',
+  VRT:'Vertiv (Data Center Power/Cooling)', MU:'Micron (HBM AI Memory)',
+  AMAT:'Applied Materials (Chip Equipment)', AVGO:'Broadcom (AI Networking)',
+  ARM:'ARM Holdings (Chip Architecture)', SMCI:'Super Micro (AI Servers)',
+  // AI Power & Data Centers
+  CEG:'Constellation Energy (Nuclear/AI Power)', VST:'Vistra Energy (Power/AI)',
+  ETN:'Eaton (Electrical Infrastructure)', EQIX:'Equinix (Data Center REIT)',
+  DLR:'Digital Realty (Data Center REIT)', NRG:'NRG Energy',
+  // Robotics & Automation
+  PATH:'UiPath (Software Automation)', ISRG:'Intuitive Surgical (Medical Robotics)',
+  BRKS:'Brooks Automation', TRMB:'Trimble (Industrial AI)',
+  // Semiconductor / CHIPS Act
+  INTC:'Intel (CHIPS Act)', TSM:'TSMC (Chip Manufacturing)', QCOM:'Qualcomm',
+  LRCX:'Lam Research (Chip Equipment)', KLAC:'KLA Corp (Chip Equipment)',
 };
 let stockWatchlist = load('rm_stocks', DEFAULT_STOCKS);
 let stockData      = {};
@@ -402,6 +417,14 @@ let stockTriggered = {};
 // One-time migration: add defense/sector stocks to existing watchlists
 (function migrateStocks() {
   const add = ['LMT','RTX','PLTR','CAT','XLE'];
+  let changed = false;
+  add.forEach(s => { if (!stockWatchlist.includes(s)) { stockWatchlist.push(s); changed = true; } });
+  if (changed) save('rm_stocks', stockWatchlist);
+})();
+
+// One-time migration: add AI infrastructure & money-flow stocks
+(function migrateAI() {
+  const add = ['NVDA','AMD','ANET','VRT','CEG','MU','AVGO','VST'];
   let changed = false;
   add.forEach(s => { if (!stockWatchlist.includes(s)) { stockWatchlist.push(s); changed = true; } });
   if (changed) save('rm_stocks', stockWatchlist);
@@ -799,9 +822,11 @@ async function fetchNews(force = false) {
   if (btn) btn.textContent = '⏳ Loading...';
 
   const queries = [
-    { q: 'US stock market Wall Street today',          tag: 'MARKET' },
-    { q: 'defense contractor government military contract', tag: 'DEFENSE' },
-    { q: stockWatchlist.slice(0,6).join(' OR '),       tag: null },
+    { q: 'US stock market Wall Street today',               tag: 'MARKET'  },
+    { q: 'defense contractor government military contract',  tag: 'DEFENSE' },
+    { q: 'AI data center investment billion NVIDIA',         tag: 'AI'      },
+    { q: 'artificial intelligence government contract robotics', tag: 'AI'  },
+    { q: stockWatchlist.slice(0,6).join(' OR '),            tag: null      },
   ];
 
   const all = [];
