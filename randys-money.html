@@ -885,7 +885,8 @@ async function fetchStocks() {
     const url  = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(syms)}&apikey=${apiKey}&dp=2`;
     const res  = await fetch(url);
     if (res.status === 429) {
-      if (errEl) { errEl.style.display='block'; errEl.textContent='⏳ Rate limited — will auto-retry in 2 min'; }
+      lastStockFetch = Date.now(); // enforce 2-min cooldown before next attempt
+      if (errEl) { errEl.style.display='block'; errEl.textContent='⏳ Rate limited by Twelve Data — auto-retry in 2 min'; }
       return;
     }
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -1087,7 +1088,7 @@ function addStock() {
 function saveStockKey(val) {
   const key = val.trim();
   save('rm_tdKey', key);
-  if (key) fetchStocks().then(() => renderStockGrid());
+  if (key) fetchStocks().then(() => { lastStockFetch = Date.now(); renderStockGrid(); });
 }
 
 function removeStock(sym) {
