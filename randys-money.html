@@ -172,6 +172,21 @@
   #mktStatus.open  { background:#0d2d1a; color:var(--good); border:1px solid var(--good); }
   #mktStatus.closed { background:#1a1a2a; color:var(--muted); border:1px solid var(--border); }
   #stockErrorMsg { font-size:12px; color:var(--bad); padding:10px 0; }
+
+  /* News feed */
+  .news-wrap { background:var(--panel); border:1px solid var(--border); border-radius:14px; overflow:hidden; max-height:420px; overflow-y:auto; }
+  .news-item { padding:10px 14px; border-bottom:1px solid #0f2a45; display:flex; align-items:flex-start; gap:10px; cursor:pointer; }
+  .news-item:last-child { border-bottom:none; }
+  .news-item:hover { background:#1a3555; }
+  .news-meta { display:flex; flex-direction:column; align-items:flex-end; gap:3px; min-width:52px; }
+  .news-time { font-size:10px; color:var(--muted); white-space:nowrap; }
+  .news-tag { font-size:9px; font-weight:800; color:#6aaeff; background:#0d2040; border-radius:4px; padding:1px 5px; white-space:nowrap; }
+  .news-tag.market { color:var(--accent); background:#2a1f00; }
+  .news-headline { font-size:13px; color:var(--text); line-height:1.45; }
+  .news-headline:hover { color:var(--accent); }
+  .news-src { font-size:11px; color:var(--muted); margin-top:2px; }
+  .news-empty { padding:22px; text-align:center; color:var(--muted); font-size:13px; }
+  #newsRefreshBtn { font-size:11px; }
 </style>
 </head>
 <body>
@@ -224,6 +239,15 @@
     <input id="addStockInput" placeholder="e.g. AAPL, TSLA..." maxlength="10" style="text-transform:uppercase;" />
     <button class="btn btn-blue btn-sm" onclick="addStock()">Add</button>
     <span class="hint">Any US ticker — AAPL, MSFT, NVDA, TSLA, XLE, JPM, GLD...</span>
+  </div>
+
+  <!-- NEWS FEED -->
+  <div class="section-label" style="margin-top:10px; display:flex; align-items:center; justify-content:space-between;">
+    <span>&#128240; Market News Feed <span style="font-size:10px;color:var(--muted);font-weight:400;">— auto-updates every 5 min</span></span>
+    <button class="btn btn-sm" id="newsRefreshBtn" onclick="fetchNews(true)" style="background:#1e4060;color:var(--text);border:1px solid var(--border);">&#8635; Refresh News</button>
+  </div>
+  <div class="news-wrap" id="newsList">
+    <div class="news-empty">News loads on first refresh — click &#8635; Refresh Data or wait for auto-refresh.</div>
   </div>
 
   <!-- MARKET SCANNER -->
@@ -321,11 +345,31 @@ const STOCK_NAMES = {
   AMGN:'Amgen', JNJ:'Johnson & Johnson', PFE:'Pfizer',
   F:'Ford Motor', GM:'General Motors', BA:'Boeing', CAT:'Caterpillar',
   DIS:'Disney', NFLX:'Netflix', UBER:'Uber',
+  // Defense & Government
+  LMT:'Lockheed Martin', RTX:'RTX (Raytheon)', NOC:'Northrop Grumman',
+  GD:'General Dynamics', PLTR:'Palantir (Gov AI)', HII:'Huntington Ingalls',
+  KTOS:'Kratos Defense', AXON:'Axon Enterprise',
+  // Infrastructure & Industrial
+  HON:'Honeywell', URI:'United Rentals', PWR:'Quanta Services',
+  // Energy
+  XOM:'ExxonMobil', CVX:'Chevron', COP:'ConocoPhillips',
 };
 let stockWatchlist = load('rm_stocks', DEFAULT_STOCKS);
 let stockData      = {};
 let stockAlerts    = load('rm_stockAlerts', {});
 let stockTriggered = {};
+
+// One-time migration: add defense/sector stocks to existing watchlists
+(function migrateStocks() {
+  const add = ['LMT','RTX','PLTR','CAT','XLE'];
+  let changed = false;
+  add.forEach(s => { if (!stockWatchlist.includes(s)) { stockWatchlist.push(s); changed = true; } });
+  if (changed) save('rm_stocks', stockWatchlist);
+})();
+
+let newsItems       = [];
+let lastNewsRefresh = 0;
+const NEWS_TTL      = 5 * 60 * 1000; // 5 minutes
 
 // ── Formatting ─────────────────────────────────────────────────────────────────
 function fmtPrice(n) {
@@ -452,6 +496,7 @@ async function refreshAll() {
     setStatus('ok', 'Crypto loaded — fetching stocks...');
     checkAlerts();
     try { await fetchStocks(); renderStockGrid(); checkStockAlerts(); } catch(se) { console.warn('Stocks:', se); }
+    fetchNews(); // throttled internally — only updates if 5+ min have passed
     document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
     setStatus('ok', 'All data loaded — ' + now);
     arCountdownVal = 60;
@@ -542,6 +587,17 @@ function generateReport() {
     out += '\n';
   }
 
+  if (newsItems.length) {
+    out += `\nRECENT MARKET NEWS\n`;
+    out += `${'─'.repeat(50)}\n`;
+    newsItems.slice(0, 12).forEach(item => {
+      const ticker = detectTicker(item.title) || item.tag || '';
+      out += `[${timeAgo(item.pubDate)}]${ticker ? ' [' + ticker + ']' : ''} ${item.title}\n`;
+      if (item.source) out += `  Source: ${item.source}\n`;
+    });
+    out += '\n';
+  }
+
   if (stockWatchlist.length) {
     const open = isMarketOpen();
     out += `\nUS STOCK WATCHLIST — RESEARCH\n`;
@@ -626,6 +682,101 @@ function checkAlerts() {
       body: h.replace(/<[^>]+>/g, ''),
     }));
   }
+}
+
+// ── News Feed ─────────────────────────────────────────────────────────────────
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1)  return 'just now';
+  if (m < 60) return m + 'm ago';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + 'h ago';
+  return Math.floor(h / 24) + 'd ago';
+}
+
+function detectTicker(title) {
+  const allSyms = [...new Set([...stockWatchlist, ...Object.keys(STOCK_NAMES)])];
+  for (const s of allSyms) {
+    if (new RegExp(`\\b${s}\\b`,'i').test(title)) return s;
+  }
+  return null;
+}
+
+async function fetchNewsQuery(query) {
+  const rss = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
+  const url = `https://api.allorigins.win/get?url=${encodeURIComponent(rss)}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(res.status);
+  const json = await res.json();
+  const xml  = new DOMParser().parseFromString(json.contents, 'text/xml');
+  return Array.from(xml.querySelectorAll('item')).slice(0, 8).map(item => {
+    const linkEl = item.querySelector('link');
+    const link = linkEl ? (linkEl.textContent || linkEl.nextSibling?.nodeValue || '') : '';
+    return {
+      title:   item.querySelector('title')?.textContent?.replace(/\s*-\s*[^-]+$/, '') || '',
+      link:    link.trim(),
+      pubDate: item.querySelector('pubDate')?.textContent || '',
+      source:  item.querySelector('source')?.textContent || '',
+    };
+  }).filter(i => i.title);
+}
+
+async function fetchNews(force = false) {
+  if (!force && Date.now() - lastNewsRefresh < NEWS_TTL) return;
+  const btn = document.getElementById('newsRefreshBtn');
+  if (btn) btn.textContent = '⏳ Loading...';
+
+  const queries = [
+    { q: 'US stock market Wall Street today',          tag: 'MARKET' },
+    { q: 'defense contractor government military contract', tag: 'DEFENSE' },
+    { q: stockWatchlist.slice(0,6).join(' OR '),       tag: null },
+  ];
+
+  const all = [];
+  for (const { q, tag } of queries) {
+    if (!q.trim()) continue;
+    try {
+      const items = await fetchNewsQuery(q);
+      items.forEach(i => { i.tag = tag || detectTicker(i.title) || 'NEWS'; all.push(i); });
+    } catch(e) { console.warn('News query failed:', q, e.message); }
+    await new Promise(r => setTimeout(r, 400));
+  }
+
+  const seen = new Set();
+  newsItems = all
+    .filter(i => { const k = i.title.slice(0,45); return seen.has(k) ? false : (seen.add(k), true); })
+    .sort((a,b) => new Date(b.pubDate) - new Date(a.pubDate))
+    .slice(0, 25);
+
+  lastNewsRefresh = Date.now();
+  renderNews();
+  if (btn) btn.textContent = '↺ Refresh News';
+}
+
+function renderNews() {
+  const el = document.getElementById('newsList');
+  if (!el) return;
+  if (!newsItems.length) {
+    el.innerHTML = '<div class="news-empty">No news loaded yet. Click ↺ Refresh News.</div>';
+    return;
+  }
+  el.innerHTML = newsItems.map(item => {
+    const ticker = detectTicker(item.title) || item.tag;
+    const isMarket = item.tag === 'MARKET';
+    const tagHtml = ticker ? `<span class="news-tag${isMarket ? ' market' : ''}">${ticker}</span>` : '';
+    const href = item.link ? ` onclick="window.open('${item.link.replace(/'/g,"\\'")}','_blank')"` : '';
+    return `<div class="news-item"${href}>
+      <div class="news-meta">
+        <span class="news-time">${timeAgo(item.pubDate)}</span>
+        ${tagHtml}
+      </div>
+      <div>
+        <div class="news-headline">${item.title}</div>
+        ${item.source ? `<div class="news-src">${item.source}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ── Stock Market ──────────────────────────────────────────────────────────────
@@ -922,6 +1073,8 @@ document.getElementById('addStockInput').addEventListener('keydown', e => { if (
 renderGrid();
 renderStockGrid();
 refreshAll();
+// Dedicated news refresh every 5 minutes
+setInterval(() => fetchNews(), NEWS_TTL);
 </script>
 </body>
 </html>
