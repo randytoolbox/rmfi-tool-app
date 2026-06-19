@@ -232,6 +232,13 @@
     US Stock Market — Research Watchlist
     <span id="mktStatus"></span>
   </div>
+  <div class="add-row" style="margin-bottom:10px; padding:10px 16px; background:#0a1a2e;">
+    <span style="font-size:12px;font-weight:700;color:var(--muted);">&#128273; Stock API Key:</span>
+    <input id="tdKeyInput" type="text" placeholder="Paste free Twelve Data API key here (twelvedata.com)"
+      style="flex:1; background:var(--input-bg); border:1px solid var(--border); border-radius:8px; padding:7px 12px; font-size:12px; color:var(--text); min-width:200px; text-transform:none;"
+      oninput="saveStockKey(this.value)" />
+    <span style="font-size:11px;color:var(--muted);">Free at <b style="color:#6aaeff;">twelvedata.com</b> — no credit card</span>
+  </div>
   <div id="stockErrorMsg" style="display:none;"></div>
   <div class="coin-grid" id="stockGrid"></div>
   <div class="add-row" style="margin-bottom:28px;">
@@ -796,42 +803,49 @@ function updateMarketStatus() {
   el.className = open ? 'open' : 'closed';
 }
 
-function parseYahooQuotes(data) {
-  const quotes = data?.quoteResponse?.result;
-  if (!quotes?.length) throw new Error('no quotes');
-  quotes.forEach(q => {
-    stockData[q.symbol] = {
-      price:     q.regularMarketPrice,
-      change:    q.regularMarketChange,
-      changePct: q.regularMarketChangePercent,
-      high52:    q.fiftyTwoWeekHigh,
-      low52:     q.fiftyTwoWeekLow,
-      ytdPct:    null,
-      name:      q.shortName || STOCK_NAMES[q.symbol] || q.symbol,
-    };
-  });
-}
-
 async function fetchStocks() {
   if (!stockWatchlist.length) return;
   const errEl = document.getElementById('stockErrorMsg');
-  const syms = stockWatchlist.join(',');
-  const yUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(syms)}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,fiftyTwoWeekHigh,fiftyTwoWeekLow,shortName`;
+  const apiKey = load('rm_tdKey', '');
 
-  // Try corsproxy.io (returns raw JSON directly)
+  if (!apiKey) {
+    if (errEl) {
+      errEl.style.display = 'block';
+      errEl.innerHTML = '&#9888; Stock prices need a free API key. <b>Enter your Twelve Data key below to activate stock data.</b>';
+    }
+    return;
+  }
+
   try {
-    const r = await fetch(`https://corsproxy.io/?${encodeURIComponent(yUrl)}`);
-    if (r.ok) { parseYahooQuotes(await r.json()); if (errEl) errEl.style.display='none'; return; }
-  } catch(e) { console.warn('corsproxy stocks:', e.message); }
+    const syms = stockWatchlist.join(',');
+    const url  = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(syms)}&apikey=${apiKey}&dp=2`;
+    const res  = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
 
-  // Try allorigins.win (wraps response in {contents:...})
-  try {
-    const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(yUrl)}`);
-    if (r.ok) { const o = await r.json(); parseYahooQuotes(JSON.parse(o.contents)); if (errEl) errEl.style.display='none'; return; }
-  } catch(e) { console.warn('allorigins stocks:', e.message); }
+    // API returns object keyed by symbol when multiple, or flat object for single
+    const entries = data.symbol ? { [data.symbol]: data } : data;
+    let anyOk = false;
+    Object.entries(entries).forEach(([sym, q]) => {
+      if (q.status === 'error' || !q.close) return;
+      anyOk = true;
+      stockData[sym] = {
+        price:     parseFloat(q.close),
+        change:    parseFloat(q.change   || 0),
+        changePct: parseFloat(q.percent_change || 0),
+        high52:    parseFloat(q.fifty_two_week?.high || 0) || null,
+        low52:     parseFloat(q.fifty_two_week?.low  || 0) || null,
+        ytdPct:    null,
+        name:      q.name || STOCK_NAMES[sym] || sym,
+      };
+    });
 
-  // Both failed — show error, will retry on next auto-refresh
-  if (errEl) { errEl.style.display='block'; errEl.textContent='⚠ Stock prices unavailable — Yahoo Finance API is blocked. Retrying every 60s.'; }
+    if (errEl) errEl.style.display = 'none';
+    if (!anyOk) throw new Error('No valid data returned — check API key');
+  } catch(e) {
+    console.warn('Twelve Data error:', e.message);
+    if (errEl) { errEl.style.display='block'; errEl.textContent='⚠ Stock data error: ' + e.message; }
+  }
 }
 
 function renderStockGrid() {
@@ -883,6 +897,12 @@ function addStock() {
     fetchStocks().then(() => renderStockGrid());
   }
   inp.value = '';
+}
+
+function saveStockKey(val) {
+  const key = val.trim();
+  save('rm_tdKey', key);
+  if (key) fetchStocks().then(() => renderStockGrid());
 }
 
 function removeStock(sym) {
@@ -1058,6 +1078,8 @@ setInterval(() => {
 if (Notification.permission === 'default') Notification.requestPermission();
 document.getElementById('addInput').addEventListener('keydown', e => { if (e.key === 'Enter') addCoin(); });
 document.getElementById('addStockInput').addEventListener('keydown', e => { if (e.key === 'Enter') addStock(); });
+const _savedKey = load('rm_tdKey', '');
+if (_savedKey) document.getElementById('tdKeyInput').value = _savedKey;
 renderGrid();
 renderStockGrid();
 refreshAll();
