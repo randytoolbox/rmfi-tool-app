@@ -796,56 +796,42 @@ function updateMarketStatus() {
   el.className = open ? 'open' : 'closed';
 }
 
-async function fetchOneStock(sym) {
-  const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1y&includePrePost=false`;
-  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(yahooUrl)}`;
-  const res = await fetch(proxyUrl);
-  if (!res.ok) throw new Error(res.status);
-  const outer = await res.json();
-  const json  = JSON.parse(outer.contents);
-  const result = json?.chart?.result?.[0];
-  if (!result) throw new Error('no data');
-  const meta   = result.meta;
-  const ohlc   = result.indicators?.quote?.[0] || {};
-  const highs  = (ohlc.high  || []).filter(v => v != null);
-  const lows   = (ohlc.low   || []).filter(v => v != null);
-  const closes = (ohlc.close || []).filter(v => v != null);
-  // YTD: find first trading day of this year
-  const yearStartTs = new Date(new Date().getFullYear(), 0, 1).getTime() / 1000;
-  const timestamps  = result.timestamp || [];
-  const ytdIdx      = timestamps.findIndex(t => t >= yearStartTs);
-  const ytdClose    = ytdIdx >= 0 ? (ohlc.close || [])[ytdIdx] : null;
-  const price       = meta.regularMarketPrice;
-  return {
-    price,
-    change:    price - (meta.chartPreviousClose || price),
-    changePct: meta.chartPreviousClose ? ((price - meta.chartPreviousClose) / meta.chartPreviousClose) * 100 : 0,
-    high52:    highs.length  ? Math.max(...highs)  : meta.fiftyTwoWeekHigh,
-    low52:     lows.length   ? Math.min(...lows)   : meta.fiftyTwoWeekLow,
-    ytdPct:    ytdClose ? ((price - ytdClose) / ytdClose) * 100 : null,
-    name:      meta.shortName || STOCK_NAMES[sym] || sym,
-  };
+function parseYahooQuotes(data) {
+  const quotes = data?.quoteResponse?.result;
+  if (!quotes?.length) throw new Error('no quotes');
+  quotes.forEach(q => {
+    stockData[q.symbol] = {
+      price:     q.regularMarketPrice,
+      change:    q.regularMarketChange,
+      changePct: q.regularMarketChangePercent,
+      high52:    q.fiftyTwoWeekHigh,
+      low52:     q.fiftyTwoWeekLow,
+      ytdPct:    null,
+      name:      q.shortName || STOCK_NAMES[q.symbol] || q.symbol,
+    };
+  });
 }
 
 async function fetchStocks() {
-  const errEl = document.getElementById('stockErrorMsg');
   if (!stockWatchlist.length) return;
-  let anyOk = false;
-  for (const sym of stockWatchlist) {
-    try {
-      stockData[sym] = await fetchOneStock(sym);
-      anyOk = true;
-    } catch(e) {
-      console.warn('Stock fetch failed:', sym, e.message);
-      if (e instanceof TypeError) {
-        // Network/CORS error — stop trying, show message
-        if (errEl) { errEl.style.display='block'; errEl.textContent='Stock data unavailable — Yahoo Finance may be blocking browser requests. Prices will retry on next refresh.'; }
-        break;
-      }
-    }
-    await new Promise(r => setTimeout(r, 250));
-  }
-  if (anyOk && errEl) errEl.style.display = 'none';
+  const errEl = document.getElementById('stockErrorMsg');
+  const syms = stockWatchlist.join(',');
+  const yUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(syms)}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,fiftyTwoWeekHigh,fiftyTwoWeekLow,shortName`;
+
+  // Try corsproxy.io (returns raw JSON directly)
+  try {
+    const r = await fetch(`https://corsproxy.io/?${encodeURIComponent(yUrl)}`);
+    if (r.ok) { parseYahooQuotes(await r.json()); if (errEl) errEl.style.display='none'; return; }
+  } catch(e) { console.warn('corsproxy stocks:', e.message); }
+
+  // Try allorigins.win (wraps response in {contents:...})
+  try {
+    const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(yUrl)}`);
+    if (r.ok) { const o = await r.json(); parseYahooQuotes(JSON.parse(o.contents)); if (errEl) errEl.style.display='none'; return; }
+  } catch(e) { console.warn('allorigins stocks:', e.message); }
+
+  // Both failed — show error, will retry on next auto-refresh
+  if (errEl) { errEl.style.display='block'; errEl.textContent='⚠ Stock prices unavailable — Yahoo Finance API is blocked. Retrying every 60s.'; }
 }
 
 function renderStockGrid() {
@@ -894,7 +880,7 @@ function addStock() {
     stockWatchlist.push(sym);
     save('rm_stocks', stockWatchlist);
     renderStockGrid();
-    fetchOneStock(sym).then(d => { stockData[sym] = d; renderStockGrid(); }).catch(() => {});
+    fetchStocks().then(() => renderStockGrid());
   }
   inp.value = '';
 }
