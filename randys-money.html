@@ -484,6 +484,7 @@ const STOCK_REFRESH_MS = 5 * 60 * 1000; // 5 min — Yahoo Finance primary (no d
 const DEFAULT_STOCKS = ['SPY','QQQ','DIA','IWM'];
 const STOCK_NAMES = {
   SPY:'S&P 500 ETF', QQQ:'Nasdaq 100 ETF', DIA:'Dow Jones ETF', IWM:'Russell 2000 ETF',
+  'BRK.B':'Berkshire Hathaway B',
   AAPL:'Apple', MSFT:'Microsoft', NVDA:'NVIDIA', TSLA:'Tesla', AMZN:'Amazon',
   GOOGL:'Alphabet (Google)', META:'Meta Platforms', JPM:'JPMorgan Chase',
   BAC:'Bank of America', WFC:'Wells Fargo', GS:'Goldman Sachs',
@@ -987,6 +988,8 @@ async function fetchArticleText(url) {
 
 // ── Generate Report ───────────────────────────────────────────────────────────
 async function generateReport() {
+  const reportBox = document.getElementById('reportBox');
+  if (reportBox) { reportBox.textContent = 'Building report…'; reportBox.scrollIntoView({behavior:'smooth', block:'start'}); }
   const now = new Date().toLocaleString();
   let out = `RANDY'S MONEY — CRYPTO REPORT\n`;
   out += `Generated: ${now}\n`;
@@ -1208,6 +1211,8 @@ async function generateReport() {
 // ── Price Alerts ──────────────────────────────────────────────────────────────
 // ── Randy's Daily Briefing ────────────────────────────────────────────────────
 function generateBriefing() {
+  const reportBox = document.getElementById('reportBox');
+  if (reportBox) { reportBox.textContent = 'Building briefing…'; reportBox.scrollIntoView({behavior:'smooth', block:'start'}); }
   const now = new Date().toLocaleString();
   let out = `RANDY'S DAILY BRIEFING — ${now}\n`;
   out += `${'═'.repeat(50)}\n\n`;
@@ -1846,7 +1851,15 @@ function renderCongressBuys() {
   }</div><div style="font-size:10px;color:var(--muted);padding:6px 0;">Based on STOCK Act purchase disclosures and congressional trade news. ×N = times mentioned in recent filings.</div>`;
 }
 
+// Tickers that need normalizing (common mis-tickers from news/RSS)
+const TICKER_ALIAS = { 'BRK': 'BRK.B', 'GOOG': 'GOOGL', 'FB': 'META' };
+
+function normalizeTicker(sym) {
+  return TICKER_ALIAS[sym] || sym;
+}
+
 function addCongressPick(sym) {
+  sym = normalizeTicker(sym);
   if (stockWatchlist.includes(sym)) return;
   stockWatchlist.push(sym);
   save('rm_stocks', stockWatchlist);
