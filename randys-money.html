@@ -356,6 +356,16 @@
     <div class="news-empty">Congressional trades load on first refresh — STOCK Act data, House &amp; Senate.</div>
   </div>
 
+  <!-- CONGRESS BUYS LEADERBOARD -->
+  <div class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+    <span>&#127963; Congress Buys <span style="font-size:10px;color:var(--muted);font-weight:400;">— most purchased by members &bull; STOCK Act disclosures &bull; last 90 days</span></span>
+    <button class="btn btn-sm" onclick="fetchCongressBuys(true)" style="background:#1e4060;color:var(--text);border:1px solid var(--border);">&#8635; Scan</button>
+  </div>
+  <div id="cBuysErr" style="display:none;font-size:12px;color:var(--bad);padding:6px 0;"></div>
+  <div id="cBuysList" style="margin-bottom:28px;">
+    <div class="news-empty">Click &#8635; Scan to load — discovers what senators &amp; representatives are actively buying.</div>
+  </div>
+
   <!-- SUPPLY CHAIN INTELLIGENCE -->
   <div class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
     <span>&#128279; Supply Chain Intelligence <span style="font-size:10px;color:var(--muted);font-weight:400;">— contract awards &rarr; supplier impact</span></span>
@@ -550,6 +560,10 @@ let congressTrades    = [];
 let lastCongressFetch = 0;
 const CONGRESS_TTL    = 6 * 60 * 60 * 1000; // 6 hours
 let congFilter        = 'all';
+
+let cBuysData      = load('rm_cBuys', []);
+let lastCBuysFetch = load('rm_cBuysTs', 0);
+const CBUYS_TTL    = 4 * 60 * 60 * 1000; // 4 hours
 let scAlerts          = []; // supply chain contract alerts
 let macroData         = {}; // BTC, ETH, dominance, fear & greed, total market cap
 let holdings          = load('rm_holdings', {}); // { XRP: {qty:500, cost:0.86}, ... }
@@ -848,8 +862,9 @@ async function refreshAll() {
       try { await fetchStocks(); renderStockGrid(); checkStockAlerts(); lastStockFetch = Date.now(); } catch(se) { console.warn('Stocks:', se); }
     }
     fetchStockHistory(); // non-blocking — throttled to once/day
-    fetchNews();      // throttled — 5 min
-    fetchCongress();  // throttled — 6 hours
+    fetchNews();           // throttled — 5 min
+    fetchCongress();       // throttled — 6 hours
+    fetchCongressBuys();   // throttled — 4 hours
     document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
     setStatus('ok', 'All data loaded — ' + now);
     arCountdownVal = 60;
@@ -1515,6 +1530,101 @@ function renderCongressList() {
   }).join('');
 }
 
+// ── Congress Buys Leaderboard ─────────────────────────────────────────────────
+async function fetchCongressBuys(force = false) {
+  if (!force && Date.now() - lastCBuysFetch < CBUYS_TTL && cBuysData.length) { renderCongressBuys(); return; }
+  const listEl = document.getElementById('cBuysList');
+  const errEl  = document.getElementById('cBuysErr');
+  if (listEl) listEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:10px 0;">Scanning congressional purchase disclosures…</div>';
+  if (errEl) errEl.style.display = 'none';
+
+  const queries = [
+    'senator representative stock purchase buy disclosure STOCK Act',
+    'congress member bought purchased stock shares filing 2025 2026',
+    'congressional stock purchase disclosure quiverquant capitoltrades',
+    'senator bought stock ETF shares purchase SEC filing 2026',
+  ];
+  let allItems = [];
+  for (const q of queries) {
+    try { allItems = allItems.concat(await fetchNewsQuery(q)); } catch(e) {}
+    await new Promise(r => setTimeout(r, 300));
+  }
+  // Also mine the existing congress trades feed
+  allItems = allItems.concat(congressTrades || []);
+
+  const BAD = new Set(['A','I','AT','IF','OR','AND','FOR','BY','ON','UP','TO','THE','OF','IN','US','CEO','EVP','CFO','COO','ETF','IPO','SEC','IRS','FBI','GDP','CPI','USD','EUR','AM','PM','IT','IS','BE','AN','NO','DO','NY','CA','DC','AI']);
+  const counts = {};
+
+  allItems.forEach(item => {
+    const text = (item.title || '') + ' ' + (item.description || '');
+    const lc = text.toLowerCase();
+    // Skip pure sale stories
+    if (/\bsale\b|\bsold\b|\bsell\b/.test(lc) && !/\bpurchase\b|\bbought\b|\bbuy\b/.test(lc)) return;
+
+    for (const m of text.matchAll(/\$([A-Z]{1,5})\b/g)) {
+      const s = m[1];
+      if (!BAD.has(s)) counts[s] = (counts[s] || 0) + 2;
+    }
+    for (const m of text.matchAll(/\(([A-Z]{2,5})\)/g)) {
+      const s = m[1];
+      if (!BAD.has(s) && s.length >= 2) counts[s] = (counts[s] || 0) + 1;
+    }
+    if (/\b(purchase|bought|buy|buys|buying)\b/.test(lc)) {
+      [...new Set([...stockWatchlist, ...Object.keys(STOCK_NAMES)])].forEach(s => {
+        if (new RegExp(`\\b${s}\\b`).test(text)) counts[s] = (counts[s] || 0) + 1;
+      });
+    }
+  });
+
+  cBuysData = Object.entries(counts)
+    .filter(([s]) => s.length >= 2 && !BAD.has(s))
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 24)
+    .map(([sym, score]) => ({ sym, score, name: STOCK_NAMES[sym] || sym }));
+
+  lastCBuysFetch = Date.now();
+  save('rm_cBuys', cBuysData);
+  save('rm_cBuysTs', lastCBuysFetch);
+  renderCongressBuys();
+}
+
+function renderCongressBuys() {
+  const el = document.getElementById('cBuysList');
+  if (!el) return;
+  if (!cBuysData.length) {
+    el.innerHTML = '<div class="news-empty">Click ↻ Scan to discover what congress members are purchasing.</div>';
+    return;
+  }
+  const watching = new Set(stockWatchlist);
+  el.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px;padding:4px 0;">${
+    cBuysData.map(d => {
+      const p = stockData[d.sym]?.price;
+      const inWatch = watching.has(d.sym);
+      const mentions = Math.max(1, Math.round(d.score / 2));
+      return `<div style="background:var(--card-bg);border:1px solid ${inWatch?'var(--accent)':'var(--border)'};border-radius:10px;padding:10px 14px;min-width:130px;max-width:160px;flex:1;display:flex;flex-direction:column;gap:4px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+          <span style="font-size:15px;font-weight:800;color:var(--accent);">${d.sym}</span>
+          <span style="font-size:9px;background:#1e4060;color:#6aaeff;padding:2px 5px;border-radius:4px;white-space:nowrap;">&#127963; ×${mentions}</span>
+        </div>
+        <div style="font-size:10px;color:var(--muted);line-height:1.3;min-height:14px;">${d.name !== d.sym ? d.name.slice(0,22) : ''}</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);">${p ? '$' + p.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '--'}</div>
+        <button onclick="addCongressPick('${d.sym}')" style="margin-top:3px;padding:4px 0;font-size:10px;border-radius:6px;border:1px solid ${inWatch?'var(--good)':'var(--border)'};background:${inWatch?'#132613':'var(--input-bg)'};color:${inWatch?'var(--good)':'var(--text)'};cursor:pointer;width:100%;">
+          ${inWatch ? '✓ Watching' : '+ Watchlist'}
+        </button>
+      </div>`;
+    }).join('')
+  }</div><div style="font-size:10px;color:var(--muted);padding:6px 0;">Based on STOCK Act purchase disclosures and congressional trade news. ×N = times mentioned in recent filings.</div>`;
+}
+
+function addCongressPick(sym) {
+  if (stockWatchlist.includes(sym)) return;
+  stockWatchlist.push(sym);
+  save('rm_stocks', stockWatchlist);
+  renderStockGrid();
+  renderCongressBuys();
+  fetchStocks().then(() => renderStockGrid());
+}
+
 function renderStockGrid() {
   updateMarketStatus();
   const grid = document.getElementById('stockGrid');
@@ -1753,6 +1863,7 @@ if (_savedKey) document.getElementById('tdKeyInput').value = _savedKey;
 renderGrid();
 renderStockGrid();
 renderSupplyChain();
+renderCongressBuys();
 refreshAll();
 // Dedicated news refresh every 5 minutes
 setInterval(() => fetchNews(), NEWS_TTL);
