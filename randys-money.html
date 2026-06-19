@@ -349,12 +349,12 @@
 
   <!-- CONGRESSIONAL TRADES -->
   <div class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-    <span>&#127963; Congress Trades <span style="font-size:10px;color:var(--muted);font-weight:400;">— STOCK Act stories &bull; news-based &bull; updates 2&times;/day</span></span>
+    <span>&#127963; Congress Trades <span style="font-size:10px;color:var(--muted);font-weight:400;">— actual STOCK Act filings &bull; House &amp; Senate &bull; last 90 days</span></span>
     <button class="btn btn-sm" onclick="fetchCongress(true)" style="background:#1e4060;color:var(--text);border:1px solid var(--border);">&#8635; Refresh</button>
   </div>
   <div id="congErrorMsg" style="display:none;font-size:12px;color:var(--bad);padding:10px 0;"></div>
   <div class="news-wrap" id="congList" style="margin-bottom:28px;">
-    <div class="news-empty">Congressional trades load on first refresh — STOCK Act data, House &amp; Senate.</div>
+    <div class="news-empty">Click &#8635; Refresh to load actual STOCK Act filings from the last 90 days.</div>
   </div>
 
   <!-- CONGRESS BUYS LEADERBOARD -->
@@ -901,7 +901,7 @@ async function refreshAll() {
     }
     fetchStockHistory(); // non-blocking — throttled to once/day
     fetchNews();           // throttled — 5 min
-    fetchCongress();       // throttled — 6 hours
+    fetchCongress();       // throttled — 6 hours (now uses real STOCK Act filings)
     fetchCongressBuys();   // throttled — 4 hours
     document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
     setStatus('ok', 'All data loaded — ' + now);
@@ -1093,9 +1093,9 @@ async function generateReport() {
   // Collect all articles to fetch
   const articleQueue = [];
   const newsSlice = newsItems.slice(0, 12);
-  const congressSlice = congressTrades.slice(0, 12);
+  const congressSlice = congressTrades.slice(0, 12); // used below for report text
   newsSlice.forEach(i => { if (i.link) articleQueue.push({ item: i, section: 'news' }); });
-  congressSlice.forEach(i => { if (i.link) articleQueue.push({ item: i, section: 'congress' }); });
+  // Congress trades are now raw STOCK Act filings (not news articles), so no article fetch needed
 
   if (articleQueue.length > 0) {
     document.getElementById('reportBox').textContent = `Building report — fetching full article text...\n(0 / ${articleQueue.length} articles)\n\nThis may take 1–2 minutes. Please wait.`;
@@ -1188,17 +1188,21 @@ async function generateReport() {
   }
 
   if (congressTrades.length) {
-    out += `\nCONGRESS TRADE NEWS — STOCK Act Disclosures (Full Articles)\n`;
+    out += `\nCONGRESS TRADES — Actual STOCK Act Filings (Last 90 Days)\n`;
     out += `${'─'.repeat(50)}\n`;
-    congressSlice.forEach(t => {
-      out += `\n[${timeAgo(t.pubDate)}] ${t.title}\n`;
-      if (t.source) out += `Source: ${t.source}\n`;
-      if (t._fullText) {
-        out += `--- ARTICLE TEXT ---\n${t._fullText}\n--- END ---\n`;
-      } else {
-        out += `(Full text unavailable — paywalled or blocked)\n`;
-      }
+    const buys  = congressTrades.filter(t => t._type?.includes('purchase') || t._type?.includes('buy'));
+    const sells = congressTrades.filter(t => t._type?.includes('sale') || t._type?.includes('sell'));
+    out += `Recent purchases (${buys.length} in last 90 days):\n`;
+    buys.slice(0, 20).forEach(t => {
+      const price = stockData[t._sym]?.price;
+      out += `  ${t._date}  ${(t._name || '').split(' ').slice(-1)[0].padEnd(12)}  BUY  ${(t._sym || '').padEnd(6)}  ${t._amt || ''}${price ? '  now $' + price.toFixed(2) : ''}\n`;
     });
+    if (sells.length) {
+      out += `\nRecent sales (${sells.length} in last 90 days):\n`;
+      sells.slice(0, 10).forEach(t => {
+        out += `  ${t._date}  ${(t._name || '').split(' ').slice(-1)[0].padEnd(12)}  SELL  ${(t._sym || '').padEnd(6)}  ${t._amt || ''}\n`;
+      });
+    }
     out += '\n';
   }
 
@@ -1694,39 +1698,65 @@ function renderSparkline(sym) {
   </div>`;
 }
 
-// ── Congressional Trades (news-based via Google RSS) ──────────────────────────
-// Raw STOCK Act bulk data files are too large to proxy — using Google News
-// RSS which reliably surfaces congressional trading stories & disclosures.
+// ── Congressional Trades — live STOCK Act filings (House + Senate) ─────────────
 async function fetchCongress(force = false) {
-  if (!force && Date.now() - lastCongressFetch < CONGRESS_TTL) { renderCongressList(); return; }
+  if (!force && Date.now() - lastCongressFetch < CONGRESS_TTL && congressTrades.length) {
+    renderCongressList(); return;
+  }
   const errEl = document.getElementById('congErrorMsg');
+  const listEl = document.getElementById('congList');
   if (errEl) errEl.style.display = 'none';
-  let items = [];
+  if (listEl) listEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:10px 0;">Loading STOCK Act filings from House &amp; Senate databases…</div>';
 
-  const queries = [
-    'STOCK Act senator representative stock purchase sale disclosure',
-    'congress stock trade insider buy sell 2026',
-    'senator representative stock portfolio trade SEC filing',
-  ];
+  const HOUSE_URL  = 'https://house-stock-watcher-data.s3-us-east-2.amazonaws.com/data/all_transactions.json';
+  const SENATE_URL = 'https://senate-stock-watcher-data.s3-us-east-2.amazonaws.com/aggregate/all_transactions.json';
+  let allTrades = [];
 
-  for (const q of queries) {
-    try {
-      const batch = await fetchNewsQuery(q);
-      batch.forEach(i => { i.tag = 'CONGRESS'; items.push(i); });
-    } catch(e) { console.warn('Congress RSS:', e.message); }
-    await new Promise(r => setTimeout(r, 400));
+  for (const [dataUrl, chamber] of [[HOUSE_URL, 'House'], [SENATE_URL, 'Senate']]) {
+    for (const mkP of [
+      u => u,
+      u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+      u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    ]) {
+      try {
+        const res = await fetch(mkP(dataUrl), { signal: AbortSignal.timeout(30000) });
+        if (!res.ok) continue;
+        const raw = await res.json();
+        const rows = Array.isArray(raw) ? raw : (raw.data || raw.transactions || []);
+        rows.forEach(t => { t._chamber = chamber; });
+        allTrades = allTrades.concat(rows);
+        break;
+      } catch(e) {}
+    }
   }
 
-  // Deduplicate by title
-  const seen = new Set();
-  items = items.filter(i => { if (seen.has(i.title)) return false; seen.add(i.title); return true; });
-  items.sort((a,b) => new Date(b.pubDate) - new Date(a.pubDate));
-
-  if (!items.length) {
-    if (errEl) { errEl.style.display='block'; errEl.textContent='⚠ No congressional trading stories loaded — try ↻ Refresh.'; }
+  if (!allTrades.length) {
+    if (errEl) { errEl.style.display='block'; errEl.textContent='⚠ Could not load STOCK Act data — try ↻ Refresh.'; }
+    if (listEl) listEl.innerHTML = '';
     return;
   }
-  congressTrades = items; // reusing congressTrades for news items
+
+  // Filter to last 90 days, valid tickers, normalize
+  const cutoff90 = Date.now() - 90 * 24 * 60 * 60 * 1000;
+  const SKIP = new Set(['N/A','--','NA','NONE','ETF']);
+  const filtered = allTrades.filter(t => {
+    const dateStr = t.transaction_date || t.transactionDate || t.date || '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime()) || d.getTime() < cutoff90) return false;
+    const sym = (t.ticker || t.symbol || '').replace(/[$\s]/g,'').toUpperCase();
+    if (!sym || SKIP.has(sym) || sym.length > 5) return false;
+    t._sym  = normalizeTicker(sym);
+    t._date = dateStr;
+    t._ts   = d.getTime();
+    t._name = (t.representative || t.senator || t.name || '').trim();
+    t._type = (t.type || t.transaction_type || '').toLowerCase();
+    t._desc = t.asset_description || '';
+    t._amt  = t.amount || '';
+    return !!t._name;
+  });
+
+  filtered.sort((a, b) => b._ts - a._ts);
+  congressTrades = filtered.slice(0, 60);
   lastCongressFetch = Date.now();
   renderCongressList();
 }
@@ -1744,22 +1774,43 @@ function renderCongressList() {
   const el = document.getElementById('congList');
   if (!el) return;
   if (!congressTrades.length) {
-    el.innerHTML = '<div class="news-empty">No congressional trading stories loaded yet — click &#8635; Refresh above.</div>';
+    el.innerHTML = '<div class="news-empty">No filings loaded — click &#8635; Refresh above.</div>';
     return;
   }
-  el.innerHTML = congressTrades.slice(0, 40).map(item => {
-    const ticker = detectTicker(item.title) || '';
-    const watchSet = new Set([...stockWatchlist, ...portfolio]);
-    const isWatch = ticker && watchSet.has(ticker);
-    const src = item.source || '';
-    return `<div class="news-item${isWatch?' watchlist-match':''}" onclick="window.open('${item.link}','_blank')" style="${isWatch?'border-left:3px solid var(--accent);':''}">
+  const watchSet = new Set([...stockWatchlist, ...portfolio]);
+  const filtered = congressTrades.filter(t => {
+    if (congFilter === 'purchase') return t._type.includes('purchase') || t._type.includes('buy');
+    if (congFilter === 'sale')     return t._type.includes('sale') || t._type.includes('sell');
+    if (congFilter === 'watchlist') return watchSet.has(t._sym);
+    return true;
+  });
+  if (!filtered.length) {
+    el.innerHTML = '<div class="news-empty">No matching filings for this filter.</div>';
+    return;
+  }
+  const isPurchase = t => t._type.includes('purchase') || t._type.includes('buy');
+  el.innerHTML = filtered.slice(0, 50).map(t => {
+    const isBuy   = isPurchase(t);
+    const typeColor = isBuy ? 'var(--good)' : 'var(--bad)';
+    const typeLabel = isBuy ? 'BUY' : 'SELL';
+    const isWatch  = watchSet.has(t._sym);
+    const price    = stockData[t._sym]?.price;
+    const priceStr = price ? ` · Now $${price.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '';
+    return `<div class="news-item${isWatch?' watchlist-match':''}" style="${isWatch?'border-left:3px solid var(--accent);':''}">
       <div style="flex:1;min-width:0;">
-        <div class="news-headline">${item.title}${isWatch?` <span style="color:var(--accent);font-size:10px;font-weight:800;">[${ticker} &#9733;]</span>`:''}</div>
-        ${src?`<div class="news-src">${src}</div>`:''}
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:15px;font-weight:800;color:var(--accent);">${t._sym}</span>
+          <span style="font-size:11px;font-weight:700;color:${typeColor};background:${isBuy?'#0a2a0a':'#2a0a0a'};padding:2px 6px;border-radius:4px;">${typeLabel}</span>
+          <span style="font-size:11px;color:var(--muted);">${t._amt}</span>
+          ${isWatch ? `<span style="font-size:10px;color:var(--accent);">★ Watching</span>` : ''}
+        </div>
+        <div style="font-size:12px;color:var(--text);margin-top:2px;">${t._name} <span style="color:var(--muted);font-size:11px;">(${t._chamber})</span></div>
+        ${t._desc ? `<div style="font-size:11px;color:var(--muted);">${t._desc}</div>` : ''}
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">${t._date}${priceStr}</div>
       </div>
-      <div class="news-meta">
-        <span class="news-time">${timeAgo(item.pubDate)}</span>
-        <span class="news-tag">CONGRESS</span>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;padding-left:8px;">
+        <span style="font-size:10px;color:var(--muted);">${timeAgo(t._date)}</span>
+        ${!isWatch && isBuy ? `<button onclick="addCongressPick('${t._sym}')" style="font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);cursor:pointer;white-space:nowrap;">+ Watch</button>` : ''}
       </div>
     </div>`;
   }).join('');
