@@ -661,6 +661,9 @@ function renderGrid() {
     const yr1pct = (d.price && h.price1yAgo)
       ? ((d.price - h.price1yAgo) / h.price1yAgo) * 100
       : (d.change1y ?? null);
+    const yr2pct = (d.price && h.price2yAgo)
+      ? ((d.price - h.price2yAgo) / h.price2yAgo) * 100
+      : null;
     const alertTarget = alertTargets[sym];
     const hitTarget = alertTarget && d.price && d.price >= parseFloat(alertTarget);
 
@@ -689,6 +692,9 @@ function renderGrid() {
       <div class="row"><span class="label">1 Year</span><span class="val ${cls(yr1pct)}">${fmtPct(yr1pct)}</span></div>
       <div class="row"><span class="label">1Y High</span><span class="val">${fmtPrice(h.high1y)}</span></div>
       <div class="row"><span class="label">1Y Low</span><span class="val">${fmtPrice(h.low1y)}</span></div>
+      <div class="row"><span class="label">2 Year</span><span class="val ${cls(yr2pct)}">${fmtPct(yr2pct)}</span></div>
+      <div class="row"><span class="label">2Y High</span><span class="val">${fmtPrice(h.high2y)}</span></div>
+      <div class="row"><span class="label">2Y Low</span><span class="val">${fmtPrice(h.low2y)}</span></div>
       <div class="row"><span class="label">Mkt Cap</span><span class="val">${fmtBig(d.marketCap)}</span></div>
       <hr class="holdings-divider">
       <div class="holdings-inputs">
@@ -816,20 +822,25 @@ async function fetchLive() {
   });
 }
 
-// ── API: 1-year history ───────────────────────────────────────────────────────
+// ── API: 2-year history ───────────────────────────────────────────────────────
 async function fetchHistory(sym) {
   const id = COINS[sym];
   if (!id) return;
-  const url = `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=365&interval=daily`;
+  const url = `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=730&interval=daily`;
   const res = await fetch(url);
   if (!res.ok) throw new Error('history ' + res.status);
   const data = await res.json();
   const prices = (data.prices || []).map(p => p[1]);
   if (!prices.length) return;
+  const mid = Math.floor(prices.length / 2);
+  const last1y = prices.slice(mid);
   histData[sym] = {
-    price1yAgo: prices[0],
-    high1y:     Math.max(...prices),
-    low1y:      Math.min(...prices),
+    price2yAgo: prices[0],
+    high2y:     Math.max(...prices),
+    low2y:      Math.min(...prices),
+    price1yAgo: prices[mid],
+    high1y:     Math.max(...last1y),
+    low1y:      Math.min(...last1y),
   };
 }
 
@@ -849,7 +860,7 @@ async function refreshAll() {
     renderGrid();
     renderMacro(); // BTC/ETH now available from fetchLive piggyback
     fetchMacro();  // dominance + fear & greed run in background (different endpoints)
-    setStatus('loading', 'Loading 1-year history...');
+    setStatus('loading', 'Loading 2-year history...');
     for (const sym of portfolio) {
       try { await fetchHistory(sym); } catch (e) { console.warn('hist error', sym, e); }
       await new Promise(r => setTimeout(r, 600));
@@ -953,6 +964,12 @@ function generateReport() {
     const yr1pctLabel = yr1pct !== 'N/A'
       ? (parseFloat(yr1pct) >= 0 ? '+' : '') + yr1pct + '%'
       : 'N/A';
+    const yr2pctRaw = (d.price && h.price2yAgo)
+      ? (d.price - h.price2yAgo) / h.price2yAgo * 100
+      : null;
+    const yr2pctLabel = yr2pctRaw != null
+      ? (yr2pctRaw >= 0 ? '+' : '') + yr2pctRaw.toFixed(2) + '%'
+      : 'N/A';
 
     out += `${sym} (${name})\n`;
     out += `  Current Price : ${fmtPrice(d.price)}\n`;
@@ -967,6 +984,10 @@ function generateReport() {
     out += `  1Y High       : ${fmtPrice(h.high1y)}\n`;
     out += `  1Y Low        : ${fmtPrice(h.low1y)}\n`;
     out += `  1Y Ago Price  : ${fmtPrice(h.price1yAgo)}\n`;
+    out += `  2-Year Change : ${yr2pctLabel}\n`;
+    out += `  2Y High       : ${fmtPrice(h.high2y)}\n`;
+    out += `  2Y Low        : ${fmtPrice(h.low2y)}\n`;
+    out += `  2Y Ago Price  : ${fmtPrice(h.price2yAgo)}\n`;
     out += `  Market Cap    : ${fmtBig(d.marketCap)}\n`;
     out += `  24h Volume    : ${fmtBig(d.vol24h)}\n`;
     out += '\n';
