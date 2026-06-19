@@ -1250,6 +1250,17 @@ function generateBriefing() {
   let out = `RANDY'S DAILY BRIEFING — ${now}\n`;
   out += `${'═'.repeat(50)}\n\n`;
 
+  // Data readiness check
+  const missing = [];
+  if (!Object.keys(liveData).length)  missing.push('crypto prices');
+  if (!macroData.btcPrice)            missing.push('macro/BTC data');
+  if (!Object.keys(stockData).length) missing.push('stock prices');
+  if (!newsItems.length)              missing.push('news headlines');
+  if (missing.length) {
+    out += `⚠ STILL LOADING: ${missing.join(', ')}\n`;
+    out += `Wait 30–60 seconds after the page opens, then tap Daily Briefing again for the full picture.\n\n`;
+  }
+
   // Portfolio snapshot
   let totalInv = 0, totalVal = 0, hasPos = false;
   portfolio.forEach(sym => {
@@ -1267,14 +1278,19 @@ function generateBriefing() {
       if (p) out += `  ${sym}: $${liveData[sym]?.price?.toFixed(4) || '--'}  ${p.pnl >= 0 ? '+' : ''}$${p.pnl.toFixed(2)} (${p.pct >= 0 ? '+' : ''}${p.pct.toFixed(1)}%)  24h: ${fmtPct(d.change24h)}\n`;
     });
     out += '\n';
+  } else if (!missing.includes('crypto prices')) {
+    out += `MY CRYPTO PORTFOLIO\n  No holdings entered — add qty & cost in the crypto cards.\n\n`;
   }
 
   // Market mood
   const m = macroData;
   out += `MARKET MOOD\n`;
   if (m.fearGreed != null) out += `  Fear & Greed: ${m.fearGreed}/100 — ${m.fearGreedLabel}\n`;
+  else out += `  Fear & Greed: (loading…)\n`;
   if (m.btcPrice) out += `  BTC: ${fmtPrice(m.btcPrice)}  ${m.btcChange24h != null ? fmtPct(m.btcChange24h) + ' 24h' : ''}\n`;
+  if (m.ethPrice) out += `  ETH: ${fmtPrice(m.ethPrice)}  ${m.ethChange24h != null ? fmtPct(m.ethChange24h) + ' 24h' : ''}\n`;
   if (m.btcDominance != null) out += `  BTC Dominance: ${m.btcDominance.toFixed(1)}%\n`;
+  if (m.totalMktCap) out += `  Total Crypto Market: ${fmtBig(m.totalMktCap)}\n`;
   out += '\n';
 
   // Biggest stock movers today
@@ -1286,15 +1302,32 @@ function generateBriefing() {
     out += `BIGGEST STOCK MOVES TODAY\n`;
     movers.forEach(sym => {
       const d = stockData[sym];
-      out += `  ${sym.padEnd(6)} ${fmtPrice(d.price)}  ${fmtPct(d.changePct)} today\n`;
+      const dir = d.changePct >= 0 ? '▲' : '▼';
+      out += `  ${dir} ${sym.padEnd(6)} ${fmtPrice(d.price)}  ${fmtPct(d.changePct)}\n`;
     });
     out += '\n';
+  } else {
+    out += `BIGGEST STOCK MOVES TODAY\n  (loading — check back in 30 sec)\n\n`;
   }
 
   // What congress is buying
   if (cBuysData.length) {
     out += `CONGRESS IS BUYING\n`;
-    out += `  ${cBuysData.slice(0, 8).map(d => d.sym).join('  ')}\n\n`;
+    cBuysData.slice(0, 8).forEach(d => {
+      const p = stockData[d.sym]?.price;
+      out += `  ${d.sym.padEnd(6)}${p ? ' $' + p.toFixed(2) : ''}\n`;
+    });
+    out += '\n';
+  }
+
+  // Supply chain alerts
+  if (scAlerts.length) {
+    out += `CONTRACT AWARDS DETECTED\n`;
+    scAlerts.slice(0, 4).forEach(a => {
+      out += `  ${a.primeName}: ${a.title.slice(0, 70)}\n`;
+      if (a.watchHits.length) out += `  ★ Your watchlist: ${a.watchHits.join(', ')}\n`;
+    });
+    out += '\n';
   }
 
   // Top news
