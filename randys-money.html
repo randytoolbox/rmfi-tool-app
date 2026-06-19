@@ -322,11 +322,11 @@
     <span id="mktStatus"></span>
   </div>
   <div class="add-row" style="margin-bottom:10px; padding:10px 16px; background:#0a1a2e;">
-    <span style="font-size:12px;font-weight:700;color:var(--muted);">&#128273; Backup API Key <span style="font-weight:400;color:#6aaeff;">(optional)</span>:</span>
-    <input id="tdKeyInput" type="text" placeholder="Optional: Twelve Data key — stocks load automatically without it"
+    <span style="font-size:12px;font-weight:700;color:var(--muted);">&#128273; Finnhub API Key <span style="font-weight:400;color:#6aaeff;">(free — for stocks + 2yr charts)</span>:</span>
+    <input id="tdKeyInput" type="text" placeholder="Paste free key from finnhub.io — no credit card, no daily limits"
       style="flex:1; background:var(--input-bg); border:1px solid var(--border); border-radius:8px; padding:7px 12px; font-size:12px; color:var(--text); min-width:200px; text-transform:none;"
       oninput="saveStockKey(this.value)" />
-    <span style="font-size:11px;color:var(--muted);">Stocks load via Yahoo Finance — no key needed</span>
+    <span style="font-size:11px;color:var(--muted);">Free at <b style="color:#6aaeff;">finnhub.io</b> — 2 min signup</span>
   </div>
   <div id="stockErrorMsg" style="display:none;"></div>
   <div class="coin-grid" id="stockGrid"></div>
@@ -525,10 +525,12 @@ const PRIME_KEYWORDS = [
   ['chevron','CVX'],
 ];
 
-let stockWatchlist = load('rm_stocks', DEFAULT_STOCKS);
-let stockData      = {};
-let stockAlerts    = load('rm_stockAlerts', {});
-let stockTriggered = {};
+let stockWatchlist   = load('rm_stocks', DEFAULT_STOCKS);
+let stockData        = {};
+let stockAlerts      = load('rm_stockAlerts', {});
+let stockTriggered   = {};
+let stockHistory     = load('rm_stockHistory', {});
+let lastHistoryFetch = load('rm_lastHistFetch', 0);
 
 // One-time migration: add defense/sector stocks to existing watchlists
 (function migrateStocks() {
@@ -845,6 +847,7 @@ async function refreshAll() {
     if (Date.now() - lastStockFetch >= STOCK_REFRESH_MS) {
       try { await fetchStocks(); renderStockGrid(); checkStockAlerts(); lastStockFetch = Date.now(); } catch(se) { console.warn('Stocks:', se); }
     }
+    fetchStockHistory(); // non-blocking — throttled to once/day
     fetchNews();      // throttled — 5 min
     fetchCongress();  // throttled — 6 hours
     document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
@@ -1306,79 +1309,139 @@ function updateMarketStatus() {
 async function fetchStocks() {
   if (!stockWatchlist.length) return;
   const errEl = document.getElementById('stockErrorMsg');
+  const syms = stockWatchlist.join(',');
 
-  // Primary: Yahoo Finance via allorigins proxy — no API key required
-  try {
-    const syms = stockWatchlist.join(',');
-    const yfUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(syms)}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,regularMarketDayHigh,regularMarketDayLow,fiftyTwoWeekHigh,fiftyTwoWeekLow,shortName`;
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(yfUrl)}`;
-    const res = await fetch(proxyUrl, { cache: 'no-store' });
-    if (!res.ok) throw new Error('Proxy ' + res.status);
-    const outer = await res.json();
-    if (outer.status?.http_code && outer.status.http_code !== 200) throw new Error('Yahoo ' + outer.status.http_code);
-    const data = JSON.parse(outer.contents);
-    const results = data?.quoteResponse?.result;
-    if (!results?.length) throw new Error('Empty response from Yahoo Finance');
-
-    let anyOk = false;
-    results.forEach(q => {
-      if (!q.regularMarketPrice) return;
-      anyOk = true;
-      stockData[q.symbol] = {
-        price:     q.regularMarketPrice,
-        change:    q.regularMarketChange    || 0,
-        changePct: q.regularMarketChangePercent || 0,
-        high52:    q.fiftyTwoWeekHigh || null,
-        low52:     q.fiftyTwoWeekLow  || null,
-        ytdPct:    null,
-        name:      q.shortName || STOCK_NAMES[q.symbol] || q.symbol,
-      };
-    });
-    if (!anyOk) throw new Error('No quotes in Yahoo Finance response');
-    if (errEl) errEl.style.display = 'none';
-    return; // success — skip Twelve Data
-  } catch (yfErr) {
-    console.warn('Yahoo Finance:', yfErr.message);
+  // Try Yahoo Finance via two CORS proxies (no API key needed)
+  const yfUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(syms)}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,fiftyTwoWeekHigh,fiftyTwoWeekLow,shortName`;
+  for (const mkProxy of [
+    u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+    u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  ]) {
+    try {
+      const res = await fetch(mkProxy(yfUrl), { cache: 'no-store' });
+      if (!res.ok) continue;
+      const text = await res.text();
+      const data = JSON.parse(text);
+      const results = data?.quoteResponse?.result;
+      if (!results?.length) continue;
+      let anyOk = false;
+      results.forEach(q => {
+        if (!q.regularMarketPrice) return;
+        anyOk = true;
+        stockData[q.symbol] = {
+          price:     q.regularMarketPrice,
+          change:    q.regularMarketChange       || 0,
+          changePct: q.regularMarketChangePercent || 0,
+          high52:    q.fiftyTwoWeekHigh || null,
+          low52:     q.fiftyTwoWeekLow  || null,
+          ytdPct:    null,
+          name:      q.shortName || STOCK_NAMES[q.symbol] || q.symbol,
+        };
+      });
+      if (anyOk) { if (errEl) errEl.style.display = 'none'; return; }
+    } catch(e) { console.warn('YF proxy:', e.message); }
   }
 
-  // Fallback: Twelve Data (uses saved API key; optional)
-  const apiKey = load('rm_tdKey', '');
-  if (!apiKey) {
-    if (errEl) { errEl.style.display='block'; errEl.textContent='⚠ Stock data temporarily unavailable — will retry in 5 min.'; }
-    return;
+  // Fallback: Finnhub — direct CORS, free key, no daily limit (finnhub.io)
+  const fnKey = load('rm_fnKey', '');
+  if (fnKey) {
+    try {
+      let anyOk = false;
+      for (const sym of stockWatchlist) {
+        try {
+          const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${fnKey}`);
+          if (!r.ok) continue;
+          const q = await r.json();
+          if (!q.c) continue;
+          anyOk = true;
+          stockData[sym] = {
+            price:     q.c,
+            change:    q.d  || 0,
+            changePct: q.dp || 0,
+            high52:    null,
+            low52:     null,
+            ytdPct:    null,
+            name:      STOCK_NAMES[sym] || sym,
+          };
+        } catch(se) { console.warn('Finnhub', sym, se.message); }
+        await new Promise(r => setTimeout(r, 150));
+      }
+      if (anyOk) { if (errEl) errEl.style.display = 'none'; return; }
+    } catch(e) { console.warn('Finnhub:', e.message); }
   }
-  try {
-    const syms = stockWatchlist.join(',');
-    const url  = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(syms)}&apikey=${apiKey}&dp=2`;
-    const res  = await fetch(url);
-    if (res.status === 429) {
-      lastStockFetch = Date.now();
-      if (errEl) { errEl.style.display='block'; errEl.textContent='⏳ Twelve Data daily limit reached (800 credits/day). Resets at midnight UTC (5pm Pacific).'; }
-      return;
-    }
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-    const entries = data.symbol ? { [data.symbol]: data } : data;
-    let anyOk = false;
-    Object.entries(entries).forEach(([sym, q]) => {
-      if (q.status === 'error' || !q.close) return;
-      anyOk = true;
-      stockData[sym] = {
-        price:     parseFloat(q.close),
-        change:    parseFloat(q.change    || 0),
-        changePct: parseFloat(q.percent_change || 0),
-        high52:    parseFloat(q.fifty_two_week?.high || 0) || null,
-        low52:     parseFloat(q.fifty_two_week?.low  || 0) || null,
-        ytdPct:    null,
-        name:      q.name || STOCK_NAMES[sym] || sym,
-      };
-    });
-    if (errEl) errEl.style.display = 'none';
-    if (!anyOk) throw new Error('No valid data from Twelve Data');
-  } catch(e) {
-    console.warn('Twelve Data:', e.message);
-    if (errEl) { errEl.style.display='block'; errEl.textContent='⚠ Stock data error: ' + e.message; }
+
+  // Nothing worked — prompt for Finnhub key
+  if (errEl) {
+    errEl.style.display = 'block';
+    errEl.innerHTML = fnKey
+      ? '⚠ Stock data temporarily unavailable — will retry in 5 min.'
+      : '🔑 Add a free <b><a href="https://finnhub.io" target="_blank" style="color:#6aaeff">Finnhub</a></b> API key above — sign up in 2 min, no credit card, no daily limits.';
   }
+}
+
+async function fetchStockHistory() {
+  const HIST_TTL = 24 * 60 * 60 * 1000;
+  if (Date.now() - lastHistoryFetch < HIST_TTL && Object.keys(stockHistory).length >= stockWatchlist.length) return;
+  const fnKey = load('rm_fnKey', '');
+  for (const sym of stockWatchlist) {
+    try {
+      let closes = null;
+      if (fnKey && !closes) {
+        const now = Math.floor(Date.now() / 1000);
+        const from = now - 2 * 365 * 24 * 3600;
+        const r = await fetch(`https://finnhub.io/api/v1/stock/candle?symbol=${sym}&resolution=W&from=${from}&to=${now}&token=${fnKey}`);
+        if (r.ok) { const d = await r.json(); if (d.s === 'ok' && d.c?.length) closes = d.c; }
+      }
+      if (!closes) {
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=2y&interval=1wk`;
+        for (const mkProxy of [
+          u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+          u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+        ]) {
+          try {
+            const r = await fetch(mkProxy(url), { cache: 'no-store' });
+            if (!r.ok) continue;
+            const d = await r.json();
+            const raw = d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close;
+            if (raw?.length) { closes = raw.filter(v => v != null); break; }
+          } catch(e) { /* try next */ }
+        }
+      }
+      if (closes?.length >= 8) stockHistory[sym] = closes;
+    } catch(e) { console.warn('StockHistory', sym, e.message); }
+    await new Promise(r => setTimeout(r, 200));
+  }
+  lastHistoryFetch = Date.now();
+  save('rm_stockHistory', stockHistory);
+  save('rm_lastHistFetch', lastHistoryFetch);
+  renderStockGrid();
+}
+
+function renderSparkline(sym) {
+  const prices = stockHistory[sym];
+  if (!prices || prices.length < 8) {
+    return '<div style="height:40px;opacity:0.25;font-size:9px;color:var(--muted);display:flex;align-items:center;padding:0 4px;">2-yr chart loading…</div>';
+  }
+  const W = 200, H = 42, P = 3;
+  const min = Math.min(...prices), max = Math.max(...prices);
+  const rng = max - min || 1;
+  const pts = prices.map((v, i) => {
+    const x = P + (i / (prices.length - 1)) * (W - P * 2);
+    const y = H - P - ((v - min) / rng) * (H - P * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const first = prices[0], last = prices[prices.length - 1];
+  const clr = last >= first ? '#26a69a' : '#ef5350';
+  const dotY = (H - P - ((last - min) / rng) * (H - P * 2)).toFixed(1);
+  const pct = ((last - first) / first * 100);
+  const pctLabel = (pct >= 0 ? '+' : '') + pct.toFixed(1) + '% 2yr';
+  return `<div>
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:42px;display:block;margin:4px 0 0;">
+      <polyline points="${pts}" fill="none" stroke="${clr}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
+      <circle cx="${(W - P).toFixed(1)}" cy="${dotY}" r="2.5" fill="${clr}"/>
+    </svg>
+    <div style="font-size:9px;color:${clr};text-align:right;margin-bottom:2px;padding-right:3px;">${pctLabel}</div>
+  </div>`;
 }
 
 // ── Congressional Trades (news-based via Google RSS) ──────────────────────────
@@ -1473,6 +1536,7 @@ function renderStockGrid() {
       <div class="ticker">${sym}</div>
       <div class="cname">${name}</div>
       <div class="price">${fmtPrice(d.price)}</div>
+      ${renderSparkline(sym)}
       <div class="row"><span class="label">Day</span><span class="val ${cls(d.changePct)}">${d.changePct != null ? fmtPct(d.changePct) : '--'}</span></div>
       <div class="row"><span class="label">Day $</span><span class="val ${cls(d.change)}">${d.change != null ? (d.change >= 0 ? '+$' : '-$') + Math.abs(d.change).toFixed(2) : '--'}</span></div>
       <div class="row"><span class="label">YTD</span><span class="val ${cls(d.ytdPct)}">${d.ytdPct != null ? fmtPct(d.ytdPct) : '--'}</span></div>
@@ -1504,9 +1568,11 @@ function addStock() {
 }
 
 function saveStockKey(val) {
-  save('rm_tdKey', val.trim());
-  lastStockFetch = 0; // allow immediate retry
+  save('rm_fnKey', val.trim());
+  lastStockFetch = 0;
+  lastHistoryFetch = 0; // force history re-fetch with new key
   fetchStocks().then(() => { lastStockFetch = Date.now(); renderStockGrid(); });
+  fetchStockHistory();
 }
 
 function removeStock(sym) {
@@ -1682,7 +1748,7 @@ setInterval(() => {
 if (Notification.permission === 'default') Notification.requestPermission();
 document.getElementById('addInput').addEventListener('keydown', e => { if (e.key === 'Enter') addCoin(); });
 document.getElementById('addStockInput').addEventListener('keydown', e => { if (e.key === 'Enter') addStock(); });
-const _savedKey = load('rm_tdKey', '');
+const _savedKey = load('rm_fnKey', '');
 if (_savedKey) document.getElementById('tdKeyInput').value = _savedKey;
 renderGrid();
 renderStockGrid();
