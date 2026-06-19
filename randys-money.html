@@ -339,6 +339,8 @@ let alertTargets  = load('rm_alertTargets', {});
 let triggeredAlerts = {};
 let arCountdownVal  = 60;
 let arEnabled       = true;
+let lastStockFetch  = 0;
+const STOCK_REFRESH_MS = 2 * 60 * 1000;
 
 const DEFAULT_STOCKS = ['SPY','QQQ','DIA','IWM'];
 const STOCK_NAMES = {
@@ -502,7 +504,9 @@ async function refreshAll() {
     document.getElementById('lastUpdated').textContent = 'Updated ' + now;
     setStatus('ok', 'Crypto loaded — fetching stocks...');
     checkAlerts();
-    try { await fetchStocks(); renderStockGrid(); checkStockAlerts(); } catch(se) { console.warn('Stocks:', se); }
+    if (Date.now() - lastStockFetch >= STOCK_REFRESH_MS) {
+      try { await fetchStocks(); renderStockGrid(); checkStockAlerts(); lastStockFetch = Date.now(); } catch(se) { console.warn('Stocks:', se); }
+    }
     fetchNews(); // throttled internally — only updates if 5+ min have passed
     document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
     setStatus('ok', 'All data loaded — ' + now);
@@ -820,6 +824,10 @@ async function fetchStocks() {
     const syms = stockWatchlist.join(',');
     const url  = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(syms)}&apikey=${apiKey}&dp=2`;
     const res  = await fetch(url);
+    if (res.status === 429) {
+      if (errEl) { errEl.style.display='block'; errEl.textContent='⏳ Rate limited — will auto-retry in 2 min'; }
+      return;
+    }
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
 
