@@ -367,6 +367,26 @@
     <div class="news-empty">Click &#8635; Scan to load — discovers what senators &amp; representatives are actively buying.</div>
   </div>
 
+  <!-- CONGRESS ALL-STARS LEADERBOARD -->
+  <div class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+    <span>&#127942; Congress All-Stars <span style="font-size:10px;color:var(--muted);font-weight:400;">— ranked by 1-yr return on STOCK Act purchases &bull; House &amp; Senate</span></span>
+    <button class="btn btn-sm" onclick="fetchCongressAllStars(true)" style="background:#2a1a4e;color:#d4b4ff;border:1px solid #4a2a8e;">&#8635; Load Rankings</button>
+  </div>
+  <div id="congAllStarsStatus" style="font-size:12px;color:var(--muted);padding:4px 0 6px;min-height:16px;"></div>
+  <div id="congAllStarsList" style="margin-bottom:10px;">
+    <div class="news-empty">Click "Load Rankings" — pulls all STOCK Act purchase disclosures, calculates returns vs. today. Takes ~1–2 min the first time, cached 24 hrs.</div>
+  </div>
+
+  <!-- FOLLOWED MEMBERS FEED -->
+  <div id="followedPicksWrap" style="margin-bottom:28px;">
+    <div class="section-label" style="margin-top:8px;">
+      <span style="color:#f0c040;">&#9733; Followed Members — Recent Buys</span>
+    </div>
+    <div id="followedPicksList">
+      <div class="news-empty">Follow members above to track their purchases here.</div>
+    </div>
+  </div>
+
   <!-- SUPPLY CHAIN INTELLIGENCE -->
   <div class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
     <span>&#128279; Supply Chain Intelligence <span style="font-size:10px;color:var(--muted);font-weight:400;">— contract awards &rarr; supplier impact</span></span>
@@ -565,6 +585,11 @@ let congFilter        = 'all';
 let cBuysData      = load('rm_cBuys', []);
 let lastCBuysFetch = load('rm_cBuysTs', 0);
 const CBUYS_TTL    = 4 * 60 * 60 * 1000; // 4 hours
+
+let congAllStars      = load('rm_congAllStars', []);
+let lastCongAllStars  = load('rm_congAllStarsTs', 0);
+let followedMembers   = load('rm_followed', []);
+const CONG_ALLSTARS_TTL = 24 * 60 * 60 * 1000;
 let scAlerts          = []; // supply chain contract alerts
 let macroData         = {}; // BTC, ETH, dominance, fear & greed, total market cap
 let holdings          = load('rm_holdings', {}); // { XRP: {qty:500, cost:0.86}, ... }
@@ -1131,6 +1156,22 @@ async function generateReport() {
       out += `  From High  : ${fromHigh != null ? (parseFloat(fromHigh) >= 0 ? '+' : '') + fromHigh + '%' : '--'}\n`;
       out += '\n';
     });
+  }
+
+  if (followedMembers.length && congAllStars.length) {
+    const followedData = congAllStars.filter(m => followedMembers.includes(m.name));
+    if (followedData.length) {
+      out += `\nCONGRESS ALL-STARS — FOLLOWED MEMBERS\n`;
+      out += `${'─'.repeat(50)}\n`;
+      followedData.forEach(m => {
+        out += `${m.name} (${m.chamber}) — avg return: ${m.avgReturn >= 0 ? '+' : ''}${m.avgReturn.toFixed(1)}%  |  ${m.tradeCount} purchases tracked\n`;
+        (m.recentPicks || []).slice(0, 6).forEach(p => {
+          const retStr = p.returnPct != null ? `  return: ${p.returnPct >= 0 ? '+' : ''}${p.returnPct.toFixed(1)}%` : '';
+          out += `  ${p.sym.padEnd(6)} bought ${p.date}${retStr}${p.currentPrice ? '  now: ' + fmtPrice(p.currentPrice) : ''}\n`;
+        });
+        out += '\n';
+      });
+    }
   }
 
   if (cBuysData.length) {
@@ -1814,6 +1855,253 @@ function addCongressPick(sym) {
   fetchStocks().then(() => renderStockGrid());
 }
 
+// ── Congress All-Stars: rank members by actual STOCK Act purchase returns ──────
+async function fetchCongressAllStars(force = false) {
+  if (!force && congAllStars.length && Date.now() - lastCongAllStars < CONG_ALLSTARS_TTL) {
+    renderCongressAllStars();
+    return;
+  }
+  const statusEl = document.getElementById('congAllStarsStatus');
+  const listEl   = document.getElementById('congAllStarsList');
+  const setS = msg => { if (statusEl) statusEl.textContent = msg; };
+
+  if (listEl) listEl.innerHTML = '';
+  setS('Fetching House STOCK Act disclosures...');
+
+  const HOUSE_URL  = 'https://house-stock-watcher-data.s3-us-east-2.amazonaws.com/data/all_transactions.json';
+  const SENATE_URL = 'https://senate-stock-watcher-data.s3-us-east-2.amazonaws.com/aggregate/all_transactions.json';
+  let allTrades = [];
+
+  for (const [dataUrl, chamber] of [[HOUSE_URL, 'House'], [SENATE_URL, 'Senate']]) {
+    setS(`Fetching ${chamber} disclosures...`);
+    for (const mkP of [
+      u => u,
+      u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+      u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    ]) {
+      try {
+        const res = await fetch(mkP(dataUrl), { signal: AbortSignal.timeout(30000) });
+        if (!res.ok) continue;
+        const raw = await res.json();
+        const trades = Array.isArray(raw) ? raw : (raw.data || raw.transactions || []);
+        trades.forEach(t => { t._chamber = chamber; });
+        allTrades = allTrades.concat(trades);
+        break;
+      } catch(e) {}
+    }
+  }
+
+  if (!allTrades.length) {
+    setS('Could not load STOCK Act data. Try again in a moment.');
+    return;
+  }
+
+  setS(`Loaded ${allTrades.length.toLocaleString()} disclosures. Filtering last 12 months...`);
+
+  const cutoff = Date.now() - 365 * 24 * 60 * 60 * 1000;
+  const SKIP = new Set(['N/A','--','NA','NONE','ETF']);
+
+  const purchases = allTrades.filter(t => {
+    const type = (t.type || t.transaction_type || '').toLowerCase();
+    if (!type.includes('purchase') && !type.includes('buy')) return false;
+    const dateStr = t.transaction_date || t.transactionDate || t.date || '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime()) || d.getTime() < cutoff) return false;
+    const sym = (t.ticker || t.symbol || '').replace(/[$\s]/g, '').toUpperCase();
+    if (!sym || SKIP.has(sym) || sym.length < 1 || sym.length > 5) return false;
+    t._sym = sym;
+    t._dateStr = dateStr;
+    t._dateTs  = d.getTime();
+    t._name    = (t.representative || t.senator || t.name || '').trim();
+    return !!t._name;
+  });
+
+  // Group by member, keep top 40 most active (limits downstream API calls)
+  const byMember = {};
+  purchases.forEach(t => {
+    if (!byMember[t._name]) byMember[t._name] = { name: t._name, chamber: t._chamber, trades: [] };
+    byMember[t._name].trades.push(t);
+  });
+  const topTraders = Object.values(byMember)
+    .filter(m => m.trades.length >= 3)
+    .sort((a, b) => b.trades.length - a.trades.length)
+    .slice(0, 40);
+
+  const uniqueTickers = [...new Set(topTraders.flatMap(m => m.trades.map(t => t._sym)))];
+  setS(`Fetching current prices for ${uniqueTickers.length} stocks...`);
+
+  // Batch current prices via Yahoo Finance
+  const currentPrices = {};
+  for (let i = 0; i < uniqueTickers.length; i += 10) {
+    const chunk = uniqueTickers.slice(i, i + 10).join(',');
+    const yfUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(chunk)}&fields=regularMarketPrice`;
+    for (const mkP of [
+      u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+      u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    ]) {
+      try {
+        const res = await fetch(mkP(yfUrl), { signal: AbortSignal.timeout(8000) });
+        if (!res.ok) continue;
+        const data = await res.json();
+        (data?.quoteResponse?.result || []).forEach(r => {
+          if (r.regularMarketPrice) currentPrices[r.symbol] = r.regularMarketPrice;
+        });
+        break;
+      } catch(e) {}
+    }
+    await new Promise(r => setTimeout(r, 250));
+  }
+
+  // Fetch 1-year weekly price history per ticker
+  const p1 = Math.floor(cutoff / 1000);
+  const p2 = Math.floor(Date.now() / 1000);
+  const priceHistory = {};
+  let histDone = 0;
+
+  for (const sym of uniqueTickers) {
+    const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?period1=${p1}&period2=${p2}&interval=1wk`;
+    for (const mkP of [
+      u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+      u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    ]) {
+      try {
+        const res = await fetch(mkP(chartUrl), { signal: AbortSignal.timeout(8000) });
+        if (!res.ok) continue;
+        const data = await res.json();
+        const result = data?.chart?.result?.[0];
+        if (!result) continue;
+        const tss    = result.timestamp || [];
+        const closes = result.indicators?.quote?.[0]?.close || [];
+        priceHistory[sym] = tss
+          .map((ts, i) => ({ ts: ts * 1000, close: closes[i] }))
+          .filter(p => p.close != null && p.close > 0);
+        break;
+      } catch(e) {}
+    }
+    histDone++;
+    if (histDone % 5 === 0 || histDone === uniqueTickers.length) {
+      setS(`Fetching price history... (${histDone} / ${uniqueTickers.length} stocks)`);
+    }
+    await new Promise(r => setTimeout(r, 200));
+  }
+
+  setS('Calculating returns and ranking...');
+
+  const ranked = topTraders.map(m => {
+    const enriched = m.trades.map(t => {
+      const hist = priceHistory[t._sym] || [];
+      let purchasePrice = null;
+      const before = hist.filter(p => p.ts <= t._dateTs + 8 * 24 * 3600 * 1000);
+      if (before.length) purchasePrice = before[before.length - 1].close;
+      else if (hist.length) purchasePrice = hist[0].close;
+      const currentPrice = currentPrices[t._sym] || null;
+      const returnPct = purchasePrice && currentPrice
+        ? (currentPrice - purchasePrice) / purchasePrice * 100
+        : null;
+      return { sym: t._sym, date: t._dateStr, dateTs: t._dateTs, purchasePrice, currentPrice, returnPct };
+    });
+
+    const withReturns = enriched.filter(t => t.returnPct != null);
+    if (!withReturns.length) return null;
+    const avgReturn  = withReturns.reduce((s, t) => s + t.returnPct, 0) / withReturns.length;
+    const bestTrade  = withReturns.reduce((b, t) => t.returnPct > (b?.returnPct ?? -Infinity) ? t : b, null);
+    const recentPicks = [...enriched].sort((a, b) => b.dateTs - a.dateTs).slice(0, 6);
+
+    return { name: m.name, chamber: m.chamber, tradeCount: m.trades.length, avgReturn, bestTrade, recentPicks };
+  }).filter(Boolean).sort((a, b) => b.avgReturn - a.avgReturn);
+
+  congAllStars     = ranked.slice(0, 20);
+  lastCongAllStars = Date.now();
+  save('rm_congAllStars',    congAllStars);
+  save('rm_congAllStarsTs',  lastCongAllStars);
+  setS('');
+  renderCongressAllStars();
+}
+
+function renderCongressAllStars() {
+  const listEl = document.getElementById('congAllStarsList');
+  if (!listEl) return;
+  if (!congAllStars.length) {
+    listEl.innerHTML = '<div class="news-empty">Click "Load Rankings" to rank members by their 1-year trading returns.</div>';
+    return;
+  }
+  const followedSet = new Set(followedMembers);
+  const medals = ['🥇','🥈','🥉'];
+  const cards = congAllStars.map((m, i) => {
+    const isFollowed = followedSet.has(m.name);
+    const retColor   = m.avgReturn >= 0 ? 'var(--good)' : 'var(--bad)';
+    const rank       = medals[i] || `#${i + 1}`;
+    const best       = m.bestTrade ? `🏆 Best: ${m.bestTrade.sym} ${m.bestTrade.returnPct >= 0 ? '+' : ''}${m.bestTrade.returnPct.toFixed(0)}%` : '';
+    const safeName   = m.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `<div style="background:var(--card-bg);border:1.5px solid ${isFollowed ? '#f0c040' : 'var(--border)'};border-radius:10px;padding:12px 14px;flex:1;min-width:175px;max-width:215px;display:flex;flex-direction:column;gap:3px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:14px;">${rank}</span>
+        ${isFollowed ? '<span style="font-size:10px;color:#f0c040;">★ Following</span>' : ''}
+      </div>
+      <div style="font-size:12px;font-weight:700;color:var(--text);line-height:1.3;">${m.name}</div>
+      <div style="font-size:10px;color:var(--muted);">${m.chamber} · ${m.tradeCount} purchases</div>
+      <div style="font-size:22px;font-weight:800;color:${retColor};margin:2px 0;">${m.avgReturn >= 0 ? '+' : ''}${m.avgReturn.toFixed(1)}%</div>
+      <div style="font-size:9px;color:var(--muted);">avg return on all buys</div>
+      ${best ? `<div style="font-size:10px;color:var(--good);margin-top:2px;">${best}</div>` : ''}
+      <button onclick="${isFollowed ? `unfollowMember('${safeName}')` : `followMember('${safeName}')`}"
+        style="margin-top:8px;padding:5px 0;font-size:11px;border-radius:6px;border:1px solid ${isFollowed ? '#f0c040' : 'var(--border)'};background:${isFollowed ? '#2a2000' : 'var(--input-bg)'};color:${isFollowed ? '#f0c040' : 'var(--text)'};cursor:pointer;width:100%;font-weight:600;">
+        ${isFollowed ? '★ Unfollow' : '★ Follow'}
+      </button>
+    </div>`;
+  }).join('');
+
+  listEl.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px;padding:4px 0;">${cards}</div>
+    <div style="font-size:10px;color:var(--muted);padding:8px 0 0;">Returns = actual STOCK Act purchase price vs. today. Cached 24 hrs. Source: housestockwatcher.com · senatestockwatcher.com</div>`;
+
+  renderFollowedPicks();
+}
+
+function renderFollowedPicks() {
+  const el = document.getElementById('followedPicksList');
+  if (!el) return;
+  if (!followedMembers.length) {
+    el.innerHTML = '<div class="news-empty">Follow members above to track their purchases here.</div>';
+    return;
+  }
+  const followedData = congAllStars.filter(m => followedMembers.includes(m.name));
+  const allPicks = [];
+  followedData.forEach(m => (m.recentPicks || []).forEach(p => allPicks.push({ member: m.name, ...p })));
+  allPicks.sort((a, b) => b.dateTs - a.dateTs);
+  if (!allPicks.length) { el.innerHTML = '<div class="news-empty">No purchase data loaded yet. Click "Load Rankings" first.</div>'; return; }
+
+  el.innerHTML = allPicks.slice(0, 20).map(p => {
+    const retColor = p.returnPct != null ? (p.returnPct >= 0 ? 'var(--good)' : 'var(--bad)') : 'var(--muted)';
+    const retStr   = p.returnPct != null ? `${p.returnPct >= 0 ? '+' : ''}${p.returnPct.toFixed(1)}%` : '--';
+    const inWatch  = stockWatchlist.includes(p.sym);
+    const lastName = p.member.split(' ').slice(-1)[0];
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border);flex-wrap:wrap;">
+      <span style="font-size:11px;color:#f0c040;font-weight:700;min-width:80px;">${lastName}</span>
+      <span style="font-size:15px;font-weight:800;color:var(--accent);min-width:55px;">${p.sym}</span>
+      <span style="font-size:11px;color:var(--muted);flex:1;">${p.date}</span>
+      <span style="font-size:13px;font-weight:700;color:${retColor};min-width:55px;text-align:right;">${retStr}</span>
+      ${p.currentPrice ? `<span style="font-size:11px;color:var(--muted);">$${p.currentPrice.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>` : ''}
+      <button onclick="addCongressPick('${p.sym}')"
+        style="padding:4px 10px;font-size:10px;border-radius:5px;border:1px solid ${inWatch ? 'var(--good)' : 'var(--border)'};background:${inWatch ? '#132613' : 'var(--input-bg)'};color:${inWatch ? 'var(--good)' : 'var(--text)'};cursor:pointer;">
+        ${inWatch ? '✓ Watching' : '+ Watch'}
+      </button>
+    </div>`;
+  }).join('');
+}
+
+function followMember(name) {
+  if (!followedMembers.includes(name)) {
+    followedMembers.push(name);
+    save('rm_followed', followedMembers);
+    renderCongressAllStars();
+  }
+}
+
+function unfollowMember(name) {
+  followedMembers = followedMembers.filter(n => n !== name);
+  save('rm_followed', followedMembers);
+  renderCongressAllStars();
+}
+
 function renderStockGrid() {
   updateMarketStatus();
   const grid = document.getElementById('stockGrid');
@@ -2053,6 +2341,7 @@ renderGrid();
 renderStockGrid();
 renderSupplyChain();
 renderCongressBuys();
+renderCongressAllStars();
 refreshAll();
 // Dedicated news refresh every 5 minutes
 setInterval(() => fetchNews(), NEWS_TTL);
