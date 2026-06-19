@@ -164,6 +164,14 @@
   /* Auto-refresh countdown */
   #arCountdown { font-size:12px; color:var(--good); }
   #arCountdown.paused { color:var(--muted); }
+
+  /* Stock cards — blue accent to distinguish from crypto */
+  .coin-card.stock-card { border-top: 3px solid #2a5090; }
+  .stock-card .ticker { color: #6aaeff !important; }
+  #mktStatus { font-size:11px; font-weight:700; border-radius:6px; padding:2px 8px; margin-left:10px; vertical-align:middle; }
+  #mktStatus.open  { background:#0d2d1a; color:var(--good); border:1px solid var(--good); }
+  #mktStatus.closed { background:#1a1a2a; color:var(--muted); border:1px solid var(--border); }
+  #stockErrorMsg { font-size:12px; color:var(--bad); padding:10px 0; }
 </style>
 </head>
 <body>
@@ -202,6 +210,20 @@
     <input id="addInput" placeholder="e.g. BTC, SOL..." maxlength="12" />
     <button class="btn btn-blue btn-sm" onclick="addCoin()">Add</button>
     <span class="hint">Supported: BTC, ETH, SOL, ADA, DOT, LINK, LTC, MATIC, TRX, XLM, and more</span>
+  </div>
+
+  <!-- STOCK WATCHLIST -->
+  <div class="section-label" style="margin-top:10px;">
+    US Stock Market — Research Watchlist
+    <span id="mktStatus"></span>
+  </div>
+  <div id="stockErrorMsg" style="display:none;"></div>
+  <div class="coin-grid" id="stockGrid"></div>
+  <div class="add-row" style="margin-bottom:28px;">
+    <span style="font-size:13px;font-weight:700;color:var(--muted);">Add a stock:</span>
+    <input id="addStockInput" placeholder="e.g. AAPL, TSLA..." maxlength="10" style="text-transform:uppercase;" />
+    <button class="btn btn-blue btn-sm" onclick="addStock()">Add</button>
+    <span class="hint">Any US ticker — AAPL, MSFT, NVDA, TSLA, XLE, JPM, GLD...</span>
   </div>
 
   <!-- MARKET SCANNER -->
@@ -286,6 +308,24 @@ let alertTargets  = load('rm_alertTargets', {});
 let triggeredAlerts = {};
 let arCountdownVal  = 60;
 let arEnabled       = true;
+
+const DEFAULT_STOCKS = ['SPY','QQQ','DIA','IWM'];
+const STOCK_NAMES = {
+  SPY:'S&P 500 ETF', QQQ:'Nasdaq 100 ETF', DIA:'Dow Jones ETF', IWM:'Russell 2000 ETF',
+  AAPL:'Apple', MSFT:'Microsoft', NVDA:'NVIDIA', TSLA:'Tesla', AMZN:'Amazon',
+  GOOGL:'Alphabet (Google)', META:'Meta Platforms', JPM:'JPMorgan Chase',
+  BAC:'Bank of America', WFC:'Wells Fargo', GS:'Goldman Sachs',
+  XLE:'Energy Select ETF', XLF:'Financial ETF', XLI:'Industrial ETF',
+  XLK:'Technology ETF', XLV:'Health Care ETF', XLU:'Utilities ETF',
+  GLD:'Gold ETF', SLV:'Silver ETF', USO:'Oil ETF',
+  AMGN:'Amgen', JNJ:'Johnson & Johnson', PFE:'Pfizer',
+  F:'Ford Motor', GM:'General Motors', BA:'Boeing', CAT:'Caterpillar',
+  DIS:'Disney', NFLX:'Netflix', UBER:'Uber',
+};
+let stockWatchlist = load('rm_stocks', DEFAULT_STOCKS);
+let stockData      = {};
+let stockAlerts    = load('rm_stockAlerts', {});
+let stockTriggered = {};
 
 // ── Formatting ─────────────────────────────────────────────────────────────────
 function fmtPrice(n) {
@@ -409,8 +449,11 @@ async function refreshAll() {
     renderGrid();
     const now = new Date().toLocaleTimeString();
     document.getElementById('lastUpdated').textContent = 'Updated ' + now;
-    setStatus('ok', 'All data loaded — ' + now);
+    setStatus('ok', 'Crypto loaded — fetching stocks...');
     checkAlerts();
+    try { await fetchStocks(); renderStockGrid(); checkStockAlerts(); } catch(se) { console.warn('Stocks:', se); }
+    document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+    setStatus('ok', 'All data loaded — ' + now);
     arCountdownVal = 60;
   } catch (e) {
     setStatus('error', 'Error: ' + e.message + '. CoinGecko may be rate-limiting. Try again in a minute.');
@@ -499,8 +542,28 @@ function generateReport() {
     out += '\n';
   }
 
+  if (stockWatchlist.length) {
+    const open = isMarketOpen();
+    out += `\nUS STOCK WATCHLIST — RESEARCH\n`;
+    out += `${'─'.repeat(50)}\n`;
+    out += `Market Status: ${open ? 'OPEN' : 'CLOSED (9:30am–4:00pm ET weekdays)'}\n\n`;
+    stockWatchlist.forEach(sym => {
+      const d = stockData[sym] || {};
+      const name = d.name || STOCK_NAMES[sym] || sym;
+      const fromHigh = d.price && d.high52 ? ((d.price - d.high52) / d.high52 * 100).toFixed(2) : null;
+      out += `${sym} (${name})\n`;
+      out += `  Price      : ${fmtPrice(d.price)}\n`;
+      out += `  Day Change : ${d.changePct != null ? fmtPct(d.changePct) : '--'}\n`;
+      out += `  YTD        : ${d.ytdPct != null ? fmtPct(d.ytdPct) : '--'}\n`;
+      out += `  52W High   : ${fmtPrice(d.high52)}\n`;
+      out += `  52W Low    : ${fmtPrice(d.low52)}\n`;
+      out += `  From High  : ${fromHigh != null ? (parseFloat(fromHigh) >= 0 ? '+' : '') + fromHigh + '%' : '--'}\n`;
+      out += '\n';
+    });
+  }
+
   out += `${'═'.repeat(50)}\n`;
-  out += `Note: Data from CoinGecko. Paste this into Claude for analysis.\n`;
+  out += `Note: Crypto from CoinGecko · Stocks from Yahoo Finance. Paste into Claude for analysis.\n`;
 
   document.getElementById('reportBox').textContent = out;
 }
@@ -563,6 +626,163 @@ function checkAlerts() {
       body: h.replace(/<[^>]+>/g, ''),
     }));
   }
+}
+
+// ── Stock Market ──────────────────────────────────────────────────────────────
+function isMarketOpen() {
+  const et = new Date(new Date().toLocaleString('en-US', {timeZone:'America/New_York'}));
+  const day = et.getDay();
+  if (day === 0 || day === 6) return false;
+  const mins = et.getHours() * 60 + et.getMinutes();
+  return mins >= 570 && mins < 960; // 9:30am–4:00pm ET
+}
+
+function updateMarketStatus() {
+  const el = document.getElementById('mktStatus');
+  if (!el) return;
+  const open = isMarketOpen();
+  el.textContent = open ? 'OPEN' : 'CLOSED';
+  el.className = open ? 'open' : 'closed';
+}
+
+async function fetchOneStock(sym) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1y&includePrePost=false`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(res.status);
+  const json = await res.json();
+  const result = json?.chart?.result?.[0];
+  if (!result) throw new Error('no data');
+  const meta   = result.meta;
+  const ohlc   = result.indicators?.quote?.[0] || {};
+  const highs  = (ohlc.high  || []).filter(v => v != null);
+  const lows   = (ohlc.low   || []).filter(v => v != null);
+  const closes = (ohlc.close || []).filter(v => v != null);
+  // YTD: find first trading day of this year
+  const yearStartTs = new Date(new Date().getFullYear(), 0, 1).getTime() / 1000;
+  const timestamps  = result.timestamp || [];
+  const ytdIdx      = timestamps.findIndex(t => t >= yearStartTs);
+  const ytdClose    = ytdIdx >= 0 ? (ohlc.close || [])[ytdIdx] : null;
+  const price       = meta.regularMarketPrice;
+  return {
+    price,
+    change:    price - (meta.chartPreviousClose || price),
+    changePct: meta.chartPreviousClose ? ((price - meta.chartPreviousClose) / meta.chartPreviousClose) * 100 : 0,
+    high52:    highs.length  ? Math.max(...highs)  : meta.fiftyTwoWeekHigh,
+    low52:     lows.length   ? Math.min(...lows)   : meta.fiftyTwoWeekLow,
+    ytdPct:    ytdClose ? ((price - ytdClose) / ytdClose) * 100 : null,
+    name:      meta.shortName || STOCK_NAMES[sym] || sym,
+  };
+}
+
+async function fetchStocks() {
+  const errEl = document.getElementById('stockErrorMsg');
+  if (!stockWatchlist.length) return;
+  let anyOk = false;
+  for (const sym of stockWatchlist) {
+    try {
+      stockData[sym] = await fetchOneStock(sym);
+      anyOk = true;
+    } catch(e) {
+      console.warn('Stock fetch failed:', sym, e.message);
+      if (e instanceof TypeError) {
+        // Network/CORS error — stop trying, show message
+        if (errEl) { errEl.style.display='block'; errEl.textContent='Stock data unavailable — Yahoo Finance may be blocking browser requests. Prices will retry on next refresh.'; }
+        break;
+      }
+    }
+    await new Promise(r => setTimeout(r, 250));
+  }
+  if (anyOk && errEl) errEl.style.display = 'none';
+}
+
+function renderStockGrid() {
+  updateMarketStatus();
+  const grid = document.getElementById('stockGrid');
+  if (!grid) return;
+  if (!stockWatchlist.length) {
+    grid.innerHTML = '<div style="color:var(--muted);font-size:14px;">No stocks yet — add a ticker below.</div>';
+    return;
+  }
+  grid.innerHTML = stockWatchlist.map(sym => {
+    const d = stockData[sym] || {};
+    const loading = !d.price;
+    const name = d.name || STOCK_NAMES[sym] || sym;
+    const alertTarget = stockAlerts[sym];
+    const hitTarget = alertTarget && d.price && d.price >= parseFloat(alertTarget);
+    const fromHigh = d.price && d.high52 ? ((d.price - d.high52) / d.high52) * 100 : null;
+
+    return `<div class="coin-card stock-card${loading ? ' loading' : ''}${hitTarget ? ' alert-hit' : ''}">
+      <button class="remove-btn" onclick="removeStock('${sym}')" title="Remove">&#x2715;</button>
+      <div class="ticker">${sym}</div>
+      <div class="cname">${name}</div>
+      <div class="price">${fmtPrice(d.price)}</div>
+      <div class="row"><span class="label">Day</span><span class="val ${cls(d.changePct)}">${d.changePct != null ? fmtPct(d.changePct) : '--'}</span></div>
+      <div class="row"><span class="label">Day $</span><span class="val ${cls(d.change)}">${d.change != null ? (d.change >= 0 ? '+$' : '-$') + Math.abs(d.change).toFixed(2) : '--'}</span></div>
+      <div class="row"><span class="label">YTD</span><span class="val ${cls(d.ytdPct)}">${d.ytdPct != null ? fmtPct(d.ytdPct) : '--'}</span></div>
+      <div class="row"><span class="label">52W High</span><span class="val">${fmtPrice(d.high52)}</span></div>
+      <div class="row"><span class="label">52W Low</span><span class="val">${fmtPrice(d.low52)}</span></div>
+      <div class="row"><span class="label">From High</span><span class="val ${cls(fromHigh)}">${fromHigh != null ? fmtPct(fromHigh) : '--'}</span></div>
+      <div class="alert-row">
+        <span class="alert-label">&#128276; Alert at:</span>
+        <input class="alert-input${alertTarget ? ' active' : ''}" type="number" step="any" min="0"
+          value="${alertTarget || ''}" placeholder="$ target"
+          onchange="setStockAlert('${sym}', this.value)"
+          onclick="event.stopPropagation()" />
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function addStock() {
+  const inp = document.getElementById('addStockInput');
+  const sym = inp.value.trim().toUpperCase().replace(/[^A-Z0-9.\-]/g,'');
+  if (!sym) return;
+  if (!stockWatchlist.includes(sym)) {
+    stockWatchlist.push(sym);
+    save('rm_stocks', stockWatchlist);
+    renderStockGrid();
+    fetchOneStock(sym).then(d => { stockData[sym] = d; renderStockGrid(); }).catch(() => {});
+  }
+  inp.value = '';
+}
+
+function removeStock(sym) {
+  stockWatchlist = stockWatchlist.filter(s => s !== sym);
+  delete stockData[sym];
+  save('rm_stocks', stockWatchlist);
+  renderStockGrid();
+}
+
+function setStockAlert(sym, val) {
+  const v = String(val).trim();
+  if (v === '' || isNaN(parseFloat(v))) {
+    delete stockAlerts[sym];
+    delete stockTriggered[sym];
+  } else {
+    stockAlerts[sym] = v;
+    delete stockTriggered[sym];
+  }
+  save('rm_stockAlerts', stockAlerts);
+  renderStockGrid();
+}
+
+function checkStockAlerts() {
+  const hits = [];
+  stockWatchlist.forEach(sym => {
+    const target = stockAlerts[sym];
+    if (!target) return;
+    const d = stockData[sym];
+    if (!d?.price) return;
+    if (d.price >= parseFloat(target) && !stockTriggered[sym]) {
+      stockTriggered[sym] = true;
+      hits.push(`<b>${sym}</b> hit ${fmtPrice(d.price)} — target: ${fmtPrice(parseFloat(target))}`);
+    }
+  });
+  if (!hits.length) return;
+  playAlertSound();
+  showAlertToast(hits);
+  if (Notification.permission === 'granted')
+    hits.forEach(h => new Notification("Randy's Money — Stock Alert!", { body: h.replace(/<[^>]+>/g,'') }));
 }
 
 function copyReport() {
@@ -698,7 +918,9 @@ setInterval(() => {
 // ── Init ──────────────────────────────────────────────────────────────────────
 if (Notification.permission === 'default') Notification.requestPermission();
 document.getElementById('addInput').addEventListener('keydown', e => { if (e.key === 'Enter') addCoin(); });
+document.getElementById('addStockInput').addEventListener('keydown', e => { if (e.key === 'Enter') addStock(); });
 renderGrid();
+renderStockGrid();
 refreshAll();
 </script>
 </body>
