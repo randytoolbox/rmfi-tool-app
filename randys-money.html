@@ -48,7 +48,24 @@
   .btn-green { background: linear-gradient(135deg, #3dd68c, #22a865); color: #001a0d; }
   .btn-sm { padding: 5px 12px; font-size: 12px; }
 
-  .main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 60px; }
+  .main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 90px; }
+
+  /* ── Bottom navigation bar ─────────────────────────── */
+  #bottomNav {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 999;
+    background: #06111e; border-top: 1px solid #1e3a5f;
+    display: flex; justify-content: space-around; align-items: center;
+    padding: 6px 4px env(safe-area-inset-bottom, 6px);
+  }
+  #bottomNav button {
+    background: none; border: none; color: #557799;
+    font-size: 20px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
+    padding: 4px 10px; border-radius: 8px; flex: 1;
+    transition: color .15s, background .15s;
+  }
+  #bottomNav button span { font-size: 9px; font-weight: 700; letter-spacing: .3px; }
+  #bottomNav button:active { background: #1e3a5f; color: #6aaeff; }
 
   /* Coin Cards */
   .coin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; }
@@ -300,7 +317,7 @@
 
 <div class="main">
 
-  <div class="section-label" style="margin-top:4px;">Your Portfolio</div>
+  <div id="sec-crypto" class="section-label" style="margin-top:4px;">Your Portfolio</div>
   <div id="portfolioSummary">
     <div class="ps-row">
       <div><div class="ps-label">Total Invested</div><div class="ps-val" id="psTotalInvested">--</div></div>
@@ -318,7 +335,7 @@
   </div>
 
   <!-- STOCK WATCHLIST -->
-  <div class="section-label" style="margin-top:10px;">
+  <div id="sec-stocks" class="section-label" style="margin-top:10px;">
     US Stock Market — Research Watchlist
     <span id="mktStatus"></span>
   </div>
@@ -339,7 +356,7 @@
   </div>
 
   <!-- NEWS FEED -->
-  <div class="section-label" style="margin-top:10px; display:flex; align-items:center; justify-content:space-between;">
+  <div id="sec-news" class="section-label" style="margin-top:10px; display:flex; align-items:center; justify-content:space-between;">
     <span>&#128240; Market News Feed <span style="font-size:10px;color:var(--muted);font-weight:400;">— auto-updates every 5 min</span></span>
     <button class="btn btn-sm" id="newsRefreshBtn" onclick="fetchNews(true)" style="background:#1e4060;color:var(--text);border:1px solid var(--border);">&#8635; Refresh News</button>
   </div>
@@ -348,7 +365,7 @@
   </div>
 
   <!-- CONGRESSIONAL TRADES -->
-  <div class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+  <div id="sec-congress" class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
     <span>&#127963; Congress Trades <span style="font-size:10px;color:var(--muted);font-weight:400;">— actual STOCK Act filings &bull; House &amp; Senate &bull; last 90 days</span></span>
     <button class="btn btn-sm" onclick="fetchCongress(true)" style="background:#1e4060;color:var(--text);border:1px solid var(--border);">&#8635; Refresh</button>
   </div>
@@ -388,7 +405,7 @@
   </div>
 
   <!-- SUPPLY CHAIN INTELLIGENCE -->
-  <div class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+  <div id="sec-supply" class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
     <span>&#128279; Supply Chain Intelligence <span style="font-size:10px;color:var(--muted);font-weight:400;">— contract awards &rarr; supplier impact</span></span>
     <button class="btn btn-sm" onclick="fetchNews(true)" style="background:#1e4060;color:var(--text);border:1px solid var(--border);">&#8635; Scan</button>
   </div>
@@ -2489,5 +2506,28 @@ refreshAll();
 // Dedicated news refresh every 5 minutes
 setInterval(() => fetchNews(), NEWS_TTL);
 </script>
+
+<!-- ── Bottom Navigation Bar ─────────────────────────────────────────────── -->
+<nav id="bottomNav">
+  <button onclick="document.getElementById('sec-crypto').scrollIntoView({behavior:'smooth'})">
+    ₿<span>Crypto</span>
+  </button>
+  <button onclick="document.getElementById('sec-stocks').scrollIntoView({behavior:'smooth'})">
+    📈<span>Stocks</span>
+  </button>
+  <button onclick="document.getElementById('sec-news').scrollIntoView({behavior:'smooth'})">
+    📰<span>News</span>
+  </button>
+  <button onclick="document.getElementById('sec-congress').scrollIntoView({behavior:'smooth'})">
+    🏛<span>Congress</span>
+  </button>
+  <button onclick="document.getElementById('sec-supply').scrollIntoView({behavior:'smooth'})">
+    🔗<span>Supply</span>
+  </button>
+  <button onclick="document.getElementById('reportBox').scrollIntoView({behavior:'smooth'})">
+    📋<span>Report</span>
+  </button>
+</nav>
+
 </body>
 </html>
