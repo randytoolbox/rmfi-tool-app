@@ -498,6 +498,17 @@ const STOCK_NAMES = {
   LMT:'Lockheed Martin', RTX:'RTX (Raytheon)', NOC:'Northrop Grumman',
   GD:'General Dynamics', PLTR:'Palantir (Gov AI)', HII:'Huntington Ingalls',
   KTOS:'Kratos Defense', AXON:'Axon Enterprise',
+  // Government IT Integrators (execute the contracts — biggest downstream play)
+  LDOS:'Leidos (Defense IT)', SAIC:'SAIC (Gov IT Services)',
+  BAH:'Booz Allen Hamilton (Gov Consulting)', CACI:'CACI Intl (Gov IT)',
+  MANT:'ManTech International', PSN:'Parsons Corp (Gov Tech)',
+  // Cybersecurity (required on every gov cloud contract)
+  CRWD:'CrowdStrike (Endpoint Security)', PANW:'Palo Alto Networks',
+  ZS:'Zscaler (Zero Trust Security)', S:'SentinelOne',
+  FTNT:'Fortinet', CYBR:'CyberArk (Privileged Access)',
+  // Cloud/Enterprise (ride gov cloud deals)
+  ORCL:'Oracle (Gov Cloud)', IBM:'IBM (Gov IT)',
+  SAP:'SAP (Enterprise Software)', SNOW:'Snowflake (Data Cloud)',
   // Infrastructure & Industrial
   HON:'Honeywell', URI:'United Rentals', PWR:'Quanta Services',
   // Energy
@@ -520,39 +531,57 @@ const STOCK_NAMES = {
 };
 
 // ── Supply Chain Map ──────────────────────────────────────────────────────────
-// Prime contractor → their key suppliers. When a prime wins a contract, these
-// suppliers see revenue uplift — especially ones already on your watchlist.
+// Prime contractor → their key suppliers/integrators/subcontractors.
 const SUPPLY_CHAINS = {
-  LMT:  { name:'Lockheed Martin',    suppliers:['RTX','NOC','GD','KTOS','PLTR','HON','AXON'] },
-  RTX:  { name:'RTX / Raytheon',     suppliers:['KTOS','HON','HII','AXON','GD'] },
-  BA:   { name:'Boeing',             suppliers:['RTX','HON','HII','GD','CAT','KTOS'] },
-  NOC:  { name:'Northrop Grumman',   suppliers:['KTOS','PLTR','RTX','AXON','GD'] },
-  GD:   { name:'General Dynamics',   suppliers:['RTX','KTOS','PLTR','HON'] },
-  HII:  { name:'Huntington Ingalls', suppliers:['RTX','NOC','CAT','GD','HON'] },
-  MSFT: { name:'Microsoft',          suppliers:['NVDA','ANET','VRT','CEG','AMD','MU','AVGO','ARM'] },
-  GOOGL:{ name:'Google / Alphabet',  suppliers:['NVDA','ANET','VRT','VST','AMD','MU','ARM','EQIX'] },
-  AMZN: { name:'Amazon (AWS)',        suppliers:['NVDA','ANET','VRT','CEG','AMD','MU','AVGO','DLR'] },
-  META: { name:'Meta',               suppliers:['NVDA','ANET','VRT','VST','AMD','MU','ARM'] },
-  NVDA: { name:'NVIDIA',             suppliers:['TSM','AMAT','LRCX','KLAC','ARM','MU','SMCI','VRT'] },
-  AAPL: { name:'Apple',              suppliers:['TSM','AVGO','QCOM','ARM','AMAT','LRCX'] },
-  XOM:  { name:'ExxonMobil',         suppliers:['CAT','URI','HON','XLE'] },
-  CVX:  { name:'Chevron',            suppliers:['CAT','URI','HON','XLE'] },
+  // Defense primes
+  LMT:  { name:'Lockheed Martin',      suppliers:['RTX','NOC','GD','KTOS','PLTR','HON','AXON','LDOS','SAIC','BAH','CACI'] },
+  RTX:  { name:'RTX / Raytheon',       suppliers:['KTOS','HON','HII','AXON','GD','LDOS','HEICO','TDY'] },
+  BA:   { name:'Boeing',               suppliers:['RTX','HON','HII','GD','CAT','KTOS','SPR','TDG','HEICO'] },
+  NOC:  { name:'Northrop Grumman',     suppliers:['KTOS','PLTR','RTX','AXON','GD','LDOS','SAIC'] },
+  GD:   { name:'General Dynamics',     suppliers:['RTX','KTOS','PLTR','HON','LDOS','CACI','BAH'] },
+  HII:  { name:'Huntington Ingalls',   suppliers:['RTX','NOC','CAT','GD','HON','HEICO','TDG'] },
+  LDOS: { name:'Leidos',               suppliers:['PLTR','SAIC','BAH','CACI','MSFT','AWS','NVDA','CRWD'] },
+  SAIC: { name:'SAIC',                 suppliers:['LDOS','BAH','CACI','PLTR','MSFT','NVDA','CRWD','PANW'] },
+  BAH:  { name:'Booz Allen Hamilton',  suppliers:['PLTR','SAIC','LDOS','CACI','MSFT','NVDA','ZS','CRWD'] },
+  CACI: { name:'CACI International',   suppliers:['PLTR','SAIC','LDOS','BAH','MSFT','CRWD'] },
+  // Big tech on government cloud
+  MSFT: { name:'Microsoft',            suppliers:['NVDA','ANET','VRT','CEG','AMD','MU','AVGO','ARM','LDOS','SAIC','BAH','CRWD','PANW','ZS','AMAT','SMCI','COR','DELL'] },
+  GOOGL:{ name:'Google / Alphabet',    suppliers:['NVDA','ANET','VRT','VST','AMD','MU','ARM','EQIX','LDOS','SAIC','CRWD','PANW','AMAT'] },
+  AMZN: { name:'Amazon (AWS)',          suppliers:['NVDA','ANET','VRT','CEG','AMD','MU','AVGO','DLR','LDOS','SAIC','BAH','CRWD','PANW','AMAT','SMCI'] },
+  META: { name:'Meta',                 suppliers:['NVDA','ANET','VRT','VST','AMD','MU','ARM','AMAT','SMCI'] },
+  ORCL: { name:'Oracle',               suppliers:['NVDA','AMD','MU','ANET','LDOS','SAIC','CRWD','PANW'] },
+  IBM:  { name:'IBM',                  suppliers:['NVDA','AMD','LDOS','SAIC','BAH','CACI','CRWD','PANW'] },
+  // Chip/AI primes
+  NVDA: { name:'NVIDIA',               suppliers:['TSM','AMAT','LRCX','KLAC','ARM','MU','SMCI','VRT','ONTO','COHR'] },
+  AAPL: { name:'Apple',                suppliers:['TSM','AVGO','QCOM','ARM','AMAT','LRCX','COHR'] },
+  INTC: { name:'Intel',                suppliers:['AMAT','LRCX','KLAC','MU','ONTO','TER'] },
+  AMD:  { name:'AMD',                  suppliers:['TSM','AMAT','LRCX','MU','SMCI','VRT'] },
+  // Energy / infrastructure
+  XOM:  { name:'ExxonMobil',           suppliers:['CAT','URI','HON','XLE','HAL','SLB'] },
+  CVX:  { name:'Chevron',              suppliers:['CAT','URI','HON','XLE','HAL','SLB'] },
 };
 
 // Keywords in news titles → prime contractor ticker
 const PRIME_KEYWORDS = [
-  ['lockheed martin','LMT'], ['lockheed','LMT'],
-  ['raytheon','RTX'],        ['rtx corp','RTX'],
+  ['lockheed martin','LMT'],  ['lockheed','LMT'],
+  ['raytheon','RTX'],         ['rtx corp','RTX'],
   ['boeing','BA'],
-  ['northrop grumman','NOC'],['northrop','NOC'],
+  ['northrop grumman','NOC'], ['northrop','NOC'],
   ['general dynamics','GD'],
   ['huntington ingalls','HII'],
-  ['microsoft','MSFT'],
-  ['google','GOOGL'],        ['alphabet','GOOGL'],
-  ['amazon','AMZN'],         ['aws ','AMZN'],
-  ['meta platforms','META'], ['meta ai','META'],
+  ['leidos','LDOS'],
+  ['saic','SAIC'],
+  ['booz allen','BAH'],       ['booz allen hamilton','BAH'],
+  ['caci','CACI'],
+  ['microsoft','MSFT'],       ['azure','MSFT'],
+  ['google','GOOGL'],         ['alphabet','GOOGL'],
+  ['amazon','AMZN'],          ['aws ','AMZN'],
+  ['meta platforms','META'],  ['meta ai','META'],
+  ['oracle','ORCL'],
+  ['ibm','IBM'],
   ['nvidia','NVDA'],
   ['apple inc','AAPL'],
+  ['intel corp','INTC'],
   ['exxon','XOM'],
   ['chevron','CVX'],
 ];
@@ -1407,13 +1436,30 @@ async function fetchNews(force = false) {
   if (btn) btn.textContent = '⏳ Loading...';
 
   const queries = [
-    { q: 'US stock market Wall Street today',                         tag: 'MARKET'   },
-    { q: 'defense contractor government military contract',            tag: 'DEFENSE'  },
-    { q: 'AI data center investment billion NVIDIA',                   tag: 'AI'       },
-    { q: 'artificial intelligence government contract robotics',       tag: 'AI'       },
-    { q: 'Pentagon DoD contract award billion defense technology',     tag: 'CONTRACT' },
-    { q: stockWatchlist.slice(0,6).join(' OR '),                      tag: null       },
-  ];
+    // Market pulse
+    { q: 'US stock market Wall Street today',                              tag: 'MARKET'   },
+    // Contract awards — broad
+    { q: 'government contract award billion million DoD Pentagon 2026',    tag: 'CONTRACT' },
+    { q: 'federal contract awarded defense technology billion 2026',        tag: 'CONTRACT' },
+    // Microsoft government contracts specifically
+    { q: 'Microsoft government contract Azure cloud billion award',        tag: 'MSFT'     },
+    { q: 'Microsoft DoD Pentagon JWCC cloud contract award',               tag: 'MSFT'     },
+    // Big tech gov cloud
+    { q: 'Amazon AWS government contract DoD cloud billion',               tag: 'AMZN'     },
+    { q: 'Google cloud government contract DARPA intelligence award',      tag: 'GOOGL'    },
+    // Defense primes
+    { q: 'Lockheed Raytheon Northrop Boeing contract award billion',       tag: 'DEFENSE'  },
+    { q: 'Leidos SAIC Booz Allen government contract award million',       tag: 'DEFENSE'  },
+    // AI & semiconductor
+    { q: 'AI data center investment billion NVIDIA AMD chip',              tag: 'AI'       },
+    { q: 'CHIPS Act semiconductor factory award billion Intel TSMC',       tag: 'AI'       },
+    { q: 'artificial intelligence government contract DoD DARPA 2026',     tag: 'AI'       },
+    // Cybersecurity contracts
+    { q: 'cybersecurity government contract award CrowdStrike Palo Alto',  tag: 'CYBER'    },
+    // Watchlist stocks — split into two groups to avoid query length limits
+    { q: stockWatchlist.slice(0, 5).join(' OR '),                         tag: null       },
+    { q: stockWatchlist.slice(5, 10).join(' OR '),                        tag: null       },
+  ].filter(x => x.q.trim());
 
   const all = [];
   for (const { q, tag } of queries) {
