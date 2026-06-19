@@ -1656,13 +1656,22 @@ function updateMarketStatus() {
   el.className = open ? 'open' : 'closed';
 }
 
+function computeYTD(sym, currentPrice) {
+  const hist = stockHistory[sym];
+  if (!hist || hist.length < 10 || !currentPrice) return null;
+  const weeksIntoYear = Math.round((Date.now() - new Date(new Date().getFullYear(), 0, 1).getTime()) / (7 * 86400000));
+  const idx = Math.max(0, hist.length - weeksIntoYear - 1);
+  const yearOpen = hist[idx];
+  if (!yearOpen) return null;
+  return ((currentPrice - yearOpen) / yearOpen) * 100;
+}
+
 async function fetchStocks() {
   if (!stockWatchlist.length) return;
   const errEl = document.getElementById('stockErrorMsg');
-  const syms = stockWatchlist.join(',');
 
-  // Try Yahoo Finance via two CORS proxies (no API key needed)
-  const yfUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(syms)}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,fiftyTwoWeekHigh,fiftyTwoWeekLow,shortName`;
+  // Try 1: Yahoo Finance v7 batch (fast — all symbols in one call)
+  const yfUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(stockWatchlist.join(','))}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,fiftyTwoWeekHigh,fiftyTwoWeekLow,shortName`;
   for (const mkProxy of [
     u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
     u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
@@ -1670,8 +1679,7 @@ async function fetchStocks() {
     try {
       const res = await fetch(mkProxy(yfUrl), { cache: 'no-store' });
       if (!res.ok) continue;
-      const text = await res.text();
-      const data = JSON.parse(text);
+      const data = JSON.parse(await res.text());
       const results = data?.quoteResponse?.result;
       if (!results?.length) continue;
       let anyOk = false;
@@ -1684,43 +1692,78 @@ async function fetchStocks() {
           changePct: q.regularMarketChangePercent || 0,
           high52:    q.fiftyTwoWeekHigh || null,
           low52:     q.fiftyTwoWeekLow  || null,
-          ytdPct:    null,
+          ytdPct:    computeYTD(q.symbol, q.regularMarketPrice),
           name:      q.shortName || STOCK_NAMES[q.symbol] || q.symbol,
         };
       });
       if (anyOk) { if (errEl) errEl.style.display = 'none'; return; }
-    } catch(e) { console.warn('YF proxy:', e.message); }
+    } catch(e) { console.warn('YF v7:', e.message); }
   }
 
-  // Fallback: Finnhub — direct CORS, free key, no daily limit (finnhub.io)
+  // Try 2: Yahoo Finance v8 chart per-symbol (same API that powers sparklines — very reliable)
+  let anyOk = false;
+  for (const sym of stockWatchlist) {
+    if (stockData[sym]?.price) continue; // skip if already loaded from v7
+    try {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=5d&interval=1d`;
+      for (const mkProxy of [
+        u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+        u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+      ]) {
+        try {
+          const r = await fetch(mkProxy(url), { cache: 'no-store' });
+          if (!r.ok) continue;
+          const d = await r.json();
+          const meta = d?.chart?.result?.[0]?.meta;
+          if (!meta?.regularMarketPrice) continue;
+          const prevClose = meta.previousClose || meta.chartPreviousClose || meta.regularMarketPrice;
+          stockData[sym] = {
+            price:     meta.regularMarketPrice,
+            change:    meta.regularMarketPrice - prevClose,
+            changePct: meta.regularMarketChangePercent || ((meta.regularMarketPrice - prevClose) / prevClose * 100),
+            high52:    meta.fiftyTwoWeekHigh || null,
+            low52:     meta.fiftyTwoWeekLow  || null,
+            ytdPct:    computeYTD(sym, meta.regularMarketPrice),
+            name:      STOCK_NAMES[sym] || meta.shortName || sym,
+          };
+          anyOk = true;
+          break;
+        } catch(e) { /* try next proxy */ }
+      }
+    } catch(e) { console.warn('YF v8', sym, e.message); }
+    await new Promise(r => setTimeout(r, 120));
+  }
+  if (anyOk) { if (errEl) errEl.style.display = 'none'; return; }
+
+  // Try 3: Finnhub (needs free API key)
   const fnKey = load('rm_fnKey', '');
   if (fnKey) {
     try {
-      let anyOk = false;
+      let anyFn = false;
       for (const sym of stockWatchlist) {
         try {
           const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${fnKey}`);
           if (!r.ok) continue;
           const q = await r.json();
           if (!q.c) continue;
-          anyOk = true;
+          anyFn = true;
           stockData[sym] = {
             price:     q.c,
             change:    q.d  || 0,
             changePct: q.dp || 0,
             high52:    null,
             low52:     null,
-            ytdPct:    null,
+            ytdPct:    computeYTD(sym, q.c),
             name:      STOCK_NAMES[sym] || sym,
           };
         } catch(se) { console.warn('Finnhub', sym, se.message); }
         await new Promise(r => setTimeout(r, 150));
       }
-      if (anyOk) { if (errEl) errEl.style.display = 'none'; return; }
+      if (anyFn) { if (errEl) errEl.style.display = 'none'; return; }
     } catch(e) { console.warn('Finnhub:', e.message); }
   }
 
-  // Nothing worked — prompt for Finnhub key
+  // Nothing worked
   if (errEl) {
     errEl.style.display = 'block';
     errEl.innerHTML = fnKey
@@ -1752,12 +1795,33 @@ async function fetchStockHistory() {
             const r = await fetch(mkProxy(url), { cache: 'no-store' });
             if (!r.ok) continue;
             const d = await r.json();
-            const raw = d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close;
-            if (raw?.length) { closes = raw.filter(v => v != null); break; }
+            const result = d?.chart?.result?.[0];
+            const raw = result?.indicators?.quote?.[0]?.close;
+            if (raw?.length) {
+              closes = raw.filter(v => v != null);
+              // Populate live quote from chart meta if fetchStocks hasn't loaded it yet
+              const meta = result?.meta;
+              if (meta?.regularMarketPrice && !stockData[sym]?.price) {
+                const prevClose = meta.previousClose || meta.chartPreviousClose || meta.regularMarketPrice;
+                stockData[sym] = {
+                  price:     meta.regularMarketPrice,
+                  change:    meta.regularMarketPrice - prevClose,
+                  changePct: meta.regularMarketChangePercent || ((meta.regularMarketPrice - prevClose) / prevClose * 100),
+                  high52:    meta.fiftyTwoWeekHigh || null,
+                  low52:     meta.fiftyTwoWeekLow  || null,
+                  ytdPct:    null,
+                  name:      STOCK_NAMES[sym] || meta.shortName || sym,
+                };
+              }
+              break;
+            }
           } catch(e) { /* try next */ }
         }
       }
-      if (closes?.length >= 8) stockHistory[sym] = closes;
+      if (closes?.length >= 8) {
+        stockHistory[sym] = closes;
+        if (stockData[sym]) stockData[sym].ytdPct = computeYTD(sym, stockData[sym].price);
+      }
     } catch(e) { console.warn('StockHistory', sym, e.message); }
     await new Promise(r => setTimeout(r, 200));
   }
@@ -2380,13 +2444,17 @@ async function scanMarket() {
   document.getElementById('marketBody').innerHTML = '<tr><td colspan="8" style="color:var(--muted);padding:20px 10px;">Loading top 100 coins...</td></tr>';
   setStatus('loading', 'Scanning market...');
   try {
-    // Fetch page 1 and page 2 (50 each) for top 100
-    const [res1, res2] = await Promise.all([
-      fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&price_change_percentage=24h,7d,1y'),
-      fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=2&price_change_percentage=24h,7d,1y'),
-    ]);
-    const [d1, d2] = await Promise.all([res1.json(), res2.json()]);
-    const all = [...d1, ...d2];
+    const cgBase = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&price_change_percentage=24h,7d,1y';
+    const mkProxyCG = u => `https://corsproxy.io/?${encodeURIComponent(u)}`;
+    let d1, d2;
+    try {
+      const [r1, r2] = await Promise.all([fetch(cgBase+'&page=1'), fetch(cgBase+'&page=2')]);
+      [d1, d2] = await Promise.all([r1.json(), r2.json()]);
+    } catch {
+      const [r1, r2] = await Promise.all([fetch(mkProxyCG(cgBase+'&page=1')), fetch(mkProxyCG(cgBase+'&page=2'))]);
+      [d1, d2] = await Promise.all([r1.json(), r2.json()]);
+    }
+    const all = [...(Array.isArray(d1)?d1:[]), ...(Array.isArray(d2)?d2:[])];
     marketRows = all.map((c, i) => ({
       rank:      i + 1,
       id:        c.id,
