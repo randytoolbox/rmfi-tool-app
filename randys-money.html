@@ -147,6 +147,46 @@
     .header h1 { font-size: 22px; }
     .coin-card .price { font-size: 19px; }
   }
+
+  /* Price alert inputs on coin cards */
+  .coin-card .alert-row { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 6px; }
+  .coin-card .alert-input { background: var(--input-bg); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 11px; color: var(--text); width: 90px; }
+  .coin-card .alert-input.active { border-color: var(--accent); background: rgba(240,192,96,.07); }
+  .coin-card .alert-label { font-size: 10px; color: var(--muted); white-space: nowrap; }
+  .coin-card.alert-hit { border-color: var(--accent) !important; box-shadow: 0 0 18px rgba(240,192,96,.55); }
+
+  /* Alert toast */
+  #alertToast { display:none; position:fixed; top:80px; right:20px; background:linear-gradient(135deg,#2a1f00,#4a3500); border:2px solid var(--accent); border-radius:14px; padding:16px 44px 16px 18px; z-index:9999; max-width:320px; box-shadow:0 8px 32px rgba(0,0,0,.7); }
+  #alertToast .at-title { font-size:16px; font-weight:900; color:var(--accent); margin-bottom:5px; }
+  #alertToast .at-body { font-size:13px; color:var(--text); line-height:1.6; }
+  #alertToast .at-close { position:absolute; top:10px; right:13px; background:none; border:none; color:var(--muted); cursor:pointer; font-size:20px; line-height:1; }
+
+  /* Auto-refresh countdown */
+  #arCountdown { font-size:12px; color:var(--good); }
+  #arCountdown.paused { color:var(--muted); }
+
+  /* Stock cards — blue accent to distinguish from crypto */
+  .coin-card.stock-card { border-top: 3px solid #2a5090; }
+  .stock-card .ticker { color: #6aaeff !important; }
+  #mktStatus { font-size:11px; font-weight:700; border-radius:6px; padding:2px 8px; margin-left:10px; vertical-align:middle; }
+  #mktStatus.open  { background:#0d2d1a; color:var(--good); border:1px solid var(--good); }
+  #mktStatus.closed { background:#1a1a2a; color:var(--muted); border:1px solid var(--border); }
+  #stockErrorMsg { font-size:12px; color:var(--bad); padding:10px 0; }
+
+  /* News feed */
+  .news-wrap { background:var(--panel); border:1px solid var(--border); border-radius:14px; overflow:hidden; max-height:420px; overflow-y:auto; }
+  .news-item { padding:10px 14px; border-bottom:1px solid #0f2a45; display:flex; align-items:flex-start; gap:10px; cursor:pointer; }
+  .news-item:last-child { border-bottom:none; }
+  .news-item:hover { background:#1a3555; }
+  .news-meta { display:flex; flex-direction:column; align-items:flex-end; gap:3px; min-width:52px; }
+  .news-time { font-size:10px; color:var(--muted); white-space:nowrap; }
+  .news-tag { font-size:9px; font-weight:800; color:#6aaeff; background:#0d2040; border-radius:4px; padding:1px 5px; white-space:nowrap; }
+  .news-tag.market { color:var(--accent); background:#2a1f00; }
+  .news-headline { font-size:13px; color:var(--text); line-height:1.45; }
+  .news-headline:hover { color:var(--accent); }
+  .news-src { font-size:11px; color:var(--muted); margin-top:2px; }
+  .news-empty { padding:22px; text-align:center; color:var(--muted); font-size:13px; }
+  #newsRefreshBtn { font-size:11px; }
 </style>
 </head>
 <body>
@@ -165,6 +205,14 @@
   <button class="btn btn-gold" onclick="refreshAll()">&#8635; Refresh Data</button>
   <button class="btn btn-blue" onclick="scanMarket()">&#128269; Scan Market</button>
   <button class="btn btn-green" onclick="generateReport()">Generate Report for Claude</button>
+  <button class="btn btn-sm" id="arToggle" onclick="toggleAutoRefresh()" style="background:#1e4060;color:var(--text);border:1px solid var(--border);">&#9646;&#9646; Pause</button>
+  <span id="arCountdown">Auto-refresh in <b id="arSecs">60</b>s</span>
+</div>
+
+<div id="alertToast">
+  <button class="at-close" onclick="document.getElementById('alertToast').style.display='none'">&#x2715;</button>
+  <div class="at-title">&#128276; Price Alert!</div>
+  <div class="at-body" id="alertToastBody"></div>
 </div>
 
 <div class="main">
@@ -177,6 +225,29 @@
     <input id="addInput" placeholder="e.g. BTC, SOL..." maxlength="12" />
     <button class="btn btn-blue btn-sm" onclick="addCoin()">Add</button>
     <span class="hint">Supported: BTC, ETH, SOL, ADA, DOT, LINK, LTC, MATIC, TRX, XLM, and more</span>
+  </div>
+
+  <!-- STOCK WATCHLIST -->
+  <div class="section-label" style="margin-top:10px;">
+    US Stock Market — Research Watchlist
+    <span id="mktStatus"></span>
+  </div>
+  <div id="stockErrorMsg" style="display:none;"></div>
+  <div class="coin-grid" id="stockGrid"></div>
+  <div class="add-row" style="margin-bottom:28px;">
+    <span style="font-size:13px;font-weight:700;color:var(--muted);">Add a stock:</span>
+    <input id="addStockInput" placeholder="e.g. AAPL, TSLA..." maxlength="10" style="text-transform:uppercase;" />
+    <button class="btn btn-blue btn-sm" onclick="addStock()">Add</button>
+    <span class="hint">Any US ticker — AAPL, MSFT, NVDA, TSLA, XLE, JPM, GLD...</span>
+  </div>
+
+  <!-- NEWS FEED -->
+  <div class="section-label" style="margin-top:10px; display:flex; align-items:center; justify-content:space-between;">
+    <span>&#128240; Market News Feed <span style="font-size:10px;color:var(--muted);font-weight:400;">— auto-updates every 5 min</span></span>
+    <button class="btn btn-sm" id="newsRefreshBtn" onclick="fetchNews(true)" style="background:#1e4060;color:var(--text);border:1px solid var(--border);">&#8635; Refresh News</button>
+  </div>
+  <div class="news-wrap" id="newsList">
+    <div class="news-empty">News loads on first refresh — click &#8635; Refresh Data or wait for auto-refresh.</div>
   </div>
 
   <!-- MARKET SCANNER -->
@@ -254,9 +325,51 @@ const DEFAULT_PORTFOLIO = ['XRP','QNT','XDC','ALGO','HBAR'];
 function load(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } }
 function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
 
-let portfolio = load('rm_portfolio', DEFAULT_PORTFOLIO);
-let liveData  = {};   // sym -> { price, change24h, change7d, marketCap, vol24h }
-let histData  = {};   // sym -> { price1yAgo, high1y, low1y, priceData[] }
+let portfolio     = load('rm_portfolio', DEFAULT_PORTFOLIO);
+let liveData      = {};
+let histData      = {};
+let alertTargets  = load('rm_alertTargets', {});
+let triggeredAlerts = {};
+let arCountdownVal  = 60;
+let arEnabled       = true;
+
+const DEFAULT_STOCKS = ['SPY','QQQ','DIA','IWM'];
+const STOCK_NAMES = {
+  SPY:'S&P 500 ETF', QQQ:'Nasdaq 100 ETF', DIA:'Dow Jones ETF', IWM:'Russell 2000 ETF',
+  AAPL:'Apple', MSFT:'Microsoft', NVDA:'NVIDIA', TSLA:'Tesla', AMZN:'Amazon',
+  GOOGL:'Alphabet (Google)', META:'Meta Platforms', JPM:'JPMorgan Chase',
+  BAC:'Bank of America', WFC:'Wells Fargo', GS:'Goldman Sachs',
+  XLE:'Energy Select ETF', XLF:'Financial ETF', XLI:'Industrial ETF',
+  XLK:'Technology ETF', XLV:'Health Care ETF', XLU:'Utilities ETF',
+  GLD:'Gold ETF', SLV:'Silver ETF', USO:'Oil ETF',
+  AMGN:'Amgen', JNJ:'Johnson & Johnson', PFE:'Pfizer',
+  F:'Ford Motor', GM:'General Motors', BA:'Boeing', CAT:'Caterpillar',
+  DIS:'Disney', NFLX:'Netflix', UBER:'Uber',
+  // Defense & Government
+  LMT:'Lockheed Martin', RTX:'RTX (Raytheon)', NOC:'Northrop Grumman',
+  GD:'General Dynamics', PLTR:'Palantir (Gov AI)', HII:'Huntington Ingalls',
+  KTOS:'Kratos Defense', AXON:'Axon Enterprise',
+  // Infrastructure & Industrial
+  HON:'Honeywell', URI:'United Rentals', PWR:'Quanta Services',
+  // Energy
+  XOM:'ExxonMobil', CVX:'Chevron', COP:'ConocoPhillips',
+};
+let stockWatchlist = load('rm_stocks', DEFAULT_STOCKS);
+let stockData      = {};
+let stockAlerts    = load('rm_stockAlerts', {});
+let stockTriggered = {};
+
+// One-time migration: add defense/sector stocks to existing watchlists
+(function migrateStocks() {
+  const add = ['LMT','RTX','PLTR','CAT','XLE'];
+  let changed = false;
+  add.forEach(s => { if (!stockWatchlist.includes(s)) { stockWatchlist.push(s); changed = true; } });
+  if (changed) save('rm_stocks', stockWatchlist);
+})();
+
+let newsItems       = [];
+let lastNewsRefresh = 0;
+const NEWS_TTL      = 5 * 60 * 1000; // 5 minutes
 
 // ── Formatting ─────────────────────────────────────────────────────────────────
 function fmtPrice(n) {
@@ -294,8 +407,10 @@ function renderGrid() {
     const yr1pct = (d.price && h.price1yAgo)
       ? ((d.price - h.price1yAgo) / h.price1yAgo) * 100
       : (d.change1y ?? null);
+    const alertTarget = alertTargets[sym];
+    const hitTarget = alertTarget && d.price && d.price >= parseFloat(alertTarget);
 
-    return `<div class="coin-card${loading ? ' loading' : ''}">
+    return `<div class="coin-card${loading ? ' loading' : ''}${hitTarget ? ' alert-hit' : ''}">
       <button class="remove-btn" onclick="removeCoin('${sym}')" title="Remove">&#x2715;</button>
       <div class="ticker">${sym}</div>
       <div class="cname">${name}</div>
@@ -306,6 +421,13 @@ function renderGrid() {
       <div class="row"><span class="label">1Y High</span><span class="val">${fmtPrice(h.high1y)}</span></div>
       <div class="row"><span class="label">1Y Low</span><span class="val">${fmtPrice(h.low1y)}</span></div>
       <div class="row"><span class="label">Mkt Cap</span><span class="val">${fmtBig(d.marketCap)}</span></div>
+      <div class="alert-row">
+        <span class="alert-label">&#128276; Sell at:</span>
+        <input class="alert-input${alertTarget ? ' active' : ''}" type="number" step="any" min="0"
+          value="${alertTarget || ''}" placeholder="$ target"
+          onchange="setAlert('${sym}', this.value)"
+          onclick="event.stopPropagation()" />
+      </div>
     </div>`;
   }).join('');
 }
@@ -371,7 +493,13 @@ async function refreshAll() {
     renderGrid();
     const now = new Date().toLocaleTimeString();
     document.getElementById('lastUpdated').textContent = 'Updated ' + now;
+    setStatus('ok', 'Crypto loaded — fetching stocks...');
+    checkAlerts();
+    try { await fetchStocks(); renderStockGrid(); checkStockAlerts(); } catch(se) { console.warn('Stocks:', se); }
+    fetchNews(); // throttled internally — only updates if 5+ min have passed
+    document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
     setStatus('ok', 'All data loaded — ' + now);
+    arCountdownVal = 60;
   } catch (e) {
     setStatus('error', 'Error: ' + e.message + '. CoinGecko may be rate-limiting. Try again in a minute.');
     console.error(e);
@@ -459,10 +587,353 @@ function generateReport() {
     out += '\n';
   }
 
+  if (newsItems.length) {
+    out += `\nRECENT MARKET NEWS\n`;
+    out += `${'─'.repeat(50)}\n`;
+    newsItems.slice(0, 12).forEach(item => {
+      const ticker = detectTicker(item.title) || item.tag || '';
+      out += `[${timeAgo(item.pubDate)}]${ticker ? ' [' + ticker + ']' : ''} ${item.title}\n`;
+      if (item.source) out += `  Source: ${item.source}\n`;
+    });
+    out += '\n';
+  }
+
+  if (stockWatchlist.length) {
+    const open = isMarketOpen();
+    out += `\nUS STOCK WATCHLIST — RESEARCH\n`;
+    out += `${'─'.repeat(50)}\n`;
+    out += `Market Status: ${open ? 'OPEN' : 'CLOSED (9:30am–4:00pm ET weekdays)'}\n\n`;
+    stockWatchlist.forEach(sym => {
+      const d = stockData[sym] || {};
+      const name = d.name || STOCK_NAMES[sym] || sym;
+      const fromHigh = d.price && d.high52 ? ((d.price - d.high52) / d.high52 * 100).toFixed(2) : null;
+      out += `${sym} (${name})\n`;
+      out += `  Price      : ${fmtPrice(d.price)}\n`;
+      out += `  Day Change : ${d.changePct != null ? fmtPct(d.changePct) : '--'}\n`;
+      out += `  YTD        : ${d.ytdPct != null ? fmtPct(d.ytdPct) : '--'}\n`;
+      out += `  52W High   : ${fmtPrice(d.high52)}\n`;
+      out += `  52W Low    : ${fmtPrice(d.low52)}\n`;
+      out += `  From High  : ${fromHigh != null ? (parseFloat(fromHigh) >= 0 ? '+' : '') + fromHigh + '%' : '--'}\n`;
+      out += '\n';
+    });
+  }
+
   out += `${'═'.repeat(50)}\n`;
-  out += `Note: Data from CoinGecko. Paste this into Claude for analysis.\n`;
+  out += `Note: Crypto from CoinGecko · Stocks from Yahoo Finance. Paste into Claude for analysis.\n`;
 
   document.getElementById('reportBox').textContent = out;
+}
+
+// ── Price Alerts ──────────────────────────────────────────────────────────────
+function setAlert(sym, val) {
+  const v = String(val).trim();
+  if (v === '' || isNaN(parseFloat(v))) {
+    delete alertTargets[sym];
+    delete triggeredAlerts[sym];
+  } else {
+    alertTargets[sym] = v;
+    delete triggeredAlerts[sym];
+  }
+  save('rm_alertTargets', alertTargets);
+  renderGrid();
+}
+
+function playAlertSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [[880,0],[1100,.15],[880,.3]].forEach(([freq,t]) => {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.3, ctx.currentTime + t);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.12);
+      osc.start(ctx.currentTime + t);
+      osc.stop(ctx.currentTime + t + 0.15);
+    });
+  } catch(e) {}
+}
+
+function showAlertToast(messages) {
+  document.getElementById('alertToastBody').innerHTML = messages.join('<br>');
+  const toast = document.getElementById('alertToast');
+  toast.style.display = 'block';
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { toast.style.display = 'none'; }, 10000);
+}
+
+function checkAlerts() {
+  const hits = [];
+  portfolio.forEach(sym => {
+    const target = alertTargets[sym];
+    if (!target) return;
+    const d = liveData[sym];
+    if (!d || !d.price) return;
+    const targetPrice = parseFloat(target);
+    if (d.price >= targetPrice && !triggeredAlerts[sym]) {
+      triggeredAlerts[sym] = true;
+      hits.push(`<b>${sym}</b> is at ${fmtPrice(d.price)} — your target was ${fmtPrice(targetPrice)}`);
+    }
+  });
+  if (!hits.length) return;
+  playAlertSound();
+  showAlertToast(hits);
+  if (Notification.permission === 'granted') {
+    hits.forEach(h => new Notification("Randy's Money — Price Alert!", {
+      body: h.replace(/<[^>]+>/g, ''),
+    }));
+  }
+}
+
+// ── News Feed ─────────────────────────────────────────────────────────────────
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1)  return 'just now';
+  if (m < 60) return m + 'm ago';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + 'h ago';
+  return Math.floor(h / 24) + 'd ago';
+}
+
+function detectTicker(title) {
+  const allSyms = [...new Set([...stockWatchlist, ...Object.keys(STOCK_NAMES)])];
+  for (const s of allSyms) {
+    if (new RegExp(`\\b${s}\\b`,'i').test(title)) return s;
+  }
+  return null;
+}
+
+async function fetchNewsQuery(query) {
+  const rss = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
+  const url = `https://api.allorigins.win/get?url=${encodeURIComponent(rss)}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(res.status);
+  const json = await res.json();
+  const xml  = new DOMParser().parseFromString(json.contents, 'text/xml');
+  return Array.from(xml.querySelectorAll('item')).slice(0, 8).map(item => {
+    const linkEl = item.querySelector('link');
+    const link = linkEl ? (linkEl.textContent || linkEl.nextSibling?.nodeValue || '') : '';
+    return {
+      title:   item.querySelector('title')?.textContent?.replace(/\s*-\s*[^-]+$/, '') || '',
+      link:    link.trim(),
+      pubDate: item.querySelector('pubDate')?.textContent || '',
+      source:  item.querySelector('source')?.textContent || '',
+    };
+  }).filter(i => i.title);
+}
+
+async function fetchNews(force = false) {
+  if (!force && Date.now() - lastNewsRefresh < NEWS_TTL) return;
+  const btn = document.getElementById('newsRefreshBtn');
+  if (btn) btn.textContent = '⏳ Loading...';
+
+  const queries = [
+    { q: 'US stock market Wall Street today',          tag: 'MARKET' },
+    { q: 'defense contractor government military contract', tag: 'DEFENSE' },
+    { q: stockWatchlist.slice(0,6).join(' OR '),       tag: null },
+  ];
+
+  const all = [];
+  for (const { q, tag } of queries) {
+    if (!q.trim()) continue;
+    try {
+      const items = await fetchNewsQuery(q);
+      items.forEach(i => { i.tag = tag || detectTicker(i.title) || 'NEWS'; all.push(i); });
+    } catch(e) { console.warn('News query failed:', q, e.message); }
+    await new Promise(r => setTimeout(r, 400));
+  }
+
+  const seen = new Set();
+  newsItems = all
+    .filter(i => { const k = i.title.slice(0,45); return seen.has(k) ? false : (seen.add(k), true); })
+    .sort((a,b) => new Date(b.pubDate) - new Date(a.pubDate))
+    .slice(0, 25);
+
+  lastNewsRefresh = Date.now();
+  renderNews();
+  if (btn) btn.textContent = '↺ Refresh News';
+}
+
+function renderNews() {
+  const el = document.getElementById('newsList');
+  if (!el) return;
+  if (!newsItems.length) {
+    el.innerHTML = '<div class="news-empty">No news loaded yet. Click ↺ Refresh News.</div>';
+    return;
+  }
+  el.innerHTML = newsItems.map(item => {
+    const ticker = detectTicker(item.title) || item.tag;
+    const isMarket = item.tag === 'MARKET';
+    const tagHtml = ticker ? `<span class="news-tag${isMarket ? ' market' : ''}">${ticker}</span>` : '';
+    const href = item.link ? ` onclick="window.open('${item.link.replace(/'/g,"\\'")}','_blank')"` : '';
+    return `<div class="news-item"${href}>
+      <div class="news-meta">
+        <span class="news-time">${timeAgo(item.pubDate)}</span>
+        ${tagHtml}
+      </div>
+      <div>
+        <div class="news-headline">${item.title}</div>
+        ${item.source ? `<div class="news-src">${item.source}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Stock Market ──────────────────────────────────────────────────────────────
+function isMarketOpen() {
+  const et = new Date(new Date().toLocaleString('en-US', {timeZone:'America/New_York'}));
+  const day = et.getDay();
+  if (day === 0 || day === 6) return false;
+  const mins = et.getHours() * 60 + et.getMinutes();
+  return mins >= 570 && mins < 960; // 9:30am–4:00pm ET
+}
+
+function updateMarketStatus() {
+  const el = document.getElementById('mktStatus');
+  if (!el) return;
+  const open = isMarketOpen();
+  el.textContent = open ? 'OPEN' : 'CLOSED';
+  el.className = open ? 'open' : 'closed';
+}
+
+async function fetchOneStock(sym) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1y&includePrePost=false`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(res.status);
+  const json = await res.json();
+  const result = json?.chart?.result?.[0];
+  if (!result) throw new Error('no data');
+  const meta   = result.meta;
+  const ohlc   = result.indicators?.quote?.[0] || {};
+  const highs  = (ohlc.high  || []).filter(v => v != null);
+  const lows   = (ohlc.low   || []).filter(v => v != null);
+  const closes = (ohlc.close || []).filter(v => v != null);
+  // YTD: find first trading day of this year
+  const yearStartTs = new Date(new Date().getFullYear(), 0, 1).getTime() / 1000;
+  const timestamps  = result.timestamp || [];
+  const ytdIdx      = timestamps.findIndex(t => t >= yearStartTs);
+  const ytdClose    = ytdIdx >= 0 ? (ohlc.close || [])[ytdIdx] : null;
+  const price       = meta.regularMarketPrice;
+  return {
+    price,
+    change:    price - (meta.chartPreviousClose || price),
+    changePct: meta.chartPreviousClose ? ((price - meta.chartPreviousClose) / meta.chartPreviousClose) * 100 : 0,
+    high52:    highs.length  ? Math.max(...highs)  : meta.fiftyTwoWeekHigh,
+    low52:     lows.length   ? Math.min(...lows)   : meta.fiftyTwoWeekLow,
+    ytdPct:    ytdClose ? ((price - ytdClose) / ytdClose) * 100 : null,
+    name:      meta.shortName || STOCK_NAMES[sym] || sym,
+  };
+}
+
+async function fetchStocks() {
+  const errEl = document.getElementById('stockErrorMsg');
+  if (!stockWatchlist.length) return;
+  let anyOk = false;
+  for (const sym of stockWatchlist) {
+    try {
+      stockData[sym] = await fetchOneStock(sym);
+      anyOk = true;
+    } catch(e) {
+      console.warn('Stock fetch failed:', sym, e.message);
+      if (e instanceof TypeError) {
+        // Network/CORS error — stop trying, show message
+        if (errEl) { errEl.style.display='block'; errEl.textContent='Stock data unavailable — Yahoo Finance may be blocking browser requests. Prices will retry on next refresh.'; }
+        break;
+      }
+    }
+    await new Promise(r => setTimeout(r, 250));
+  }
+  if (anyOk && errEl) errEl.style.display = 'none';
+}
+
+function renderStockGrid() {
+  updateMarketStatus();
+  const grid = document.getElementById('stockGrid');
+  if (!grid) return;
+  if (!stockWatchlist.length) {
+    grid.innerHTML = '<div style="color:var(--muted);font-size:14px;">No stocks yet — add a ticker below.</div>';
+    return;
+  }
+  grid.innerHTML = stockWatchlist.map(sym => {
+    const d = stockData[sym] || {};
+    const loading = !d.price;
+    const name = d.name || STOCK_NAMES[sym] || sym;
+    const alertTarget = stockAlerts[sym];
+    const hitTarget = alertTarget && d.price && d.price >= parseFloat(alertTarget);
+    const fromHigh = d.price && d.high52 ? ((d.price - d.high52) / d.high52) * 100 : null;
+
+    return `<div class="coin-card stock-card${loading ? ' loading' : ''}${hitTarget ? ' alert-hit' : ''}">
+      <button class="remove-btn" onclick="removeStock('${sym}')" title="Remove">&#x2715;</button>
+      <div class="ticker">${sym}</div>
+      <div class="cname">${name}</div>
+      <div class="price">${fmtPrice(d.price)}</div>
+      <div class="row"><span class="label">Day</span><span class="val ${cls(d.changePct)}">${d.changePct != null ? fmtPct(d.changePct) : '--'}</span></div>
+      <div class="row"><span class="label">Day $</span><span class="val ${cls(d.change)}">${d.change != null ? (d.change >= 0 ? '+$' : '-$') + Math.abs(d.change).toFixed(2) : '--'}</span></div>
+      <div class="row"><span class="label">YTD</span><span class="val ${cls(d.ytdPct)}">${d.ytdPct != null ? fmtPct(d.ytdPct) : '--'}</span></div>
+      <div class="row"><span class="label">52W High</span><span class="val">${fmtPrice(d.high52)}</span></div>
+      <div class="row"><span class="label">52W Low</span><span class="val">${fmtPrice(d.low52)}</span></div>
+      <div class="row"><span class="label">From High</span><span class="val ${cls(fromHigh)}">${fromHigh != null ? fmtPct(fromHigh) : '--'}</span></div>
+      <div class="alert-row">
+        <span class="alert-label">&#128276; Alert at:</span>
+        <input class="alert-input${alertTarget ? ' active' : ''}" type="number" step="any" min="0"
+          value="${alertTarget || ''}" placeholder="$ target"
+          onchange="setStockAlert('${sym}', this.value)"
+          onclick="event.stopPropagation()" />
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function addStock() {
+  const inp = document.getElementById('addStockInput');
+  const sym = inp.value.trim().toUpperCase().replace(/[^A-Z0-9.\-]/g,'');
+  if (!sym) return;
+  if (!stockWatchlist.includes(sym)) {
+    stockWatchlist.push(sym);
+    save('rm_stocks', stockWatchlist);
+    renderStockGrid();
+    fetchOneStock(sym).then(d => { stockData[sym] = d; renderStockGrid(); }).catch(() => {});
+  }
+  inp.value = '';
+}
+
+function removeStock(sym) {
+  stockWatchlist = stockWatchlist.filter(s => s !== sym);
+  delete stockData[sym];
+  save('rm_stocks', stockWatchlist);
+  renderStockGrid();
+}
+
+function setStockAlert(sym, val) {
+  const v = String(val).trim();
+  if (v === '' || isNaN(parseFloat(v))) {
+    delete stockAlerts[sym];
+    delete stockTriggered[sym];
+  } else {
+    stockAlerts[sym] = v;
+    delete stockTriggered[sym];
+  }
+  save('rm_stockAlerts', stockAlerts);
+  renderStockGrid();
+}
+
+function checkStockAlerts() {
+  const hits = [];
+  stockWatchlist.forEach(sym => {
+    const target = stockAlerts[sym];
+    if (!target) return;
+    const d = stockData[sym];
+    if (!d?.price) return;
+    if (d.price >= parseFloat(target) && !stockTriggered[sym]) {
+      stockTriggered[sym] = true;
+      hits.push(`<b>${sym}</b> hit ${fmtPrice(d.price)} — target: ${fmtPrice(parseFloat(target))}`);
+    }
+  });
+  if (!hits.length) return;
+  playAlertSound();
+  showAlertToast(hits);
+  if (Notification.permission === 'granted')
+    hits.forEach(h => new Notification("Randy's Money — Stock Alert!", { body: h.replace(/<[^>]+>/g,'') }));
 }
 
 function copyReport() {
@@ -567,13 +1038,43 @@ function addFromMarket(sym, cgId) {
   renderMarket();
 }
 
-// update report to include market scanner findings
-const _origGenerateReport = generateReport;
+// ── Auto-refresh ──────────────────────────────────────────────────────────────
+function updateArDisplay() {
+  const el = document.getElementById('arSecs');
+  if (el) el.textContent = arCountdownVal;
+}
+
+function toggleAutoRefresh() {
+  arEnabled = !arEnabled;
+  const btn = document.getElementById('arToggle');
+  const cd  = document.getElementById('arCountdown');
+  if (arEnabled) {
+    btn.innerHTML = '&#9646;&#9646; Pause';
+    cd.classList.remove('paused');
+    arCountdownVal = 60;
+    updateArDisplay();
+  } else {
+    btn.innerHTML = '&#9654; Resume';
+    cd.classList.add('paused');
+  }
+}
+
+setInterval(() => {
+  if (!arEnabled) return;
+  arCountdownVal = Math.max(0, arCountdownVal - 1);
+  updateArDisplay();
+  if (arCountdownVal === 0) { arCountdownVal = 60; refreshAll(); }
+}, 1000);
 
 // ── Init ──────────────────────────────────────────────────────────────────────
+if (Notification.permission === 'default') Notification.requestPermission();
 document.getElementById('addInput').addEventListener('keydown', e => { if (e.key === 'Enter') addCoin(); });
+document.getElementById('addStockInput').addEventListener('keydown', e => { if (e.key === 'Enter') addStock(); });
 renderGrid();
+renderStockGrid();
 refreshAll();
+// Dedicated news refresh every 5 minutes
+setInterval(() => fetchNews(), NEWS_TTL);
 </script>
 </body>
 </html>
