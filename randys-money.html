@@ -203,6 +203,21 @@
   .cong-party-r { color:#ff8080; }
   .cong-party-d { color:#6aaeff; }
 
+  /* Market Pulse — macro weather strip */
+  #macroBand { display:flex; gap:10px; padding:12px 20px; background:#04080f; border-bottom:1px solid var(--border); overflow-x:auto; flex-wrap:nowrap; }
+  #macroBand::-webkit-scrollbar { height:3px; }
+  #macroBand::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+  .mpulse { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:10px 16px; min-width:128px; flex-shrink:0; }
+  .mpulse-label { font-size:9px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.8px; margin-bottom:5px; }
+  .mpulse-val { font-size:20px; font-weight:900; color:var(--text); line-height:1; }
+  .mpulse-sub { font-size:11px; margin-top:4px; }
+  .mpulse-note { font-size:9px; color:var(--muted); margin-top:3px; font-style:italic; }
+  .fg-extreme-fear { color:#ff4444; }
+  .fg-fear { color:#ff8c00; }
+  .fg-neutral { color:#aaaaaa; }
+  .fg-greed { color:#00c853; }
+  .fg-extreme-greed { color:#ffcc00; }
+
   /* Supply Chain Intelligence */
   .sc-map-row { display:flex; align-items:center; flex-wrap:wrap; gap:6px; padding:7px 12px; border-bottom:1px solid #0f2a45; }
   .sc-map-row:last-child { border-bottom:none; }
@@ -246,6 +261,15 @@
   <button class="at-close" onclick="document.getElementById('alertToast').style.display='none'">&#x2715;</button>
   <div class="at-title">&#128276; Price Alert!</div>
   <div class="at-body" id="alertToastBody"></div>
+</div>
+
+<!-- MARKET PULSE — macro weather forecast strip -->
+<div id="macroBand">
+  <div class="mpulse"><div class="mpulse-label">&#8383; Bitcoin</div><div class="mpulse-val" id="mpBTCval">--</div><div class="mpulse-sub" id="mpBTCsub">--</div></div>
+  <div class="mpulse"><div class="mpulse-label">&#9830; Ethereum</div><div class="mpulse-val" id="mpETHval">--</div><div class="mpulse-sub" id="mpETHsub">--</div></div>
+  <div class="mpulse"><div class="mpulse-label">&#128202; BTC Dominance</div><div class="mpulse-val" id="mpDOMval">--</div><div class="mpulse-note" id="mpDOMnote"></div></div>
+  <div class="mpulse"><div class="mpulse-label">&#128200; Fear &amp; Greed</div><div class="mpulse-val" id="mpFGval">--</div><div class="mpulse-sub" id="mpFGsub">--</div></div>
+  <div class="mpulse"><div class="mpulse-label">&#128176; Total Crypto Mkt</div><div class="mpulse-val" id="mpMCval" style="font-size:16px;">--</div><div class="mpulse-sub" id="mpMCsub">--</div></div>
 </div>
 
 <div class="main">
@@ -493,6 +517,7 @@ let lastCongressFetch = 0;
 const CONGRESS_TTL    = 6 * 60 * 60 * 1000; // 6 hours
 let congFilter        = 'all';
 let scAlerts          = []; // supply chain contract alerts
+let macroData         = {}; // BTC, ETH, dominance, fear & greed, total market cap
 
 // ── Formatting ─────────────────────────────────────────────────────────────────
 function fmtPrice(n) {
@@ -555,15 +580,95 @@ function renderGrid() {
   }).join('');
 }
 
+// ── Market Pulse ──────────────────────────────────────────────────────────────
+function fgClass(score) {
+  if (score <= 24) return 'fg-extreme-fear';
+  if (score <= 44) return 'fg-fear';
+  if (score <= 55) return 'fg-neutral';
+  if (score <= 74) return 'fg-greed';
+  return 'fg-extreme-greed';
+}
+
+function renderMacro() {
+  const m = macroData;
+
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  const setClass = (id, c) => { const el = document.getElementById(id); if (el) el.className = 'mpulse-sub ' + c; };
+
+  // BTC
+  set('mpBTCval', m.btcPrice ? fmtPrice(m.btcPrice) : '--');
+  set('mpBTCsub', m.btcChange24h != null ? fmtPct(m.btcChange24h) + ' 24h' : '--');
+  setClass('mpBTCsub', cls(m.btcChange24h));
+
+  // ETH
+  set('mpETHval', m.ethPrice ? fmtPrice(m.ethPrice) : '--');
+  set('mpETHsub', m.ethChange24h != null ? fmtPct(m.ethChange24h) + ' 24h' : '--');
+  setClass('mpETHsub', cls(m.ethChange24h));
+
+  // BTC Dominance
+  const dom = m.btcDominance;
+  set('mpDOMval', dom != null ? dom.toFixed(1) + '%' : '--');
+  set('mpDOMnote', dom != null ? (dom > 60 ? '⚠ Alts under pressure' : dom < 45 ? '🟢 Altcoin season' : '📊 Mixed') : '');
+
+  // Fear & Greed
+  const fg = m.fearGreed;
+  const fgEl = document.getElementById('mpFGval');
+  if (fgEl) { fgEl.textContent = fg != null ? fg : '--'; fgEl.className = 'mpulse-val ' + (fg != null ? fgClass(fg) : ''); }
+  const fgSubEl = document.getElementById('mpFGsub');
+  if (fgSubEl) { fgSubEl.textContent = m.fearGreedLabel || '--'; fgSubEl.className = 'mpulse-sub ' + (fg != null ? fgClass(fg) : ''); }
+
+  // Total Market Cap
+  set('mpMCval', m.totalMktCap ? fmtBig(m.totalMktCap) : '--');
+  set('mpMCsub', m.mktCapChange24h != null ? fmtPct(m.mktCapChange24h) + ' 24h' : '--');
+  setClass('mpMCsub', cls(m.mktCapChange24h));
+}
+
+async function fetchMacro() {
+  try {
+    // CoinGecko /global for dominance + total market cap
+    const gRes = await fetch('https://api.coingecko.com/api/v3/global');
+    if (gRes.ok) {
+      const gj = await gRes.json();
+      macroData.btcDominance    = gj.data?.market_cap_percentage?.bitcoin;
+      macroData.totalMktCap     = gj.data?.total_market_cap?.usd;
+      macroData.mktCapChange24h = gj.data?.market_cap_change_percentage_24h_usd;
+    }
+  } catch(e) { console.warn('CoinGecko global:', e.message); }
+
+  try {
+    // Alternative.me Fear & Greed Index (CORS-friendly, no key needed)
+    const fgRes = await fetch('https://api.alternative.me/fng/');
+    if (fgRes.ok) {
+      const fgj = await fgRes.json();
+      macroData.fearGreed      = parseInt(fgj.data[0].value);
+      macroData.fearGreedLabel = fgj.data[0].value_classification;
+    }
+  } catch(e) { console.warn('Fear & Greed:', e.message); }
+
+  renderMacro();
+}
+
 // ── API: Live prices ──────────────────────────────────────────────────────────
 async function fetchLive() {
-  const ids = portfolio.map(s => COINS[s]).filter(Boolean).join(',');
-  if (!ids) return;
-  const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${encodeURIComponent(ids)}&price_change_percentage=24h,7d,1y&per_page=50`;
+  const portfolioIds = portfolio.map(s => COINS[s]).filter(Boolean);
+  // Always piggyback BTC + ETH for the macro pulse strip
+  const allIds = [...new Set([...portfolioIds, 'bitcoin', 'ethereum'])];
+  if (!allIds.length) return;
+  const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${encodeURIComponent(allIds.join(','))}&price_change_percentage=24h,7d,1y&per_page=50`;
   const res = await fetch(url);
   if (!res.ok) throw new Error('CoinGecko ' + res.status);
   const data = await res.json();
   data.forEach(c => {
+    // BTC/ETH → macroData
+    if (c.id === 'bitcoin') {
+      macroData.btcPrice = c.current_price;
+      macroData.btcChange24h = c.price_change_percentage_24h;
+    }
+    if (c.id === 'ethereum') {
+      macroData.ethPrice = c.current_price;
+      macroData.ethChange24h = c.price_change_percentage_24h;
+    }
+    // Portfolio coins → liveData
     const sym = Object.keys(COINS).find(k => COINS[k] === c.id);
     if (!sym) return;
     liveData[sym] = {
@@ -608,6 +713,8 @@ async function refreshAll() {
   try {
     await fetchLive();
     renderGrid();
+    renderMacro(); // BTC/ETH now available from fetchLive piggyback
+    fetchMacro();  // dominance + fear & greed run in background (different endpoints)
     setStatus('loading', 'Loading 1-year history...');
     for (const sym of portfolio) {
       try { await fetchHistory(sym); } catch (e) { console.warn('hist error', sym, e); }
@@ -662,6 +769,22 @@ function generateReport() {
   let out = `RANDY'S MONEY — CRYPTO REPORT\n`;
   out += `Generated: ${now}\n`;
   out += `${'═'.repeat(50)}\n\n`;
+
+  // Macro pulse section always at top
+  const m = macroData;
+  if (m.btcPrice || m.fearGreed != null) {
+    out += `MARKET PULSE — MACRO WEATHER\n`;
+    out += `${'─'.repeat(50)}\n`;
+    if (m.btcPrice)    out += `Bitcoin (BTC)       : ${fmtPrice(m.btcPrice)}  ${m.btcChange24h != null ? fmtPct(m.btcChange24h) + ' 24h' : ''}\n`;
+    if (m.ethPrice)    out += `Ethereum (ETH)      : ${fmtPrice(m.ethPrice)}  ${m.ethChange24h != null ? fmtPct(m.ethChange24h) + ' 24h' : ''}\n`;
+    if (m.btcDominance != null) {
+      const domNote = m.btcDominance > 60 ? '⚠ Alts under pressure' : m.btcDominance < 45 ? '✅ Altcoin season' : 'Mixed';
+      out += `BTC Dominance       : ${m.btcDominance.toFixed(1)}%  (${domNote})\n`;
+    }
+    if (m.fearGreed != null) out += `Fear & Greed Index  : ${m.fearGreed}/100 — ${m.fearGreedLabel}\n`;
+    if (m.totalMktCap)       out += `Total Crypto Mkt Cap: ${fmtBig(m.totalMktCap)}  ${m.mktCapChange24h != null ? fmtPct(m.mktCapChange24h) + ' 24h' : ''}\n`;
+    out += '\n';
+  }
 
   if (!portfolio.length) {
     out += 'No coins in portfolio.\n';
