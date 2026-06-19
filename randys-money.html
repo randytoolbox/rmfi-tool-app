@@ -1145,21 +1145,34 @@ function detectTicker(title) {
 
 async function fetchNewsQuery(query) {
   const rss = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
-  const url = `https://api.allorigins.win/get?url=${encodeURIComponent(rss)}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(res.status);
-  const json = await res.json();
-  const xml  = new DOMParser().parseFromString(json.contents, 'text/xml');
-  return Array.from(xml.querySelectorAll('item')).slice(0, 8).map(item => {
-    const linkEl = item.querySelector('link');
-    const link = linkEl ? (linkEl.textContent || linkEl.nextSibling?.nodeValue || '') : '';
-    return {
-      title:   item.querySelector('title')?.textContent?.replace(/\s*-\s*[^-]+$/, '') || '',
-      link:    link.trim(),
-      pubDate: item.querySelector('pubDate')?.textContent || '',
-      source:  item.querySelector('source')?.textContent || '',
-    };
-  }).filter(i => i.title);
+
+  const parseFeed = xmlText => {
+    const xml = new DOMParser().parseFromString(xmlText, 'text/xml');
+    return Array.from(xml.querySelectorAll('item')).slice(0, 8).map(item => {
+      const linkEl = item.querySelector('link');
+      const link = linkEl ? (linkEl.textContent || linkEl.nextSibling?.nodeValue || '') : '';
+      return {
+        title:   item.querySelector('title')?.textContent?.replace(/\s*-\s*[^-]+$/, '') || '',
+        link:    link.trim(),
+        pubDate: item.querySelector('pubDate')?.textContent || '',
+        source:  item.querySelector('source')?.textContent || '',
+      };
+    }).filter(i => i.title);
+  };
+
+  // Try allorigins (wraps XML in JSON)
+  try {
+    const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(rss)}`);
+    if (res.ok) { const j = await res.json(); if (j.contents) return parseFeed(j.contents); }
+  } catch(e) { /* fall through */ }
+
+  // Try corsproxy.io (returns raw XML)
+  try {
+    const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(rss)}`, { cache: 'no-store' });
+    if (res.ok) return parseFeed(await res.text());
+  } catch(e) { /* fall through */ }
+
+  throw new Error('News proxies unavailable');
 }
 
 async function fetchNews(force = false) {
