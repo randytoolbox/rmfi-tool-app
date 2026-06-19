@@ -203,6 +203,31 @@
   .cong-party-r { color:#ff8080; }
   .cong-party-d { color:#6aaeff; }
 
+  /* My Holdings / P&L */
+  .holdings-divider { border:none; border-top:1px solid #0f2a45; margin:10px 0 8px; }
+  .holdings-inputs { display:flex; gap:6px; margin-bottom:8px; }
+  .holdings-inputs label { font-size:10px; color:var(--muted); font-weight:700; display:flex; flex-direction:column; gap:3px; flex:1; }
+  .holdings-inputs input { background:#060f1a; border:1px solid var(--border); border-radius:6px; padding:5px 8px; font-size:12px; color:var(--text); width:100%; }
+  .holdings-inputs input:focus { outline:none; border-color:#6aaeff; }
+  .pnl-box { border-radius:8px; padding:8px 10px; text-align:center; }
+  .pnl-box.up   { background:#0d2d1a; border:1px solid var(--good); }
+  .pnl-box.down { background:#2d0d0d; border:1px solid var(--bad); }
+  .pnl-box.flat { background:#0a1a2e; border:1px solid var(--border); }
+  .pnl-verdict { font-size:15px; font-weight:900; line-height:1.3; }
+  .pnl-verdict.up   { color:var(--good); }
+  .pnl-verdict.down { color:var(--bad); }
+  .pnl-verdict.flat { color:var(--muted); }
+  .pnl-detail { font-size:10px; color:var(--muted); margin-top:2px; }
+
+  /* Portfolio Summary Banner */
+  #portfolioSummary { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px 16px; margin-bottom:14px; display:none; }
+  .ps-row { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+  .ps-label { font-size:10px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; margin-bottom:2px; }
+  .ps-val { font-size:18px; font-weight:900; color:var(--text); }
+  .ps-verdict { font-size:20px; font-weight:900; }
+  .ps-verdict.up   { color:var(--good); }
+  .ps-verdict.down { color:var(--bad); }
+
   /* Market Pulse — macro weather strip */
   #macroBand { display:flex; gap:10px; padding:12px 20px; background:#04080f; border-bottom:1px solid var(--border); overflow-x:auto; flex-wrap:nowrap; }
   #macroBand::-webkit-scrollbar { height:3px; }
@@ -275,6 +300,13 @@
 <div class="main">
 
   <div class="section-label" style="margin-top:4px;">Your Portfolio</div>
+  <div id="portfolioSummary">
+    <div class="ps-row">
+      <div><div class="ps-label">Total Invested</div><div class="ps-val" id="psTotalInvested">--</div></div>
+      <div><div class="ps-label">Current Value</div><div class="ps-val" id="psTotalValue">--</div></div>
+      <div><div class="ps-label">Overall</div><div class="ps-verdict" id="psVerdict">--</div></div>
+    </div>
+  </div>
   <div class="coin-grid" id="coinGrid"></div>
 
   <div class="add-row">
@@ -518,6 +550,7 @@ const CONGRESS_TTL    = 6 * 60 * 60 * 1000; // 6 hours
 let congFilter        = 'all';
 let scAlerts          = []; // supply chain contract alerts
 let macroData         = {}; // BTC, ETH, dominance, fear & greed, total market cap
+let holdings          = load('rm_holdings', {}); // { XRP: {qty:500, cost:0.86}, ... }
 
 // ── Formatting ─────────────────────────────────────────────────────────────────
 function fmtPrice(n) {
@@ -540,6 +573,53 @@ function fmtBig(n) {
 }
 function cls(n) { return n == null ? 'flat' : n > 0 ? 'up' : n < 0 ? 'down' : 'flat'; }
 
+// ── P&L helpers ───────────────────────────────────────────────────────────────
+function setHoldings(sym, qty, cost) {
+  const q = parseFloat(qty), c = parseFloat(cost);
+  if (!isNaN(q) && q > 0 && !isNaN(c) && c > 0) {
+    holdings[sym] = { qty: q, cost: c };
+  } else {
+    delete holdings[sym];
+  }
+  save('rm_holdings', holdings);
+  renderGrid();
+  renderPortfolioSummary();
+}
+
+function calcPnl(sym, price) {
+  const h = holdings[sym];
+  if (!h || !price) return null;
+  const currentVal = h.qty * price;
+  const invested   = h.qty * h.cost;
+  const pnl        = currentVal - invested;
+  const pct        = (pnl / invested) * 100;
+  return { currentVal, invested, pnl, pct, qty: h.qty, cost: h.cost };
+}
+
+function renderPortfolioSummary() {
+  const el = document.getElementById('portfolioSummary');
+  if (!el) return;
+  let totalInvested = 0, totalValue = 0, hasAny = false;
+  portfolio.forEach(sym => {
+    const p = calcPnl(sym, liveData[sym]?.price);
+    if (!p) return;
+    hasAny = true;
+    totalInvested += p.invested;
+    totalValue    += p.currentVal;
+  });
+  if (!hasAny) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  const totalPnl = totalValue - totalInvested;
+  const totalPct = (totalPnl / totalInvested) * 100;
+  const dir = totalPnl >= 0 ? 'up' : 'down';
+  const arrow = totalPnl >= 0 ? '&#9650;' : '&#9660;';
+  document.getElementById('psTotalInvested').textContent = '$' + totalInvested.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  document.getElementById('psTotalValue').textContent    = '$' + totalValue.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const vEl = document.getElementById('psVerdict');
+  vEl.className = 'ps-verdict ' + dir;
+  vEl.innerHTML = `${arrow} ${totalPnl >= 0 ? '+' : '-'}$${Math.abs(totalPnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})} (${totalPct >= 0 ? '+' : ''}${totalPct.toFixed(1)}%)`;
+}
+
 // ── Render ────────────────────────────────────────────────────────────────────
 function renderGrid() {
   const grid = document.getElementById('coinGrid');
@@ -558,6 +638,21 @@ function renderGrid() {
     const alertTarget = alertTargets[sym];
     const hitTarget = alertTarget && d.price && d.price >= parseFloat(alertTarget);
 
+    // P&L section
+    const pos = holdings[sym] || {};
+    const pnl = calcPnl(sym, d.price);
+    let pnlHtml = '';
+    if (pnl) {
+      const dir = pnl.pnl >= 0 ? 'up' : 'down';
+      const verdict = pnl.pnl >= 0
+        ? `&#9650; You're up $${Math.abs(pnl.pnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})} (${pnl.pct >= 0 ? '+' : ''}${pnl.pct.toFixed(1)}%)`
+        : `&#9660; You're down $${Math.abs(pnl.pnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})} (${pnl.pct.toFixed(1)}%)`;
+      pnlHtml = `<div class="pnl-box ${dir}">
+        <div class="pnl-verdict ${dir}">${verdict}</div>
+        <div class="pnl-detail">Worth now: $${pnl.currentVal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})} &nbsp;|&nbsp; Invested: $${pnl.invested.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+      </div>`;
+    }
+
     return `<div class="coin-card${loading ? ' loading' : ''}${hitTarget ? ' alert-hit' : ''}">
       <button class="remove-btn" onclick="removeCoin('${sym}')" title="Remove">&#x2715;</button>
       <div class="ticker">${sym}</div>
@@ -569,6 +664,18 @@ function renderGrid() {
       <div class="row"><span class="label">1Y High</span><span class="val">${fmtPrice(h.high1y)}</span></div>
       <div class="row"><span class="label">1Y Low</span><span class="val">${fmtPrice(h.low1y)}</span></div>
       <div class="row"><span class="label">Mkt Cap</span><span class="val">${fmtBig(d.marketCap)}</span></div>
+      <hr class="holdings-divider">
+      <div class="holdings-inputs">
+        <label>How many coins<input id="qty-${sym}" type="number" step="any" min="0" placeholder="e.g. 500"
+          value="${pos.qty || ''}"
+          onchange="setHoldings('${sym}', this.value, document.getElementById('cost-${sym}').value)"
+          onclick="event.stopPropagation()" /></label>
+        <label>What you paid each<input id="cost-${sym}" type="number" step="any" min="0" placeholder="e.g. 0.86"
+          value="${pos.cost || ''}"
+          onchange="setHoldings('${sym}', document.getElementById('qty-${sym}').value, this.value)"
+          onclick="event.stopPropagation()" /></label>
+      </div>
+      ${pnlHtml}
       <div class="alert-row">
         <span class="alert-label">&#128276; Sell at:</span>
         <input class="alert-input${alertTarget ? ' active' : ''}" type="number" step="any" min="0"
@@ -578,6 +685,7 @@ function renderGrid() {
       </div>
     </div>`;
   }).join('');
+  renderPortfolioSummary();
 }
 
 // ── Market Pulse ──────────────────────────────────────────────────────────────
@@ -770,6 +878,20 @@ function generateReport() {
   out += `Generated: ${now}\n`;
   out += `${'═'.repeat(50)}\n\n`;
 
+  // Portfolio total P&L summary
+  let totalInv = 0, totalVal = 0, hasPos = false;
+  portfolio.forEach(sym => {
+    const p = calcPnl(sym, liveData[sym]?.price);
+    if (!p) return;
+    hasPos = true; totalInv += p.invested; totalVal += p.currentVal;
+  });
+  if (hasPos) {
+    const totalPnl = totalVal - totalInv;
+    const totalPct = (totalPnl / totalInv) * 100;
+    out += `MY CRYPTO PORTFOLIO TOTAL\n`;
+    out += `  Invested: $${totalInv.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}  |  Now Worth: $${totalVal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}  |  ${totalPnl >= 0 ? 'UP' : 'DOWN'} $${Math.abs(totalPnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})} (${totalPct >= 0 ? '+' : ''}${totalPct.toFixed(1)}%)\n\n`;
+  }
+
   // Macro pulse section always at top
   const m = macroData;
   if (m.btcPrice || m.fearGreed != null) {
@@ -806,6 +928,11 @@ function generateReport() {
 
     out += `${sym} (${name})\n`;
     out += `  Current Price : ${fmtPrice(d.price)}\n`;
+    const pnl = calcPnl(sym, d.price);
+    if (pnl) {
+      const dir = pnl.pnl >= 0 ? "UP" : "DOWN";
+      out += `  MY POSITION   : ${pnl.qty} coins @ ${fmtPrice(pnl.cost)} avg — Worth $${pnl.currentVal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})} — ${dir} $${Math.abs(pnl.pnl).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})} (${pnl.pct >= 0 ? '+' : ''}${pnl.pct.toFixed(1)}%)\n`;
+    }
     out += `  24h Change    : ${fmtPct(d.change24h)}\n`;
     out += `  7-Day Change  : ${fmtPct(d.change7d)}\n`;
     out += `  1-Year Change : ${yr1pctLabel}\n`;
