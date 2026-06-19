@@ -924,57 +924,59 @@ async function fetchCongress(force = false) {
   if (errEl) errEl.style.display = 'none';
   const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 90);
   const parseDate = s => { try { return new Date(s + 'T12:00:00'); } catch { return null; } };
+  const proxy = 'https://api.allorigins.win/get?url=';
   let trades = [];
 
+  const fetchJson = async (url) => {
+    const r = await fetch(proxy + encodeURIComponent(url));
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const w = await r.json();
+    return JSON.parse(w.contents);
+  };
+
   try {
-    const r = await fetch('https://house-stock-watcher-data.s3-us-west-2.amazonaws.com/data/all_transactions.json');
-    if (r.ok) {
-      const data = await r.json();
-      data.forEach(t => {
-        if (!t.ticker || t.ticker === 'N/A' || t.ticker === '--') return;
-        const d = parseDate(t.transaction_date);
-        if (!d || d < cutoff) return;
-        trades.push({
-          ticker:  t.ticker.replace(/[^A-Z]/g,'').toUpperCase(),
-          desc:    t.asset_description || '',
-          type:    (t.type || '').toLowerCase(),
-          amount:  t.amount || '',
-          member:  t.representative || 'Unknown',
-          chamber: 'House',
-          party:   null,
-          state:   (t.district || '').slice(0,2),
-          date:    t.transaction_date,
-        });
+    const data = await fetchJson('https://house-stock-watcher-data.s3-us-west-2.amazonaws.com/data/all_transactions.json');
+    data.forEach(t => {
+      if (!t.ticker || t.ticker === 'N/A' || t.ticker === '--') return;
+      const d = parseDate(t.transaction_date);
+      if (!d || d < cutoff) return;
+      trades.push({
+        ticker:  t.ticker.replace(/[^A-Z]/g,'').toUpperCase(),
+        desc:    t.asset_description || '',
+        type:    (t.type || '').toLowerCase(),
+        amount:  t.amount || '',
+        member:  t.representative || 'Unknown',
+        chamber: 'House',
+        party:   null,
+        state:   (t.district || '').slice(0,2),
+        date:    t.transaction_date,
       });
-    }
+    });
   } catch(e) { console.warn('House congress data:', e.message); }
 
   try {
-    const r = await fetch('https://senate-stock-watcher-data.s3-us-west-2.amazonaws.com/aggregate/all_transactions.json');
-    if (r.ok) {
-      const data = await r.json();
-      data.forEach(t => {
-        if (!t.ticker || t.ticker === 'N/A' || t.ticker === '--') return;
-        const d = parseDate(t.transaction_date);
-        if (!d || d < cutoff) return;
-        const member = t.first_name ? `${t.first_name} ${t.last_name}` : (t.senator || 'Unknown');
-        trades.push({
-          ticker:  (t.ticker || '').replace(/[^A-Z]/g,'').toUpperCase(),
-          desc:    t.asset_description || '',
-          type:    (t.type || '').toLowerCase(),
-          amount:  t.amount || '',
-          member,
-          chamber: 'Senate',
-          party:   t.party || null,
-          state:   t.state || '',
-          date:    t.transaction_date,
-        });
+    const data = await fetchJson('https://senate-stock-watcher-data.s3-us-west-2.amazonaws.com/aggregate/all_transactions.json');
+    data.forEach(t => {
+      if (!t.ticker || t.ticker === 'N/A' || t.ticker === '--') return;
+      const d = parseDate(t.transaction_date);
+      if (!d || d < cutoff) return;
+      const member = t.first_name ? `${t.first_name} ${t.last_name}` : (t.senator || 'Unknown');
+      trades.push({
+        ticker:  (t.ticker || '').replace(/[^A-Z]/g,'').toUpperCase(),
+        desc:    t.asset_description || '',
+        type:    (t.type || '').toLowerCase(),
+        amount:  t.amount || '',
+        member,
+        chamber: 'Senate',
+        party:   t.party || null,
+        state:   t.state || '',
+        date:    t.transaction_date,
       });
-    }
+    });
   } catch(e) { console.warn('Senate congress data:', e.message); }
 
   if (!trades.length) {
-    if (errEl) { errEl.style.display='block'; errEl.textContent='⚠ Congressional trade data temporarily unavailable — will retry on next refresh.'; }
+    if (errEl) { errEl.style.display='block'; errEl.textContent='⚠ Congressional trade data unavailable — data source may be slow. Try the ↻ Refresh button in a few minutes.'; }
     return;
   }
   trades.sort((a,b) => new Date(b.date) - new Date(a.date));
