@@ -278,6 +278,7 @@
   <button class="btn btn-gold" onclick="refreshAll()">&#8635; Refresh Data</button>
   <button class="btn btn-blue" onclick="scanMarket()">&#128269; Scan Market</button>
   <button class="btn btn-green" onclick="generateReport()">Generate Report for Claude</button>
+  <button class="btn btn-gold" onclick="generateBriefing()" style="background:linear-gradient(135deg,#7b3fa0,#4a1a6e);color:#fff;border:none;">&#9733; Daily Briefing</button>
   <button class="btn btn-sm" id="arToggle" onclick="toggleAutoRefresh()" style="background:#1e4060;color:var(--text);border:1px solid var(--border);">&#9646;&#9646; Pause</button>
   <span id="arCountdown">Auto-refresh in <b id="arSecs">60</b>s</span>
 </div>
@@ -1035,36 +1036,109 @@ function generateReport() {
     });
   }
 
-  if (congressTrades.length) {
-    const watchSet = new Set([...stockWatchlist, ...portfolio]);
-    out += `\nCONGRESS TRADES — STOCK Act Disclosures (last 90 days)\n`;
+  if (cBuysData.length) {
+    out += `\nCONGRESS BUYS — Most Purchased by Members (STOCK Act)\n`;
     out += `${'─'.repeat(50)}\n`;
-    const watchHits = congressTrades.filter(t => watchSet.has(t.ticker));
-    if (watchHits.length) {
-      out += `\nWATCHLIST MATCHES — ${watchHits.length} congressional trade(s) on your tracked stocks:\n`;
-      watchHits.slice(0,10).forEach(t => {
-        const action = (t.type.includes('purchase')||t.type.includes('buy')) ? 'PURCHASED' : 'SOLD';
-        out += `  ${t.date}  ${t.ticker.padEnd(6)} ${action.padEnd(10)} ${t.member} (${t.chamber}${t.party?' · '+t.party:''}) — ${t.amount}\n`;
-      });
-      out += '\n';
-    } else {
-      out += '(No congressional trades on your current watchlist in the last 90 days)\n\n';
-    }
-    out += `Most recent congressional trades (${congressTrades.length} total in last 90 days):\n`;
-    congressTrades.slice(0,15).forEach(t => {
-      const action = (t.type.includes('purchase')||t.type.includes('buy')) ? 'BUY ' : 'SELL';
-      out += `  ${t.date}  ${t.ticker.padEnd(6)} ${action}  ${t.member} (${t.chamber}) — ${t.amount}\n`;
+    cBuysData.slice(0, 15).forEach(d => {
+      const p = stockData[d.sym]?.price;
+      out += `  ${d.sym.padEnd(6)} ${(d.name !== d.sym ? d.name : '').slice(0,24).padEnd(25)} ×${Math.ceil(d.score/2)} mentions${p ? '  ' + fmtPrice(p) : ''}\n`;
+    });
+    out += '\n';
+  }
+
+  if (congressTrades.length) {
+    out += `\nCONGRESS TRADE NEWS — STOCK Act Disclosures\n`;
+    out += `${'─'.repeat(50)}\n`;
+    congressTrades.slice(0, 12).forEach(t => {
+      out += `[${timeAgo(t.pubDate)}] ${t.title}\n`;
+      if (t.source) out += `  Source: ${t.source}\n`;
     });
     out += '\n';
   }
 
   out += `${'═'.repeat(50)}\n`;
-  out += `Data: Crypto — CoinGecko · Stocks — Twelve Data · Congress — STOCK Act · Supply Chain — Google News contract alerts. Paste into Claude for analysis.\n`;
+  out += `Data: CoinGecko (crypto) · Yahoo Finance/Finnhub (stocks) · STOCK Act disclosures (congress) · Google News (supply chain). Paste into Claude for analysis.\n`;
 
   document.getElementById('reportBox').textContent = out;
 }
 
 // ── Price Alerts ──────────────────────────────────────────────────────────────
+// ── Randy's Daily Briefing ────────────────────────────────────────────────────
+function generateBriefing() {
+  const now = new Date().toLocaleString();
+  let out = `RANDY'S DAILY BRIEFING — ${now}\n`;
+  out += `${'═'.repeat(50)}\n\n`;
+
+  // Portfolio snapshot
+  let totalInv = 0, totalVal = 0, hasPos = false;
+  portfolio.forEach(sym => {
+    const p = calcPnl(sym, liveData[sym]?.price);
+    if (!p) return;
+    hasPos = true; totalInv += p.invested; totalVal += p.currentVal;
+  });
+  if (hasPos) {
+    const pnl = totalVal - totalInv, pct = (pnl / totalInv) * 100;
+    out += `MY CRYPTO PORTFOLIO\n`;
+    out += `  ${pnl >= 0 ? '▲ UP' : '▼ DOWN'} $${Math.abs(pnl).toFixed(2)} (${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%)  |  Worth $${totalVal.toFixed(2)} vs. invested $${totalInv.toFixed(2)}\n`;
+    portfolio.forEach(sym => {
+      const p = calcPnl(sym, liveData[sym]?.price);
+      const d = liveData[sym] || {};
+      if (p) out += `  ${sym}: $${liveData[sym]?.price?.toFixed(4) || '--'}  ${p.pnl >= 0 ? '+' : ''}$${p.pnl.toFixed(2)} (${p.pct >= 0 ? '+' : ''}${p.pct.toFixed(1)}%)  24h: ${fmtPct(d.change24h)}\n`;
+    });
+    out += '\n';
+  }
+
+  // Market mood
+  const m = macroData;
+  out += `MARKET MOOD\n`;
+  if (m.fearGreed != null) out += `  Fear & Greed: ${m.fearGreed}/100 — ${m.fearGreedLabel}\n`;
+  if (m.btcPrice) out += `  BTC: ${fmtPrice(m.btcPrice)}  ${m.btcChange24h != null ? fmtPct(m.btcChange24h) + ' 24h' : ''}\n`;
+  if (m.btcDominance != null) out += `  BTC Dominance: ${m.btcDominance.toFixed(1)}%\n`;
+  out += '\n';
+
+  // Biggest stock movers today
+  const movers = stockWatchlist
+    .filter(s => stockData[s]?.changePct != null)
+    .sort((a, b) => Math.abs(stockData[b].changePct) - Math.abs(stockData[a].changePct))
+    .slice(0, 6);
+  if (movers.length) {
+    out += `BIGGEST STOCK MOVES TODAY\n`;
+    movers.forEach(sym => {
+      const d = stockData[sym];
+      out += `  ${sym.padEnd(6)} ${fmtPrice(d.price)}  ${fmtPct(d.changePct)} today\n`;
+    });
+    out += '\n';
+  }
+
+  // What congress is buying
+  if (cBuysData.length) {
+    out += `CONGRESS IS BUYING\n`;
+    out += `  ${cBuysData.slice(0, 8).map(d => d.sym).join('  ')}\n\n`;
+  }
+
+  // Top news
+  if (newsItems.length) {
+    out += `KEY NEWS HEADLINES\n`;
+    newsItems.slice(0, 6).forEach(item => {
+      out += `  • [${timeAgo(item.pubDate)}] ${item.title}\n`;
+    });
+    out += '\n';
+  }
+
+  // Congress trade headlines
+  if (congressTrades.length) {
+    out += `CONGRESS TRADE HEADLINES\n`;
+    congressTrades.slice(0, 4).forEach(t => {
+      out += `  • [${timeAgo(t.pubDate)}] ${t.title}\n`;
+    });
+    out += '\n';
+  }
+
+  out += `${'═'.repeat(50)}\n`;
+  out += `Paste to Claude and ask: "What should I know and what should I do today?"\n`;
+  document.getElementById('reportBox').textContent = out;
+}
+
 function setAlert(sym, val) {
   const v = String(val).trim();
   if (v === '' || isNaN(parseFloat(v))) {
