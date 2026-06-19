@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Market Tracker - Crypto &amp; Stocks</title>
+<style>
+  :root {
+    --bg: #10365f;
+    --panel: #17436f;
+    --border: #295b88;
+    --text: #eef6ff;
+    --muted: #b9d0e7;
+    --accent: #d5bf8f;
+    --good: #39d26b;
+    --bad: #ff6b6b;
+    --warn: #e6b34c;
+    --input-bg: #12395f;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Segoe UI, Arial, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  .header { background: #173f6b; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #254f7b; flex-wrap: wrap; gap: 10px; }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .header h1 { font-size: 24px; font-weight: 800; }
+  .header a { color: var(--accent); font-size: 13px; font-weight: 700; text-decoration: none; }
+  .header a:hover { text-decoration: underline; }
+
+  .refresh-bar { background: #12395f; border-bottom: 1px solid var(--border); padding: 7px 20px; display: flex; align-items: center; gap: 16px; font-size: 13px; flex-wrap: wrap; }
+  .refresh-bar .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); display: inline-block; }
+  .refresh-bar .dot.stale { background: var(--warn); }
+  .refresh-bar .dot.error { background: var(--bad); }
+  #refreshCountdown { color: var(--muted); }
+  .btn { border: none; border-radius: 8px; padding: 6px 14px; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .btn-blue { background: linear-gradient(#6ea9ff, #4e83dc); color: white; }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+
+  .main { max-width: 1400px; margin: 0 auto; padding: 16px 16px 40px; }
+
+  .section-title { font-size: 18px; font-weight: 800; margin: 20px 0 12px; display: flex; align-items: center; gap: 10px; }
+  .section-title .badge { background: var(--panel); border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; font-size: 12px; color: var(--muted); font-weight: 700; }
+
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+
+  .mcard {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    position: relative;
+    transition: border-color .15s;
+  }
+  .mcard:hover { border-color: #4e83dc; }
+  .mcard .sym { font-size: 18px; font-weight: 900; }
+  .mcard .name { font-size: 12px; color: var(--muted); margin-bottom: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mcard .price { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+  .mcard .change { font-size: 14px; font-weight: 800; }
+  .mcard .change.up { color: var(--good); }
+  .mcard .change.down { color: var(--bad); }
+  .mcard .change.flat { color: var(--muted); }
+  .mcard .meta { margin-top: 8px; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 2px; }
+  .mcard .remove-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: #6a8caa; font-size: 16px; cursor: pointer; line-height: 1; padding: 2px 5px; border-radius: 6px; }
+  .mcard .remove-btn:hover { color: var(--bad); background: rgba(255,107,107,.1); }
+  .mcard.loading { opacity: .55; }
+  .mcard.errored { border-color: rgba(255,107,107,.4); }
+
+  .skeleton { background: #1e4d7b; border-radius: 6px; height: 16px; width: 80%; animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:.5} 50%{opacity:1} }
+
+  .add-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .add-panel input { background: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 14px; color: var(--text); width: 160px; }
+  .add-panel input::placeholder { color: var(--muted); }
+  .add-panel label { font-size: 13px; font-weight: 700; color: var(--muted); }
+
+  .settings-panel { background: #12395f; border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; margin-top: 28px; }
+  .settings-panel .shead { font-weight: 800; margin-bottom: 10px; font-size: 15px; }
+  .settings-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .settings-row label { font-size: 13px; color: var(--muted); font-weight: 700; width: 140px; flex-shrink: 0; }
+  .settings-row input { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 13px; color: var(--text); flex: 1; min-width: 220px; max-width: 420px; }
+  .settings-row input::placeholder { color: var(--muted); opacity: .7; }
+  .note { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+  .note a { color: var(--accent); }
+
+  .empty-state { color: var(--muted); font-size: 14px; padding: 16px 0; }
+  .error-msg { color: var(--bad); font-size: 13px; padding: 8px 0; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 28px 0 0; }
+
+  @media (max-width: 600px) {
+    .header h1 { font-size: 18px; }
+    .mcard .price { font-size: 18px; }
+    .add-panel input { width: 130px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>Market Tracker</h1>
+    <a href="index.html">&#8592; RMFI Tool App</a>
+  </div>
+  <div style="font-size:13px; color:var(--muted);">Crypto &amp; Stock Watchlist</div>
+</div>
+
+<div class="refresh-bar">
+  <span><span class="dot" id="statusDot"></span> <span id="statusText">Loading...</span></span>
+  <span id="refreshCountdown"></span>
+  <button class="btn btn-blue btn-sm" onclick="refreshAll()">Refresh Now</button>
+  <span style="color:var(--muted);font-size:12px;">Auto-refreshes every 60s</span>
+</div>
+
+<div class="main">
+
+  <!-- CRYPTO SECTION -->
+  <div class="section-title">
+    Crypto
+    <span class="badge" id="cryptoBadge">via CoinGecko &bull; no key needed</span>
+  </div>
+
+  <div class="card-grid" id="cryptoGrid"></div>
+
+  <div class="add-panel" style="margin-top:12px;">
+    <label>Add coin:</label>
+    <input id="cryptoAddInput" placeholder="BTC, ETH, SOL..." maxlength="20" />
+    <button class="btn btn-blue btn-sm" onclick="addCrypto()">Add</button>
+    <span class="note" style="margin:0;">Ticker symbols: BTC, ETH, SOL, XRP, BNB, DOGE, ADA, AVAX, DOT, LINK, LTC, UNI...</span>
+  </div>
+
+  <hr />
+
+  <!-- STOCKS SECTION -->
+  <div class="section-title" style="margin-top:24px;">
+    Stocks &amp; ETFs
+    <span class="badge" id="stockBadge">via Finnhub</span>
+  </div>
+
+  <div id="stockKeyNotice" class="error-msg" style="display:none;">
+    Add your free Finnhub API key below to enable stock tracking. Get one free at
+    <a href="https://finnhub.io" style="color:var(--accent);">finnhub.io</a> (takes ~30 seconds).
+  </div>
+
+  <div class="card-grid" id="stockGrid"></div>
+
+  <div class="add-panel" style="margin-top:12px;">
+    <label>Add ticker:</label>
+    <input id="stockAddInput" placeholder="AAPL, NVDA, SPY..." maxlength="10" />
+    <button class="btn btn-blue btn-sm" onclick="addStock()">Add</button>
+    <span class="note" style="margin:0;">US stocks &amp; ETFs: AAPL, TSLA, NVDA, MSFT, SPY, QQQ, BRK.B...</span>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="settings-panel">
+    <div class="shead">Settings</div>
+    <div class="settings-row">
+      <label>Finnhub API Key</label>
+      <input id="finnhubKeyInput" type="password" placeholder="Paste your free Finnhub API key here" autocomplete="off" />
+      <button class="btn btn-blue btn-sm" onclick="saveFinnhubKey()">Save Key</button>
+    </div>
+    <div class="note">
+      Get a free key at <a href="https://finnhub.io" target="_blank">finnhub.io</a> &mdash; free tier includes real-time US stock quotes (60 calls/min).
+      Your key is stored only in your browser (localStorage) and never sent anywhere except Finnhub.
+    </div>
+    <div style="margin-top:14px;">
+      <button class="btn btn-sm" style="background:#1e4d7b;color:#eef6ff;" onclick="resetAll()">Reset All Watchlists</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+
+const DEFAULT_CRYPTO = ['BTC','ETH','SOL','XRP','BNB','DOGE'];
+const DEFAULT_STOCKS  = ['SPY','QQQ','AAPL','NVDA','TSLA','MSFT'];
+
+const COINGECKO_ID = {
+  BTC:'bitcoin', ETH:'ethereum', SOL:'solana', XRP:'ripple', BNB:'binancecoin',
+  DOGE:'dogecoin', ADA:'cardano', AVAX:'avalanche-2', DOT:'polkadot',
+  MATIC:'matic-network', LINK:'chainlink', LTC:'litecoin', UNI:'uniswap',
+  ATOM:'cosmos', NEAR:'near', ICP:'internet-computer', FIL:'filecoin',
+  APT:'aptos', ARB:'arbitrum', OP:'optimism', INJ:'injective-protocol',
+  SUI:'sui', SEI:'sei-network', TIA:'celestia', FET:'fetch-ai',
+  WIF:'dogwifcoin', BONK:'bonk', PEPE:'pepe', SHIB:'shiba-inu',
+  TON:'the-open-network', TRX:'tron', XLM:'stellar', HBAR:'hedera-hashgraph',
+  VET:'vechain', ALGO:'algorand', ETC:'ethereum-classic', BCH:'bitcoin-cash',
+};
+
+function load(key, def) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch { return def; }
+}
+function save(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+}
+
+let cryptoList  = load('tracker_crypto', DEFAULT_CRYPTO);
+let stockList   = load('tracker_stocks', DEFAULT_STOCKS);
+let finnhubKey  = load('tracker_finnhub_key', '');
+let cryptoData  = {};
+let stockData   = {};
+let refreshTimer = null;
+let countdown   = 60;
+
+// ─── Rendering ────────────────────────────────────────────────────────────────
+
+function fmt(n, decimals) {
+  if (n == null || isNaN(n)) return '--';
+  if (decimals != null) return n.toFixed(decimals);
+  if (n >= 1000) return n.toLocaleString('en-US', {maximumFractionDigits: 2});
+  if (n >= 1)    return n.toFixed(2);
+  if (n >= 0.01) return n.toFixed(4);
+  return n.toFixed(6);
+}
+
+function fmtBig(n) {
+  if (n == null || isNaN(n)) return '--';
+  if (n >= 1e12) return '$' + (n / 1e12).toFixed(2) + 'T';
+  if (n >= 1e9)  return '$' + (n / 1e9).toFixed(2) + 'B';
+  if (n >= 1e6)  return '$' + (n / 1e6).toFixed(2) + 'M';
+  return '$' + n.toLocaleString();
+}
+
+function changeClass(pct) {
+  if (pct == null || isNaN(pct)) return 'flat';
+  if (pct > 0) return 'up';
+  if (pct < 0) return 'down';
+  return 'flat';
+}
+
+function changeArrow(pct) {
+  if (pct == null || isNaN(pct)) return '';
+  return pct > 0 ? '▲' : pct < 0 ? '▼' : '';
+}
+
+function renderCryptoCard(sym, data, loading) {
+  const cgId = COINGECKO_ID[sym.toUpperCase()];
+  const d = data || {};
+  const price = d.usd;
+  const change = d.usd_24h_change;
+  const mcap = d.usd_market_cap;
+  const vol = d.usd_24h_vol;
+  const pct = change != null ? change.toFixed(2) : null;
+  const cls = changeClass(change);
+
+  return `
+    <div class="mcard${loading ? ' loading' : ''}" data-sym="${sym}">
+      <button class="remove-btn" onclick="removeCrypto('${sym}')" title="Remove">&#x2715;</button>
+      <div class="sym">${sym}</div>
+      <div class="name">${cgId ? cgId.replace(/-/g,' ') : sym.toLowerCase()}</div>
+      <div class="price">${price != null ? '$' + fmt(price) : '<div class="skeleton">&nbsp;</div>'}</div>
+      <div class="change ${cls}">
+        ${pct != null ? changeArrow(change) + ' ' + (change >= 0 ? '+' : '') + pct + '%' : '&nbsp;'}
+        <span style="font-size:11px;font-weight:400;color:var(--muted);"> 24h</span>
+      </div>
+      <div class="meta">
+        ${mcap != null ? '<span>MCap: ' + fmtBig(mcap) + '</span>' : ''}
+        ${vol  != null ? '<span>Vol: '  + fmtBig(vol)  + '</span>' : ''}
+      </div>
+    </div>`;
+}
+
+function renderStockCard(sym, data, loading, errored) {
+  const d = data || {};
+  const price  = d.c;
+  const change = d.dp;
+  const high   = d.h;
+  const low    = d.l;
+  const pct = change != null ? change.toFixed(2) : null;
+  const cls = changeClass(change);
+
+  return `
+    <div class="mcard${loading ? ' loading' : ''}${errored ? ' errored' : ''}" data-sym="${sym}">
+      <button class="remove-btn" onclick="removeStock('${sym}')" title="Remove">&#x2715;</button>
+      <div class="sym">${sym}</div>
+      <div class="name">US Equity</div>
+      <div class="price">${price != null && price > 0 ? '$' + fmt(price) : '<div class="skeleton">&nbsp;</div>'}</div>
+      <div class="change ${cls}">
+        ${pct != null ? changeArrow(change) + ' ' + (change >= 0 ? '+' : '') + pct + '%' : '&nbsp;'}
+        <span style="font-size:11px;font-weight:400;color:var(--muted);"> 24h</span>
+      </div>
+      <div class="meta">
+        ${high != null && high > 0 ? '<span>H: $' + fmt(high) + '</span>' : ''}
+        ${low  != null && low  > 0 ? '<span>L: $' + fmt(low)  + '</span>' : ''}
+      </div>
+    </div>`;
+}
+
+function renderGrid() {
+  const cg = document.getElementById('cryptoGrid');
+  cg.innerHTML = cryptoList.length
+    ? cryptoList.map(s => renderCryptoCard(s, cryptoData[s], false)).join('')
+    : '<div class="empty-state">No coins in watchlist. Add one above.</div>';
+
+  const sg = document.getElementById('stockGrid');
+  const keyMissing = !finnhubKey;
+  document.getElementById('stockKeyNotice').style.display = keyMissing ? 'block' : 'none';
+  sg.innerHTML = stockList.length
+    ? stockList.map(s => renderStockCard(s, stockData[s], false, false)).join('')
+    : '<div class="empty-state">No tickers in watchlist. Add one above.</div>';
+}
+
+// ─── API Calls ────────────────────────────────────────────────────────────────
+
+async function fetchCrypto() {
+  if (!cryptoList.length) return;
+  const ids = cryptoList.map(s => COINGECKO_ID[s.toUpperCase()]).filter(Boolean).join(',');
+  if (!ids) return;
+  try {
+    const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true&include_market_cap=true&include_24hr_vol=true`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('CoinGecko ' + res.status);
+    const data = await res.json();
+    cryptoList.forEach(sym => {
+      const cgId = COINGECKO_ID[sym.toUpperCase()];
+      if (cgId && data[cgId]) cryptoData[sym] = data[cgId];
+    });
+    return true;
+  } catch (e) {
+    console.warn('CoinGecko error:', e);
+    return false;
+  }
+}
+
+async function fetchOneStock(sym) {
+  if (!finnhubKey) return false;
+  try {
+    const url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(sym)}&token=${encodeURIComponent(finnhubKey)}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Finnhub ' + res.status);
+    const data = await res.json();
+    if (data && data.c != null) { stockData[sym] = data; return true; }
+    return false;
+  } catch (e) {
+    console.warn('Finnhub error for', sym, e);
+    return false;
+  }
+}
+
+async function fetchStocks() {
+  if (!finnhubKey || !stockList.length) return;
+  // Fetch sequentially to stay within rate limits
+  for (const sym of stockList) {
+    await fetchOneStock(sym);
+    await new Promise(r => setTimeout(r, 120));
+  }
+}
+
+// ─── Refresh Logic ────────────────────────────────────────────────────────────
+
+function setStatus(state, text) {
+  const dot = document.getElementById('statusDot');
+  const msg = document.getElementById('statusText');
+  dot.className = 'dot' + (state === 'ok' ? '' : state === 'stale' ? ' stale' : ' error');
+  msg.textContent = text;
+}
+
+async function refreshAll() {
+  setStatus('stale', 'Refreshing...');
+  countdown = 60;
+  const [cOk] = await Promise.all([fetchCrypto(), fetchStocks()]);
+  renderGrid();
+  if (cOk) {
+    setStatus('ok', 'Updated ' + new Date().toLocaleTimeString());
+  } else {
+    setStatus('stale', 'Partial data — CoinGecko may be rate-limiting. Try again shortly.');
+  }
+}
+
+function startCountdown() {
+  if (refreshTimer) clearInterval(refreshTimer);
+  countdown = 60;
+  refreshTimer = setInterval(() => {
+    countdown--;
+    document.getElementById('refreshCountdown').textContent = 'Next refresh in ' + countdown + 's';
+    if (countdown <= 0) {
+      refreshAll();
+      countdown = 60;
+    }
+  }, 1000);
+}
+
+// ─── Watchlist Management ─────────────────────────────────────────────────────
+
+function addCrypto() {
+  const inp = document.getElementById('cryptoAddInput');
+  const sym = inp.value.trim().toUpperCase();
+  if (!sym) return;
+  if (!COINGECKO_ID[sym]) {
+    alert(`"${sym}" isn't in the known coin list. Check the symbol and try again.\n\nSupported: ${Object.keys(COINGECKO_ID).join(', ')}`);
+    return;
+  }
+  if (!cryptoList.includes(sym)) {
+    cryptoList.push(sym);
+    save('tracker_crypto', cryptoList);
+  }
+  inp.value = '';
+  renderGrid();
+  fetchCrypto().then(() => renderGrid());
+}
+
+function removeCrypto(sym) {
+  cryptoList = cryptoList.filter(s => s !== sym);
+  save('tracker_crypto', cryptoList);
+  renderGrid();
+}
+
+function addStock() {
+  const inp = document.getElementById('stockAddInput');
+  const sym = inp.value.trim().toUpperCase();
+  if (!sym) return;
+  if (!stockList.includes(sym)) {
+    stockList.push(sym);
+    save('tracker_stocks', stockList);
+  }
+  inp.value = '';
+  renderGrid();
+  if (finnhubKey) fetchOneStock(sym).then(() => renderGrid());
+}
+
+function removeStock(sym) {
+  stockList = stockList.filter(s => s !== sym);
+  save('tracker_stocks', stockList);
+  renderGrid();
+}
+
+function saveFinnhubKey() {
+  finnhubKey = document.getElementById('finnhubKeyInput').value.trim();
+  save('tracker_finnhub_key', finnhubKey);
+  document.getElementById('finnhubKeyInput').value = '';
+  document.getElementById('stockKeyNotice').style.display = finnhubKey ? 'none' : 'block';
+  if (finnhubKey) { fetchStocks().then(() => renderGrid()); }
+}
+
+function resetAll() {
+  if (!confirm('Reset both watchlists to defaults?')) return;
+  cryptoList = [...DEFAULT_CRYPTO];
+  stockList  = [...DEFAULT_STOCKS];
+  cryptoData = {};
+  stockData  = {};
+  save('tracker_crypto', cryptoList);
+  save('tracker_stocks', stockList);
+  renderGrid();
+  refreshAll();
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+
+document.getElementById('cryptoAddInput').addEventListener('keydown', e => { if (e.key === 'Enter') addCrypto(); });
+document.getElementById('stockAddInput').addEventListener('keydown',  e => { if (e.key === 'Enter') addStock(); });
+
+if (finnhubKey) document.getElementById('stockKeyNotice').style.display = 'none';
+renderGrid();
+refreshAll().then(() => startCountdown());
+</script>
+</body>
+</html>

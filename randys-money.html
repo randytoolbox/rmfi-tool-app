@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Randy's Money</title>
+<style>
+  :root {
+    --bg: #0d1f35;
+    --panel: #132840;
+    --border: #1e4060;
+    --text: #eef6ff;
+    --muted: #7a9bbf;
+    --accent: #f0c060;
+    --good: #3dd68c;
+    --bad: #ff5f5f;
+    --flat: #7a9bbf;
+    --input-bg: #0d1f35;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Segoe UI, Arial, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  .header {
+    background: linear-gradient(135deg, #0d2a4a, #1a3f6b);
+    padding: 18px 24px;
+    border-bottom: 2px solid var(--accent);
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+  }
+  .header h1 { font-size: 28px; font-weight: 900; color: var(--accent); letter-spacing: .5px; }
+  .header .sub { font-size: 13px; color: var(--muted); }
+
+  .topbar {
+    background: #0d1f35;
+    border-bottom: 1px solid var(--border);
+    padding: 10px 24px;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  }
+  .status-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); display: inline-block; flex-shrink: 0; }
+  .status-dot.ok { background: var(--good); }
+  .status-dot.loading { background: var(--accent); animation: blink .8s ease-in-out infinite; }
+  .status-dot.error { background: var(--bad); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+  #statusText { font-size: 13px; color: var(--muted); }
+  .btn { border: none; border-radius: 9px; padding: 8px 16px; font-size: 13px; font-weight: 800; cursor: pointer; transition: opacity .15s; }
+  .btn:hover { opacity: .85; }
+  .btn-gold { background: linear-gradient(135deg, #f0c060, #d4a030); color: #1a0f00; }
+  .btn-blue { background: linear-gradient(135deg, #4a8fff, #2060cc); color: white; }
+  .btn-green { background: linear-gradient(135deg, #3dd68c, #22a865); color: #001a0d; }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+  .main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 60px; }
+
+  /* Coin Cards */
+  .coin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; }
+
+  .coin-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    position: relative;
+    transition: border-color .2s, transform .15s;
+  }
+  .coin-card:hover { border-color: #4a8fff; transform: translateY(-1px); }
+  .coin-card .ticker { font-size: 20px; font-weight: 900; color: var(--accent); }
+  .coin-card .cname { font-size: 11px; color: var(--muted); margin-bottom: 12px; }
+  .coin-card .price { font-size: 24px; font-weight: 800; margin-bottom: 6px; }
+  .coin-card .row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; }
+  .coin-card .label { color: var(--muted); }
+  .coin-card .val { font-weight: 700; }
+  .up { color: var(--good); }
+  .down { color: var(--bad); }
+  .flat { color: var(--muted); }
+  .coin-card .remove-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--muted); font-size: 15px; cursor: pointer; padding: 3px 6px; border-radius: 6px; }
+  .coin-card .remove-btn:hover { color: var(--bad); background: rgba(255,95,95,.1); }
+  .coin-card.loading .price { background: #1e3d5a; border-radius: 6px; color: transparent; animation: pulse 1.2s infinite; }
+  .coin-card.loading .val { background: #1e3d5a; border-radius: 4px; color: transparent; animation: pulse 1.2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:.9} }
+
+  /* Add coin */
+  .add-row {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 28px;
+  }
+  .add-row input {
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 8px 12px;
+    font-size: 14px;
+    color: var(--text);
+    width: 140px;
+    text-transform: uppercase;
+  }
+  .add-row input::placeholder { color: var(--muted); text-transform: none; }
+  .add-row .hint { font-size: 12px; color: var(--muted); }
+
+  /* Report box */
+  .report-section { margin-top: 10px; }
+  .report-section .rhead {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+    margin-bottom: 12px;
+  }
+  .report-section h2 { font-size: 17px; font-weight: 800; }
+  #reportBox {
+    background: #081525;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #c8dff5;
+    white-space: pre-wrap;
+    min-height: 120px;
+    max-height: 500px;
+    overflow-y: auto;
+  }
+  .copied-msg { font-size: 12px; color: var(--good); font-weight: 700; display: none; }
+
+  .section-label { font-size: 13px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 10px; }
+
+  /* Market Scanner */
+  .scanner-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .filter-btn { border: 1px solid var(--border); background: var(--panel); color: var(--muted); border-radius: 8px; padding: 5px 14px; font-size: 12px; font-weight: 700; cursor: pointer; }
+  .filter-btn.active { background: #1e4a7a; color: var(--text); border-color: #4a8fff; }
+  .market-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .market-table th { background: #0d1f35; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .6px; padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; white-space: nowrap; }
+  .market-table th:hover { color: var(--text); }
+  .market-table td { padding: 9px 10px; border-bottom: 1px solid #0f2a45; vertical-align: middle; }
+  .market-table tr:hover td { background: #132840; }
+  .market-table .rank { color: var(--muted); font-size: 12px; width: 32px; }
+  .market-table .sym-cell { font-weight: 800; color: var(--accent); }
+  .market-table .name-cell { color: var(--muted); font-size: 12px; }
+  .market-table .num { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .add-to-port { border: 1px solid var(--border); background: none; color: var(--muted); border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+  .add-to-port:hover { background: #1e4a7a; color: var(--text); border-color: #4a8fff; }
+  .add-to-port.in-port { color: var(--good); border-color: var(--good); cursor: default; }
+  .market-wrap { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .market-wrap .table-scroll { overflow-x: auto; max-height: 480px; overflow-y: auto; }
+
+  @media (max-width: 600px) {
+    .header h1 { font-size: 22px; }
+    .coin-card .price { font-size: 19px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Randy's Money</h1>
+    <div class="sub">Crypto Portfolio Tracker &amp; Report Generator</div>
+  </div>
+  <div class="sub" id="lastUpdated">Not loaded yet</div>
+</div>
+
+<div class="topbar">
+  <span class="status-dot" id="statusDot"></span>
+  <span id="statusText">Ready</span>
+  <button class="btn btn-gold" onclick="refreshAll()">&#8635; Refresh Data</button>
+  <button class="btn btn-blue" onclick="scanMarket()">&#128269; Scan Market</button>
+  <button class="btn btn-green" onclick="generateReport()">Generate Report for Claude</button>
+</div>
+
+<div class="main">
+
+  <div class="section-label" style="margin-top:4px;">Your Portfolio</div>
+  <div class="coin-grid" id="coinGrid"></div>
+
+  <div class="add-row">
+    <span style="font-size:13px;font-weight:700;color:var(--muted);">Add a coin:</span>
+    <input id="addInput" placeholder="e.g. BTC, SOL..." maxlength="12" />
+    <button class="btn btn-blue btn-sm" onclick="addCoin()">Add</button>
+    <span class="hint">Supported: BTC, ETH, SOL, ADA, DOT, LINK, LTC, MATIC, TRX, XLM, and more</span>
+  </div>
+
+  <!-- MARKET SCANNER -->
+  <div id="scannerSection" style="display:none; margin-bottom:28px;">
+    <div class="section-label" style="margin-top:24px;">Market Scanner — Top 100 Coins</div>
+    <div class="scanner-controls">
+      <button class="filter-btn active" id="fAll"    onclick="setFilter('all')">All</button>
+      <button class="filter-btn"        id="fGainers" onclick="setFilter('gainers')">&#9650; 1Y Gainers</button>
+      <button class="filter-btn"        id="fLosers"  onclick="setFilter('losers')">&#9660; 1Y Losers</button>
+      <span style="font-size:12px;color:var(--muted);margin-left:6px;">Click a column header to sort &bull; Click "+ Portfolio" to add a coin</span>
+    </div>
+    <div class="market-wrap">
+      <div class="table-scroll">
+        <table class="market-table" id="marketTable">
+          <thead>
+            <tr>
+              <th onclick="sortMarket('rank')">#</th>
+              <th onclick="sortMarket('symbol')">Coin</th>
+              <th onclick="sortMarket('price')" class="num">Price</th>
+              <th onclick="sortMarket('change24h')" class="num">24h %</th>
+              <th onclick="sortMarket('change7d')" class="num">7d %</th>
+              <th onclick="sortMarket('change1y')" class="num">1Y %</th>
+              <th onclick="sortMarket('marketCap')" class="num">Mkt Cap</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="marketBody">
+            <tr><td colspan="8" style="color:var(--muted);padding:20px 10px;">Click "Scan Market" to load top 100 coins.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="report-section">
+    <div class="rhead">
+      <h2>Report for Claude</h2>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="copied-msg" id="copiedMsg">Copied!</span>
+        <button class="btn btn-blue btn-sm" onclick="copyReport()">Copy to Clipboard</button>
+      </div>
+    </div>
+    <div id="reportBox">Hit "Generate Report for Claude" above to build your report.\n\nThis will show current prices, 24h and 7-day changes, and the past year of performance for each coin — formatted so you can paste it straight into your chat with Claude.</div>
+  </div>
+
+</div>
+
+<script>
+// ── Coin registry ─────────────────────────────────────────────────────────────
+const COINS = {
+  BTC:'bitcoin', ETH:'ethereum', SOL:'solana', XRP:'ripple',
+  BNB:'binancecoin', DOGE:'dogecoin', ADA:'cardano', AVAX:'avalanche-2',
+  DOT:'polkadot', MATIC:'matic-network', LINK:'chainlink', LTC:'litecoin',
+  UNI:'uniswap', ATOM:'cosmos', NEAR:'near', ICP:'internet-computer',
+  FIL:'filecoin', APT:'aptos', ARB:'arbitrum', OP:'optimism',
+  INJ:'injective-protocol', SUI:'sui', TIA:'celestia',
+  WIF:'dogwifcoin', BONK:'bonk', PEPE:'pepe', SHIB:'shiba-inu',
+  TON:'the-open-network', TRX:'tron', XLM:'stellar', HBAR:'hedera-hashgraph',
+  VET:'vechain', ALGO:'algorand', ETC:'ethereum-classic', BCH:'bitcoin-cash',
+  QNT:'quant-network', XDC:'xdce-crowd-sale',
+};
+
+const NAMES = {
+  XRP:'Ripple', QNT:'Quant', XDC:'XDC Network', ALGO:'Algorand', HBAR:'Hedera',
+  BTC:'Bitcoin', ETH:'Ethereum', SOL:'Solana', BNB:'BNB', DOGE:'Dogecoin',
+  ADA:'Cardano', AVAX:'Avalanche', DOT:'Polkadot', MATIC:'Polygon', LINK:'Chainlink',
+  LTC:'Litecoin', UNI:'Uniswap', ATOM:'Cosmos', NEAR:'NEAR', TRX:'Tron',
+  XLM:'Stellar', VET:'VeChain', ALGO:'Algorand', ETC:'Ethereum Classic',
+  BCH:'Bitcoin Cash', SHIB:'Shiba Inu', PEPE:'Pepe', TON:'Toncoin',
+};
+
+// ── State ─────────────────────────────────────────────────────────────────────
+const DEFAULT_PORTFOLIO = ['XRP','QNT','XDC','ALGO','HBAR'];
+
+function load(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } }
+function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+
+let portfolio = load('rm_portfolio', DEFAULT_PORTFOLIO);
+let liveData  = {};   // sym -> { price, change24h, change7d, marketCap, vol24h }
+let histData  = {};   // sym -> { price1yAgo, high1y, low1y, priceData[] }
+
+// ── Formatting ─────────────────────────────────────────────────────────────────
+function fmtPrice(n) {
+  if (n == null || isNaN(n)) return '--';
+  if (n >= 1000) return '$' + n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  if (n >= 1)    return '$' + n.toFixed(2);
+  if (n >= 0.01) return '$' + n.toFixed(4);
+  return '$' + n.toFixed(6);
+}
+function fmtPct(n) {
+  if (n == null || isNaN(n)) return '--';
+  return (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
+}
+function fmtBig(n) {
+  if (n == null || isNaN(n)) return '--';
+  if (n >= 1e12) return '$' + (n/1e12).toFixed(2) + 'T';
+  if (n >= 1e9)  return '$' + (n/1e9).toFixed(2)  + 'B';
+  if (n >= 1e6)  return '$' + (n/1e6).toFixed(2)  + 'M';
+  return '$' + n.toLocaleString();
+}
+function cls(n) { return n == null ? 'flat' : n > 0 ? 'up' : n < 0 ? 'down' : 'flat'; }
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function renderGrid() {
+  const grid = document.getElementById('coinGrid');
+  if (!portfolio.length) {
+    grid.innerHTML = '<div style="color:var(--muted);font-size:14px;">No coins yet. Add one below.</div>';
+    return;
+  }
+  grid.innerHTML = portfolio.map(sym => {
+    const d = liveData[sym] || {};
+    const h = histData[sym] || {};
+    const loading = !d.price;
+    const name = NAMES[sym] || COINS[sym] || sym;
+    const yr1pct = (d.price && h.price1yAgo)
+      ? ((d.price - h.price1yAgo) / h.price1yAgo) * 100
+      : (d.change1y ?? null);
+
+    return `<div class="coin-card${loading ? ' loading' : ''}">
+      <button class="remove-btn" onclick="removeCoin('${sym}')" title="Remove">&#x2715;</button>
+      <div class="ticker">${sym}</div>
+      <div class="cname">${name}</div>
+      <div class="price">${fmtPrice(d.price)}</div>
+      <div class="row"><span class="label">24h</span><span class="val ${cls(d.change24h)}">${fmtPct(d.change24h)}</span></div>
+      <div class="row"><span class="label">7d</span><span class="val ${cls(d.change7d)}">${fmtPct(d.change7d)}</span></div>
+      <div class="row"><span class="label">1 Year</span><span class="val ${cls(yr1pct)}">${fmtPct(yr1pct)}</span></div>
+      <div class="row"><span class="label">1Y High</span><span class="val">${fmtPrice(h.high1y)}</span></div>
+      <div class="row"><span class="label">1Y Low</span><span class="val">${fmtPrice(h.low1y)}</span></div>
+      <div class="row"><span class="label">Mkt Cap</span><span class="val">${fmtBig(d.marketCap)}</span></div>
+    </div>`;
+  }).join('');
+}
+
+// ── API: Live prices ──────────────────────────────────────────────────────────
+async function fetchLive() {
+  const ids = portfolio.map(s => COINS[s]).filter(Boolean).join(',');
+  if (!ids) return;
+  const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${encodeURIComponent(ids)}&price_change_percentage=24h,7d,1y&per_page=50`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('CoinGecko ' + res.status);
+  const data = await res.json();
+  data.forEach(c => {
+    const sym = Object.keys(COINS).find(k => COINS[k] === c.id);
+    if (!sym) return;
+    liveData[sym] = {
+      price:     c.current_price,
+      change24h: c.price_change_percentage_24h,
+      change7d:  c.price_change_percentage_7d_in_currency,
+      change1y:  c.price_change_percentage_1y_in_currency,
+      marketCap: c.market_cap,
+      vol24h:    c.total_volume,
+    };
+  });
+}
+
+// ── API: 1-year history ───────────────────────────────────────────────────────
+async function fetchHistory(sym) {
+  const id = COINS[sym];
+  if (!id) return;
+  const url = `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=365&interval=daily`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('history ' + res.status);
+  const data = await res.json();
+  const prices = (data.prices || []).map(p => p[1]);
+  if (!prices.length) return;
+  histData[sym] = {
+    price1yAgo: prices[0],
+    high1y:     Math.max(...prices),
+    low1y:      Math.min(...prices),
+  };
+}
+
+// ── Status helpers ────────────────────────────────────────────────────────────
+function setStatus(state, text) {
+  const dot = document.getElementById('statusDot');
+  dot.className = 'status-dot ' + state;
+  document.getElementById('statusText').textContent = text;
+}
+
+// ── Refresh all ───────────────────────────────────────────────────────────────
+async function refreshAll() {
+  setStatus('loading', 'Fetching live prices...');
+  renderGrid();
+  try {
+    await fetchLive();
+    renderGrid();
+    setStatus('loading', 'Loading 1-year history...');
+    for (const sym of portfolio) {
+      try { await fetchHistory(sym); } catch (e) { console.warn('hist error', sym, e); }
+      await new Promise(r => setTimeout(r, 600));
+    }
+    renderGrid();
+    const now = new Date().toLocaleTimeString();
+    document.getElementById('lastUpdated').textContent = 'Updated ' + now;
+    setStatus('ok', 'All data loaded — ' + now);
+  } catch (e) {
+    setStatus('error', 'Error: ' + e.message + '. CoinGecko may be rate-limiting. Try again in a minute.');
+    console.error(e);
+  }
+}
+
+// ── Add / Remove ──────────────────────────────────────────────────────────────
+function addCoin() {
+  const inp = document.getElementById('addInput');
+  const sym = inp.value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if (!sym) return;
+  if (!COINS[sym]) {
+    alert(`"${sym}" isn't in the supported coin list.\n\nSupported coins:\n${Object.keys(COINS).join(', ')}`);
+    return;
+  }
+  if (!portfolio.includes(sym)) {
+    portfolio.push(sym);
+    save('rm_portfolio', portfolio);
+    renderGrid();
+    fetchLive().then(() => { fetchHistory(sym).then(() => renderGrid()); });
+  }
+  inp.value = '';
+}
+
+function removeCoin(sym) {
+  portfolio = portfolio.filter(s => s !== sym);
+  save('rm_portfolio', portfolio);
+  renderGrid();
+}
+
+// ── Generate Report ───────────────────────────────────────────────────────────
+function generateReport() {
+  const now = new Date().toLocaleString();
+  let out = `RANDY'S MONEY — CRYPTO REPORT\n`;
+  out += `Generated: ${now}\n`;
+  out += `${'═'.repeat(50)}\n\n`;
+
+  if (!portfolio.length) {
+    out += 'No coins in portfolio.\n';
+    document.getElementById('reportBox').textContent = out;
+    return;
+  }
+
+  portfolio.forEach(sym => {
+    const d = liveData[sym] || {};
+    const h = histData[sym] || {};
+    const name = NAMES[sym] || sym;
+    const yr1pctRaw = (d.price && h.price1yAgo)
+      ? (d.price - h.price1yAgo) / h.price1yAgo * 100
+      : (d.change1y ?? null);
+    const yr1pct = yr1pctRaw != null ? yr1pctRaw.toFixed(2) : 'N/A';
+    const yr1pctLabel = yr1pct !== 'N/A'
+      ? (parseFloat(yr1pct) >= 0 ? '+' : '') + yr1pct + '%'
+      : 'N/A';
+
+    out += `${sym} (${name})\n`;
+    out += `  Current Price : ${fmtPrice(d.price)}\n`;
+    out += `  24h Change    : ${fmtPct(d.change24h)}\n`;
+    out += `  7-Day Change  : ${fmtPct(d.change7d)}\n`;
+    out += `  1-Year Change : ${yr1pctLabel}\n`;
+    out += `  1Y High       : ${fmtPrice(h.high1y)}\n`;
+    out += `  1Y Low        : ${fmtPrice(h.low1y)}\n`;
+    out += `  1Y Ago Price  : ${fmtPrice(h.price1yAgo)}\n`;
+    out += `  Market Cap    : ${fmtBig(d.marketCap)}\n`;
+    out += `  24h Volume    : ${fmtBig(d.vol24h)}\n`;
+    out += '\n';
+  });
+
+  if (marketRows.length) {
+    out += `\nMARKET SCANNER — TOP 100 BY MARKET CAP\n`;
+    out += `${'─'.repeat(50)}\n`;
+
+    const gainers = marketRows.filter(r => r.change1y != null).sort((a,b) => b.change1y - a.change1y).slice(0,10);
+    const losers  = marketRows.filter(r => r.change1y != null).sort((a,b) => a.change1y - b.change1y).slice(0,5);
+
+    out += `\nTop 10 one-year gainers (among top 100 coins):\n`;
+    gainers.forEach((r,i) => {
+      out += `  ${i+1}. ${r.symbol} (${r.name}) — 1Y: ${fmtPct(r.change1y)}  |  Now: ${fmtPrice(r.price)}  |  MCap: ${fmtBig(r.marketCap)}\n`;
+    });
+
+    out += `\nBottom 5 one-year losers (among top 100 coins):\n`;
+    losers.forEach((r,i) => {
+      out += `  ${i+1}. ${r.symbol} (${r.name}) — 1Y: ${fmtPct(r.change1y)}  |  Now: ${fmtPrice(r.price)}  |  MCap: ${fmtBig(r.marketCap)}\n`;
+    });
+    out += '\n';
+  }
+
+  out += `${'═'.repeat(50)}\n`;
+  out += `Note: Data from CoinGecko. Paste this into Claude for analysis.\n`;
+
+  document.getElementById('reportBox').textContent = out;
+}
+
+function copyReport() {
+  const box = document.getElementById('reportBox');
+  navigator.clipboard.writeText(box.textContent).then(() => {
+    const msg = document.getElementById('copiedMsg');
+    msg.style.display = 'inline';
+    setTimeout(() => { msg.style.display = 'none'; }, 2500);
+  });
+}
+
+// ── Market Scanner ────────────────────────────────────────────────────────────
+let marketRows = [];
+let marketFilter = 'all';
+let marketSort = { col: 'rank', dir: 1 };
+
+async function scanMarket() {
+  document.getElementById('scannerSection').style.display = 'block';
+  document.getElementById('marketBody').innerHTML = '<tr><td colspan="8" style="color:var(--muted);padding:20px 10px;">Loading top 100 coins...</td></tr>';
+  setStatus('loading', 'Scanning market...');
+  try {
+    // Fetch page 1 and page 2 (50 each) for top 100
+    const [res1, res2] = await Promise.all([
+      fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&price_change_percentage=24h,7d,1y'),
+      fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=2&price_change_percentage=24h,7d,1y'),
+    ]);
+    const [d1, d2] = await Promise.all([res1.json(), res2.json()]);
+    const all = [...d1, ...d2];
+    marketRows = all.map((c, i) => ({
+      rank:      i + 1,
+      id:        c.id,
+      symbol:    c.symbol.toUpperCase(),
+      name:      c.name,
+      price:     c.current_price,
+      change24h: c.price_change_percentage_24h,
+      change7d:  c.price_change_percentage_7d_in_currency,
+      change1y:  c.price_change_percentage_1y_in_currency,
+      marketCap: c.market_cap,
+    }));
+    renderMarket();
+    setStatus('ok', 'Market scan complete — ' + new Date().toLocaleTimeString());
+  } catch(e) {
+    document.getElementById('marketBody').innerHTML = '<tr><td colspan="8" style="color:var(--bad);padding:16px 10px;">Error loading market data. Try again in a moment.</td></tr>';
+    setStatus('error', 'Market scan failed: ' + e.message);
+  }
+}
+
+function setFilter(f) {
+  marketFilter = f;
+  ['fAll','fGainers','fLosers'].forEach(id => document.getElementById(id).classList.remove('active'));
+  document.getElementById(f === 'all' ? 'fAll' : f === 'gainers' ? 'fGainers' : 'fLosers').classList.add('active');
+  renderMarket();
+}
+
+function sortMarket(col) {
+  if (marketSort.col === col) marketSort.dir *= -1;
+  else { marketSort.col = col; marketSort.dir = col === 'rank' ? 1 : -1; }
+  renderMarket();
+}
+
+function renderMarket() {
+  let rows = marketRows.slice();
+  if (marketFilter === 'gainers') rows = rows.filter(r => r.change1y > 0);
+  if (marketFilter === 'losers')  rows = rows.filter(r => r.change1y < 0);
+
+  const col = marketSort.col, dir = marketSort.dir;
+  rows.sort((a, b) => {
+    const av = a[col] ?? (dir > 0 ? Infinity : -Infinity);
+    const bv = b[col] ?? (dir > 0 ? Infinity : -Infinity);
+    return (av < bv ? -1 : av > bv ? 1 : 0) * dir;
+  });
+
+  if (!rows.length) {
+    document.getElementById('marketBody').innerHTML = '<tr><td colspan="8" style="color:var(--muted);padding:16px 10px;">No coins match this filter.</td></tr>';
+    return;
+  }
+
+  document.getElementById('marketBody').innerHTML = rows.map(r => {
+    const inPort = portfolio.includes(r.symbol);
+    return `<tr>
+      <td class="rank">${r.rank}</td>
+      <td><span class="sym-cell">${r.symbol}</span><br><span class="name-cell">${r.name}</span></td>
+      <td class="num">${fmtPrice(r.price)}</td>
+      <td class="num ${cls(r.change24h)}">${fmtPct(r.change24h)}</td>
+      <td class="num ${cls(r.change7d)}">${fmtPct(r.change7d)}</td>
+      <td class="num ${cls(r.change1y)}" style="font-size:14px;">${fmtPct(r.change1y)}</td>
+      <td class="num">${fmtBig(r.marketCap)}</td>
+      <td><button class="add-to-port${inPort ? ' in-port' : ''}" onclick="addFromMarket('${r.symbol}','${r.id}')">${inPort ? '&#10003; Added' : '+ Portfolio'}</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function addFromMarket(sym, cgId) {
+  if (!COINS[sym]) COINS[sym] = cgId;
+  if (!NAMES[sym]) NAMES[sym] = sym;
+  if (!portfolio.includes(sym)) {
+    portfolio.push(sym);
+    save('rm_portfolio', portfolio);
+    renderGrid();
+    fetchLive().then(() => { fetchHistory(sym).then(() => renderGrid()); });
+  }
+  renderMarket();
+}
+
+// update report to include market scanner findings
+const _origGenerateReport = generateReport;
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.getElementById('addInput').addEventListener('keydown', e => { if (e.key === 'Enter') addCoin(); });
+renderGrid();
+refreshAll();
+</script>
+</body>
+</html>
