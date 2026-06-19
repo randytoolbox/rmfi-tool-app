@@ -202,6 +202,24 @@
   .cong-sell { background:#2d0d0d; color:var(--bad);  border:1px solid var(--bad);  }
   .cong-party-r { color:#ff8080; }
   .cong-party-d { color:#6aaeff; }
+
+  /* Supply Chain Intelligence */
+  .sc-map-row { display:flex; align-items:center; flex-wrap:wrap; gap:6px; padding:7px 12px; border-bottom:1px solid #0f2a45; }
+  .sc-map-row:last-child { border-bottom:none; }
+  .sc-prime { font-weight:900; font-size:12px; color:#6aaeff; min-width:52px; flex-shrink:0; }
+  .sc-arrow { color:var(--muted); font-size:13px; padding:0 4px; flex-shrink:0; }
+  .sc-chips { display:flex; flex-wrap:wrap; gap:4px; }
+  .sc-chip { background:#0a1a2e; border:1px solid var(--border); border-radius:4px; font-size:10px; font-weight:700; padding:2px 7px; color:var(--text); }
+  .sc-chip.on-watch { background:#0d2d1a; border-color:#4caf50; color:#4caf50; }
+  .sc-alert { padding:10px 14px; border:1px solid var(--border); border-radius:8px; margin:6px 12px 0; cursor:pointer; }
+  .sc-alert:hover { background:#1a3555; }
+  .sc-alert.has-hit { border-color:#f5a623; background:#150f00; }
+  .sc-alert-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; gap:8px; }
+  .sc-alert-prime { font-size:11px; font-weight:900; color:#6aaeff; flex-shrink:0; }
+  .sc-alert-title { font-size:13px; color:var(--text); line-height:1.45; margin-bottom:5px; }
+  .sc-watchhits { font-size:12px; color:#f5a623; font-weight:700; margin-bottom:5px; }
+  .sc-alert-chain { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
+  .sc-info { font-size:11px; color:var(--muted); padding:8px 14px 4px; }
 </style>
 </head>
 <body>
@@ -280,6 +298,15 @@
   <div id="congErrorMsg" style="display:none;font-size:12px;color:var(--bad);padding:10px 0;"></div>
   <div class="news-wrap" id="congList" style="margin-bottom:28px;">
     <div class="news-empty">Congressional trades load on first refresh — STOCK Act data, House &amp; Senate.</div>
+  </div>
+
+  <!-- SUPPLY CHAIN INTELLIGENCE -->
+  <div class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+    <span>&#128279; Supply Chain Intelligence <span style="font-size:10px;color:var(--muted);font-weight:400;">— contract awards &rarr; supplier impact</span></span>
+    <button class="btn btn-sm" onclick="fetchNews(true)" style="background:#1e4060;color:var(--text);border:1px solid var(--border);">&#8635; Scan</button>
+  </div>
+  <div class="news-wrap" id="supplyChainList" style="margin-bottom:28px;">
+    <div class="news-empty">Supply chain map loads with news — click &#8635; Refresh Data or wait for auto-refresh. &#9733; = on your watchlist.</div>
   </div>
 
   <!-- MARKET SCANNER -->
@@ -403,6 +430,45 @@ const STOCK_NAMES = {
   INTC:'Intel (CHIPS Act)', TSM:'TSMC (Chip Manufacturing)', QCOM:'Qualcomm',
   LRCX:'Lam Research (Chip Equipment)', KLAC:'KLA Corp (Chip Equipment)',
 };
+
+// ── Supply Chain Map ──────────────────────────────────────────────────────────
+// Prime contractor → their key suppliers. When a prime wins a contract, these
+// suppliers see revenue uplift — especially ones already on your watchlist.
+const SUPPLY_CHAINS = {
+  LMT:  { name:'Lockheed Martin',    suppliers:['RTX','NOC','GD','KTOS','PLTR','HON','AXON'] },
+  RTX:  { name:'RTX / Raytheon',     suppliers:['KTOS','HON','HII','AXON','GD'] },
+  BA:   { name:'Boeing',             suppliers:['RTX','HON','HII','GD','CAT','KTOS'] },
+  NOC:  { name:'Northrop Grumman',   suppliers:['KTOS','PLTR','RTX','AXON','GD'] },
+  GD:   { name:'General Dynamics',   suppliers:['RTX','KTOS','PLTR','HON'] },
+  HII:  { name:'Huntington Ingalls', suppliers:['RTX','NOC','CAT','GD','HON'] },
+  MSFT: { name:'Microsoft',          suppliers:['NVDA','ANET','VRT','CEG','AMD','MU','AVGO','ARM'] },
+  GOOGL:{ name:'Google / Alphabet',  suppliers:['NVDA','ANET','VRT','VST','AMD','MU','ARM','EQIX'] },
+  AMZN: { name:'Amazon (AWS)',        suppliers:['NVDA','ANET','VRT','CEG','AMD','MU','AVGO','DLR'] },
+  META: { name:'Meta',               suppliers:['NVDA','ANET','VRT','VST','AMD','MU','ARM'] },
+  NVDA: { name:'NVIDIA',             suppliers:['TSM','AMAT','LRCX','KLAC','ARM','MU','SMCI','VRT'] },
+  AAPL: { name:'Apple',              suppliers:['TSM','AVGO','QCOM','ARM','AMAT','LRCX'] },
+  XOM:  { name:'ExxonMobil',         suppliers:['CAT','URI','HON','XLE'] },
+  CVX:  { name:'Chevron',            suppliers:['CAT','URI','HON','XLE'] },
+};
+
+// Keywords in news titles → prime contractor ticker
+const PRIME_KEYWORDS = [
+  ['lockheed martin','LMT'], ['lockheed','LMT'],
+  ['raytheon','RTX'],        ['rtx corp','RTX'],
+  ['boeing','BA'],
+  ['northrop grumman','NOC'],['northrop','NOC'],
+  ['general dynamics','GD'],
+  ['huntington ingalls','HII'],
+  ['microsoft','MSFT'],
+  ['google','GOOGL'],        ['alphabet','GOOGL'],
+  ['amazon','AMZN'],         ['aws ','AMZN'],
+  ['meta platforms','META'], ['meta ai','META'],
+  ['nvidia','NVDA'],
+  ['apple inc','AAPL'],
+  ['exxon','XOM'],
+  ['chevron','CVX'],
+];
+
 let stockWatchlist = load('rm_stocks', DEFAULT_STOCKS);
 let stockData      = {};
 let stockAlerts    = load('rm_stockAlerts', {});
@@ -426,6 +492,7 @@ let congressTrades    = [];
 let lastCongressFetch = 0;
 const CONGRESS_TTL    = 6 * 60 * 60 * 1000; // 6 hours
 let congFilter        = 'all';
+let scAlerts          = []; // supply chain contract alerts
 
 // ── Formatting ─────────────────────────────────────────────────────────────────
 function fmtPrice(n) {
@@ -657,6 +724,20 @@ function generateReport() {
     out += '\n';
   }
 
+  if (scAlerts.length) {
+    out += `\nSUPPLY CHAIN INTELLIGENCE — Contract Awards Detected\n`;
+    out += `${'─'.repeat(50)}\n`;
+    out += `(When a prime contractor wins a contract, their suppliers see revenue uplift)\n\n`;
+    scAlerts.slice(0, 8).forEach(a => {
+      out += `PRIME: ${a.primeName} (${a.prime})\n`;
+      out += `  Headline : ${a.title}\n`;
+      if (a.watchHits.length) {
+        out += `  ★ WATCHLIST SUPPLIERS: ${a.watchHits.join(', ')} — potential revenue uplift\n`;
+      }
+      out += `  Full supply chain: ${a.allSuppliers.join(', ')}\n\n`;
+    });
+  }
+
   if (stockWatchlist.length) {
     const open = isMarketOpen();
     out += `\nUS STOCK WATCHLIST — RESEARCH\n`;
@@ -701,7 +782,7 @@ function generateReport() {
   }
 
   out += `${'═'.repeat(50)}\n`;
-  out += `Data: Crypto — CoinGecko · Stocks — Twelve Data · Congress — STOCK Act (house/senate-stock-watcher). Paste into Claude for analysis.\n`;
+  out += `Data: Crypto — CoinGecko · Stocks — Twelve Data · Congress — STOCK Act · Supply Chain — Google News contract alerts. Paste into Claude for analysis.\n`;
 
   document.getElementById('reportBox').textContent = out;
 }
@@ -810,11 +891,12 @@ async function fetchNews(force = false) {
   if (btn) btn.textContent = '⏳ Loading...';
 
   const queries = [
-    { q: 'US stock market Wall Street today',               tag: 'MARKET'  },
-    { q: 'defense contractor government military contract',  tag: 'DEFENSE' },
-    { q: 'AI data center investment billion NVIDIA',         tag: 'AI'      },
-    { q: 'artificial intelligence government contract robotics', tag: 'AI'  },
-    { q: stockWatchlist.slice(0,6).join(' OR '),            tag: null      },
+    { q: 'US stock market Wall Street today',                         tag: 'MARKET'   },
+    { q: 'defense contractor government military contract',            tag: 'DEFENSE'  },
+    { q: 'AI data center investment billion NVIDIA',                   tag: 'AI'       },
+    { q: 'artificial intelligence government contract robotics',       tag: 'AI'       },
+    { q: 'Pentagon DoD contract award billion defense technology',     tag: 'CONTRACT' },
+    { q: stockWatchlist.slice(0,6).join(' OR '),                      tag: null       },
   ];
 
   const all = [];
@@ -835,6 +917,8 @@ async function fetchNews(force = false) {
 
   lastNewsRefresh = Date.now();
   renderNews();
+  scAlerts = detectContractAlerts(newsItems);
+  renderSupplyChain();
   if (btn) btn.textContent = '↺ Refresh News';
 }
 
@@ -861,6 +945,86 @@ function renderNews() {
       </div>
     </div>`;
   }).join('');
+}
+
+// ── Supply Chain Intelligence ─────────────────────────────────────────────────
+const CONTRACT_WORDS = ['contract','award','awarded','win','won','selected','billion','million','pentagon','dod','department of defense','procurement','deal worth'];
+
+function detectContractAlerts(items) {
+  const watchSet = new Set(stockWatchlist);
+  const results = [];
+
+  items.forEach(item => {
+    const text = (item.title + ' ' + (item.source || '')).toLowerCase();
+    if (!CONTRACT_WORDS.some(kw => text.includes(kw))) return;
+
+    let prime = null;
+    for (const [kw, ticker] of PRIME_KEYWORDS) {
+      if (text.includes(kw.toLowerCase())) { prime = ticker; break; }
+    }
+    if (!prime || !SUPPLY_CHAINS[prime]) return;
+
+    const chain = SUPPLY_CHAINS[prime];
+    const watchHits = chain.suppliers.filter(s => watchSet.has(s));
+
+    results.push({
+      prime, primeName: chain.name,
+      allSuppliers: chain.suppliers,
+      watchHits,
+      title: item.title, link: item.link,
+      pubDate: item.pubDate, source: item.source,
+      tag: item.tag,
+    });
+  });
+
+  // Deduplicate
+  const seen = new Set();
+  return results.filter(r => {
+    const k = r.prime + '|' + r.title.slice(0, 40);
+    return seen.has(k) ? false : (seen.add(k), true);
+  });
+}
+
+function renderSupplyChain() {
+  const el = document.getElementById('supplyChainList');
+  if (!el) return;
+
+  if (scAlerts.length) {
+    el.innerHTML = scAlerts.map(a => {
+      const watchHtml = a.watchHits.length
+        ? `<div class="sc-watchhits">&#128200; On your watchlist: ${a.watchHits.map(s => `<b>${s}</b>`).join(', ')} — potential revenue uplift</div>`
+        : '';
+      const chainHtml = a.allSuppliers.map(s => {
+        const on = a.watchHits.includes(s);
+        return `<span class="sc-chip${on ? ' on-watch' : ''}">${s}${on ? ' &#9733;' : ''}</span>`;
+      }).join('');
+      const safeLink = a.link ? a.link.replace(/'/g, "\\'") : '';
+      return `<div class="sc-alert${a.watchHits.length ? ' has-hit' : ''}" ${safeLink ? `onclick="window.open('${safeLink}','_blank')"` : ''}>
+        <div class="sc-alert-head">
+          <span class="sc-alert-prime">&#128279; ${a.primeName} (${a.prime})</span>
+          <span class="news-time">${timeAgo(a.pubDate)}</span>
+        </div>
+        <div class="sc-alert-title">${a.title}</div>
+        ${watchHtml}
+        <div class="sc-alert-chain">${chainHtml}</div>
+        ${a.source ? `<div class="news-src">${a.source}</div>` : ''}
+      </div>`;
+    }).join('');
+  } else {
+    // No contract stories yet — show the static map
+    const watchSet = new Set(stockWatchlist);
+    el.innerHTML = '<div class="sc-info">No contract awards in current news. Full supply chain map — &#9733; = on your watchlist:</div>' +
+      Object.entries(SUPPLY_CHAINS).map(([prime, chain]) =>
+        `<div class="sc-map-row">
+          <span class="sc-prime">${prime}</span>
+          <span class="sc-arrow">&#8594;</span>
+          <span class="sc-chips">${chain.suppliers.map(s => {
+            const on = watchSet.has(s);
+            return `<span class="sc-chip${on ? ' on-watch' : ''}" title="${STOCK_NAMES[s]||s}">${s}${on ? ' &#9733;' : ''}</span>`;
+          }).join('')}</span>
+        </div>`
+      ).join('');
+  }
 }
 
 // ── Stock Market ──────────────────────────────────────────────────────────────
@@ -1243,6 +1407,7 @@ const _savedKey = load('rm_tdKey', '');
 if (_savedKey) document.getElementById('tdKeyInput').value = _savedKey;
 renderGrid();
 renderStockGrid();
+renderSupplyChain();
 refreshAll();
 // Dedicated news refresh every 5 minutes
 setInterval(() => fetchNews(), NEWS_TTL);
