@@ -647,7 +647,9 @@ let scAlerts          = []; // supply chain contract alerts
 // Seed macroData from cache so BTC Dominance shows immediately on reload
 const _mc = load('rm_macroCache', null);
 let macroData = (_mc && Date.now() - _mc.ts < 6 * 3600000)
-  ? { btcDominance: _mc.btcDominance, totalMktCap: _mc.totalMktCap, mktCapChange24h: _mc.mktCapChange24h }
+  ? { btcDominance: _mc.btcDominance, totalMktCap: _mc.totalMktCap, mktCapChange24h: _mc.mktCapChange24h,
+      btcPrice: _mc.btcPrice, btcChange24h: _mc.btcChange24h,
+      ethPrice: _mc.ethPrice, ethChange24h: _mc.ethChange24h }
   : {};
 let holdings          = load('rm_holdings', {}); // { XRP: {qty:500, cost:0.86}, ... }
 
@@ -885,9 +887,16 @@ async function fetchLive() {
   const allIds = [...new Set([...portfolioIds, 'bitcoin', 'ethereum'])];
   if (!allIds.length) return;
   const url = `https://api.coincap.io/v2/assets?ids=${encodeURIComponent(allIds.join(','))}&limit=50`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('CoinCap ' + res.status);
-  const json = await res.json();
+  let json;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(res.status);
+    json = await res.json();
+  } catch {
+    const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
+    if (!res.ok) throw new Error('CoinCap unavailable');
+    json = await res.json();
+  }
   (json.data || []).forEach(c => {
     const price     = parseFloat(c.priceUsd) || 0;
     const change24h = parseFloat(c.changePercent24Hr) ?? null;
@@ -905,6 +914,10 @@ async function fetchLive() {
     };
   });
   save('rm_liveData', { data: liveData, ts: Date.now() });
+  // Cache BTC/ETH prices so the macro strip survives page reloads when live fetch fails
+  const existing = load('rm_macroCache', {});
+  save('rm_macroCache', { ...existing, btcPrice: macroData.btcPrice, btcChange24h: macroData.btcChange24h,
+    ethPrice: macroData.ethPrice, ethChange24h: macroData.ethChange24h, ts: existing.ts || Date.now() });
 }
 
 // ── API: 2-year history (CoinCap — free, no API key, no rate limits) ─────────
