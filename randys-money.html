@@ -643,7 +643,11 @@ let lastCongAllStars  = load('rm_congAllStarsTs', 0);
 let followedMembers   = load('rm_followed', []);
 const CONG_ALLSTARS_TTL = 24 * 60 * 60 * 1000;
 let scAlerts          = []; // supply chain contract alerts
-let macroData         = {}; // BTC, ETH, dominance, fear & greed, total market cap
+// Seed macroData from cache so BTC Dominance shows immediately on reload
+const _mc = load('rm_macroCache', null);
+let macroData = (_mc && Date.now() - _mc.ts < 6 * 3600000)
+  ? { btcDominance: _mc.btcDominance, totalMktCap: _mc.totalMktCap, mktCapChange24h: _mc.mktCapChange24h }
+  : {};
 let holdings          = load('rm_holdings', {}); // { XRP: {qty:500, cost:0.86}, ... }
 
 // Pre-load Randy's holdings on first visit (only runs if nothing entered yet)
@@ -842,13 +846,22 @@ function renderMacro() {
 
 async function fetchMacro() {
   try {
-    // CoinGecko /global for dominance + total market cap
-    const gRes = await fetch('https://api.coingecko.com/api/v3/global');
-    if (gRes.ok) {
-      const gj = await gRes.json();
+    // CoinGecko /global for dominance + total market cap — try direct then proxy
+    const cgGlobal = 'https://api.coingecko.com/api/v3/global';
+    let gj = null;
+    try {
+      const r = await fetch(cgGlobal);
+      if (r.ok) gj = await r.json();
+      else throw new Error(r.status);
+    } catch {
+      const r = await fetch(`https://corsproxy.io/?${encodeURIComponent(cgGlobal)}`);
+      if (r.ok) gj = await r.json();
+    }
+    if (gj) {
       macroData.btcDominance    = gj.data?.market_cap_percentage?.bitcoin;
       macroData.totalMktCap     = gj.data?.total_market_cap?.usd;
       macroData.mktCapChange24h = gj.data?.market_cap_change_percentage_24h_usd;
+      save('rm_macroCache', { btcDominance: macroData.btcDominance, totalMktCap: macroData.totalMktCap, mktCapChange24h: macroData.mktCapChange24h, ts: Date.now() });
     }
   } catch(e) { console.warn('CoinGecko global:', e.message); }
 
@@ -937,7 +950,7 @@ async function refreshAll() {
     await fetchLive();
     renderGrid();
     renderMacro(); // BTC/ETH now available from fetchLive piggyback
-    fetchMacro();  // dominance + fear & greed run in background (different endpoints)
+    setTimeout(() => fetchMacro(), 3000); // delay 3s so fetchMacro doesn't race with fetchLive on CoinGecko rate limits
     // Fetch 2-yr history at most once per 6 hours (skip coins already cached)
     const needsHist = portfolio.filter(s => !histData[s]);
     const forceRefreshHist = Date.now() - lastCryptoHistFetch > CRYPTO_HIST_TTL_MS;
