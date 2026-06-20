@@ -641,10 +641,18 @@ let stockHoldings    = load('rm_stockHoldings', {}); // { SYM: { qty, cost } }
 let stockHistory     = load('rm_stockHistory', {});
 let lastHistoryFetch = load('rm_lastHistFetch', 0);
 
-// One-time migration: add defense/sector stocks to existing watchlists
+/// One-time migration: add defense/sector stocks and fix known bad tickers
 (function migrateStocks() {
-  const add = ['LMT','RTX','PLTR','CAT','XLE'];
   let changed = false;
+  // Fix BRK → BRK.B (bare BRK ticker doesn't exist on exchanges)
+  const brkIdx = stockWatchlist.indexOf('BRK');
+  if (brkIdx !== -1) {
+    stockWatchlist.splice(brkIdx, 1);
+    if (!stockWatchlist.includes('BRK.B')) stockWatchlist.push('BRK.B');
+    changed = true;
+  }
+  // Add core watchlist stocks if missing
+  const add = ['LMT','RTX','PLTR','CAT','XLE'];
   add.forEach(s => { if (!stockWatchlist.includes(s)) { stockWatchlist.push(s); changed = true; } });
   if (changed) save('rm_stocks', stockWatchlist);
 })();
