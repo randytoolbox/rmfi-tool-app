@@ -297,7 +297,7 @@
   <button class="btn btn-green" onclick="generateReport()">Generate Report for Claude</button>
   <button class="btn btn-gold" onclick="generateBriefing()" style="background:linear-gradient(135deg,#7b3fa0,#4a1a6e);color:#fff;border:none;">&#9733; Daily Briefing</button>
   <button class="btn btn-sm" id="arToggle" onclick="toggleAutoRefresh()" style="background:#1e4060;color:var(--text);border:1px solid var(--border);">&#9646;&#9646; Pause</button>
-  <span id="arCountdown">Auto-refresh in <b id="arSecs">60</b>s</span>
+  <span id="arCountdown">Auto-refresh in <b id="arSecs">120</b>s</span>
 </div>
 
 <div id="alertToast">
@@ -493,10 +493,12 @@ let liveData      = {};
 let histData      = {};
 let alertTargets  = load('rm_alertTargets', {});
 let triggeredAlerts = {};
-let arCountdownVal  = 60;
+let arCountdownVal  = 120;
 let arEnabled       = true;
 let lastStockFetch  = 0;
-const STOCK_REFRESH_MS = 5 * 60 * 1000; // 5 min — Yahoo Finance primary (no daily limit)
+let lastCryptoHistFetch = load('rm_lastCryptoHist', 0);
+const STOCK_REFRESH_MS    = 5 * 60 * 1000;  // 5 min
+const CRYPTO_HIST_TTL_MS  = 6 * 60 * 60 * 1000; // 6 hours between full history re-fetches
 
 const DEFAULT_STOCKS = ['SPY','QQQ','DIA','IWM'];
 const STOCK_NAMES = {
@@ -932,10 +934,18 @@ async function refreshAll() {
     renderGrid();
     renderMacro(); // BTC/ETH now available from fetchLive piggyback
     fetchMacro();  // dominance + fear & greed run in background (different endpoints)
-    setStatus('loading', 'Loading 2-year history...');
-    for (const sym of portfolio) {
-      try { await fetchHistory(sym); } catch (e) { console.warn('hist error', sym, e); }
-      await new Promise(r => setTimeout(r, 600));
+    // Fetch 2-yr history at most once per 6 hours (skip coins already cached)
+    const needsHist = portfolio.filter(s => !histData[s]);
+    const forceRefreshHist = Date.now() - lastCryptoHistFetch > CRYPTO_HIST_TTL_MS;
+    const toFetch = forceRefreshHist ? portfolio : needsHist;
+    if (toFetch.length) {
+      setStatus('loading', 'Loading 2-year history...');
+      for (const sym of toFetch) {
+        try { await fetchHistory(sym); } catch (e) { console.warn('hist error', sym, e); }
+        await new Promise(r => setTimeout(r, 600));
+      }
+      lastCryptoHistFetch = Date.now();
+      save('rm_lastCryptoHist', lastCryptoHistFetch);
     }
     renderGrid();
     const now = new Date().toLocaleTimeString();
@@ -951,7 +961,7 @@ async function refreshAll() {
     fetchCongressBuys();   // throttled — 4 hours
     document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
     setStatus('ok', 'All data loaded — ' + now);
-    arCountdownVal = 60;
+    arCountdownVal = 120;
   } catch (e) {
     setStatus('error', 'Error: ' + e.message + '. CoinGecko may be rate-limiting. Try again in a minute.');
     console.error(e);
@@ -2556,7 +2566,7 @@ setInterval(() => {
   if (!arEnabled) return;
   arCountdownVal = Math.max(0, arCountdownVal - 1);
   updateArDisplay();
-  if (arCountdownVal === 0) { arCountdownVal = 60; refreshAll(); }
+  if (arCountdownVal === 0) { arCountdownVal = 120; refreshAll(); }
 }, 1000);
 
 // ── Init ──────────────────────────────────────────────────────────────────────
