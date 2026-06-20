@@ -546,9 +546,13 @@ const STOCK_NAMES = {
   AMAT:'Applied Materials (Chip Equipment)', AVGO:'Broadcom (AI Networking)',
   ARM:'ARM Holdings (Chip Architecture)', SMCI:'Super Micro (AI Servers)',
   // AI Power & Data Centers
-  CEG:'Constellation Energy (Nuclear/AI Power)', VST:'Vistra Energy (Power/AI)',
+  CEG:'Constellation Energy (Nuclear)', VST:'Vistra Energy (Power/AI)',
   ETN:'Eaton (Electrical Infrastructure)', EQIX:'Equinix (Data Center REIT)',
   DLR:'Digital Realty (Data Center REIT)', NRG:'NRG Energy',
+  // Nuclear — SMR & Uranium
+  CCJ:'Cameco (Uranium Mining)', BWXT:'BWX Technologies (Nuclear Components)',
+  OKLO:'Oklo (Sam Altman SMR)', SMR:'NuScale Power (SMR)',
+  NNE:'Nano Nuclear Energy', UEC:'Uranium Energy Corp', LEU:'Centrus (Uranium Enrichment)',
   // Robotics & Automation
   PATH:'UiPath (Software Automation)', ISRG:'Intuitive Surgical (Medical Robotics)',
   BRKS:'Brooks Automation', TRMB:'Trimble (Industrial AI)',
@@ -587,7 +591,10 @@ const SUPPLY_CHAINS = {
   XOM:  { name:'ExxonMobil',           suppliers:['CAT','URI','HON','XLE','HAL','SLB'] },
   CVX:  { name:'Chevron',              suppliers:['CAT','URI','HON','XLE','HAL','SLB'] },
   // AI Infrastructure Construction — the physical buildout
-  CAT:  { name:'Caterpillar (AI Build)', suppliers:['VRT','ETN','URI','PWR','NUE','MLM','CEG','VST','XLE','NVDA','EQIX','DLR','TRMB','HON'] },
+  CAT:  { name:'Caterpillar (AI Build)',      suppliers:['VRT','ETN','URI','PWR','NUE','MLM','CEG','VST','XLE','NVDA','EQIX','DLR','TRMB','HON'] },
+  // Nuclear & SMR — the AI power solution
+  CEG:  { name:'Constellation Energy (Nuclear)', suppliers:['CCJ','BWXT','LEU','UEC','ETN','PWR','VST','NRG','OKLO','NNE','VRT'] },
+  OKLO: { name:'Oklo (Small Modular Reactor)',   suppliers:['CCJ','BWXT','LEU','UEC','ETN','HON','TRMB','VRT'] },
 };
 
 // Keywords in news titles → prime contractor ticker
@@ -616,6 +623,11 @@ const PRIME_KEYWORDS = [
   ['caterpillar','CAT'],
   ['data center construction','CAT'], ['ai data center build','CAT'],
   ['infrastructure construction billion','CAT'],
+  ['constellation energy','CEG'], ['three mile island','CEG'],
+  ['nuclear power plant','CEG'], ['nuclear energy','CEG'],
+  ['small modular reactor','OKLO'], ['smr reactor','OKLO'],
+  ['oklo','OKLO'], ['nuscale','SMR'],
+  ['uranium contract','CCJ'], ['cameco','CCJ'],
 ];
 
 let stockWatchlist   = load('rm_stocks', DEFAULT_STOCKS);
@@ -1530,6 +1542,9 @@ async function fetchNews(force = false) {
     // AI infrastructure construction — Caterpillar's lane
     { q: 'data center construction billion Caterpillar Vertiv Eaton 2026', tag: 'CAT'      },
     { q: 'AI infrastructure build power grid construction spending 2026',   tag: 'CAT'      },
+    // Nuclear & SMR — the power solution
+    { q: 'small modular reactor SMR nuclear approval data center 2026',    tag: 'OKLO'     },
+    { q: 'nuclear power AI electricity demand Constellation Cameco 2026',  tag: 'CEG'      },
     // Cybersecurity contracts
     { q: 'cybersecurity government contract award CrowdStrike Palo Alto',  tag: 'CYBER'    },
     // Watchlist stocks — split into two groups to avoid query length limits
