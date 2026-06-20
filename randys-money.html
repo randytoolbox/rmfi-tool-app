@@ -849,54 +849,31 @@ function renderMacro() {
 
 async function fetchMacro() {
   try {
-    // CoinGecko /global for dominance + total market cap — try direct then proxy
-    const cgGlobal = 'https://api.coingecko.com/api/v3/global';
-    let gj = null;
-    try {
-      const r = await fetch(cgGlobal);
-      if (r.ok) gj = await r.json();
-      else throw new Error(r.status);
-    } catch {
-      const r = await fetch(`https://corsproxy.io/?${encodeURIComponent(cgGlobal)}`);
-      if (r.ok) gj = await r.json();
+    const r = await fetch('/api/macro');
+    if (r.ok) {
+      const d = await r.json();
+      if (d.btcDominance != null) macroData.btcDominance    = d.btcDominance;
+      if (d.totalMktCap  != null) macroData.totalMktCap     = d.totalMktCap;
+      if (d.mktCapChange24h != null) macroData.mktCapChange24h = d.mktCapChange24h;
+      if (d.fearGreed    != null) macroData.fearGreed        = d.fearGreed;
+      if (d.fearGreedLabel)       macroData.fearGreedLabel   = d.fearGreedLabel;
+      const existing = load('rm_macroCache', {});
+      save('rm_macroCache', { ...existing, btcDominance: macroData.btcDominance,
+        totalMktCap: macroData.totalMktCap, mktCapChange24h: macroData.mktCapChange24h,
+        fearGreed: macroData.fearGreed, fearGreedLabel: macroData.fearGreedLabel, ts: Date.now() });
     }
-    if (gj) {
-      macroData.btcDominance    = gj.data?.market_cap_percentage?.bitcoin;
-      macroData.totalMktCap     = gj.data?.total_market_cap?.usd;
-      macroData.mktCapChange24h = gj.data?.market_cap_change_percentage_24h_usd;
-      save('rm_macroCache', { btcDominance: macroData.btcDominance, totalMktCap: macroData.totalMktCap, mktCapChange24h: macroData.mktCapChange24h, ts: Date.now() });
-    }
-  } catch(e) { console.warn('CoinGecko global:', e.message); }
-
-  try {
-    // Alternative.me Fear & Greed Index (CORS-friendly, no key needed)
-    const fgRes = await fetch('https://api.alternative.me/fng/');
-    if (fgRes.ok) {
-      const fgj = await fgRes.json();
-      macroData.fearGreed      = parseInt(fgj.data[0].value);
-      macroData.fearGreedLabel = fgj.data[0].value_classification;
-    }
-  } catch(e) { console.warn('Fear & Greed:', e.message); }
-
+  } catch(e) { console.warn('macro:', e.message); }
   renderMacro();
 }
 
-// ── API: Live prices (CoinCap — free, no API key, no rate limits, CORS-OK) ────
+// ── API: Live prices (Vercel proxy → CoinCap, same-domain, no CORS ever) ──────
 async function fetchLive() {
   const portfolioIds = portfolio.map(s => COINS[s]).filter(Boolean);
   const allIds = [...new Set([...portfolioIds, 'bitcoin', 'ethereum'])];
   if (!allIds.length) return;
-  const url = `https://api.coincap.io/v2/assets?ids=${encodeURIComponent(allIds.join(','))}&limit=50`;
-  let json;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(res.status);
-    json = await res.json();
-  } catch {
-    const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
-    if (!res.ok) throw new Error('CoinCap unavailable');
-    json = await res.json();
-  }
+  const res = await fetch(`/api/prices?ids=${encodeURIComponent(allIds.join(','))}`);
+  if (!res.ok) throw new Error('prices ' + res.status);
+  const json = await res.json();
   (json.data || []).forEach(c => {
     const price     = parseFloat(c.priceUsd) || 0;
     const change24h = parseFloat(c.changePercent24Hr) ?? null;
@@ -920,15 +897,14 @@ async function fetchLive() {
     ethPrice: macroData.ethPrice, ethChange24h: macroData.ethChange24h, ts: existing.ts || Date.now() });
 }
 
-// ── API: 2-year history (CoinCap — free, no API key, no rate limits) ─────────
+// ── API: 2-year history (Vercel proxy → CoinCap, same-domain) ────────────────
 async function fetchHistory(sym) {
   const id = COINS[sym];
   if (!id) return;
   const now = Date.now();
   const twoYearsAgo = now - 730 * 24 * 60 * 60 * 1000;
-  const url = `https://api.coincap.io/v2/assets/${id}/history?interval=d1&start=${twoYearsAgo}&end=${now}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('CoinCap history ' + res.status);
+  const res = await fetch(`/api/history?id=${encodeURIComponent(id)}&start=${twoYearsAgo}&end=${now}`);
+  if (!res.ok) throw new Error('history ' + res.status);
   const json = await res.json();
   const prices = (json.data || []).map(p => parseFloat(p.priceUsd)).filter(v => !isNaN(v));
   if (prices.length < 10) return;
@@ -1726,79 +1702,33 @@ function computeYTD(sym, currentPrice) {
 async function fetchStocks() {
   if (!stockWatchlist.length) return;
   const errEl = document.getElementById('stockErrorMsg');
-
   const saveStockCache = () => { save('rm_stockData', stockData); save('rm_stockDataTs', Date.now()); };
 
-  // Try 1: Yahoo Finance v7 batch (fast — all symbols in one call)
-  const syms = stockWatchlist.join(',');
-  for (const baseHost of ['query1', 'query2']) {
-    const yfUrl = `https://${baseHost}.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(syms)}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,fiftyTwoWeekHigh,fiftyTwoWeekLow,shortName`;
-    for (const mkProxy of [
-      u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-      u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-    ]) {
-      try {
-        const res = await fetch(mkProxy(yfUrl), { cache: 'no-store' });
-        if (!res.ok) continue;
-        const data = JSON.parse(await res.text());
-        const results = data?.quoteResponse?.result;
-        if (!results?.length) continue;
-        let anyOk = false;
-        results.forEach(q => {
-          if (!q.regularMarketPrice) return;
-          anyOk = true;
-          stockData[q.symbol] = {
-            price:     q.regularMarketPrice,
-            change:    q.regularMarketChange       || 0,
-            changePct: q.regularMarketChangePercent || 0,
-            high52:    q.fiftyTwoWeekHigh || null,
-            low52:     q.fiftyTwoWeekLow  || null,
-            ytdPct:    computeYTD(q.symbol, q.regularMarketPrice),
-            name:      q.shortName || STOCK_NAMES[q.symbol] || q.symbol,
-          };
-        });
-        if (anyOk) { if (errEl) errEl.style.display = 'none'; saveStockCache(); return; }
-      } catch(e) { console.warn('YF v7:', e.message); }
-    }
-  }
-
-  // Try 2: Yahoo Finance v8 chart per-symbol (same API that powers sparklines — reliable)
+  // Use our Vercel proxy — same-domain, no CORS, Yahoo Finance server-side
   let anyOk = false;
   for (const sym of stockWatchlist) {
-    if (stockData[sym]?.price) continue; // skip if already loaded from v7
-    let loaded = false;
-    for (const baseHost of ['query1', 'query2']) {
-      if (loaded) break;
-      const url = `https://${baseHost}.finance.yahoo.com/v8/finance/chart/${sym}?range=5d&interval=1d`;
-      for (const mkProxy of [
-        u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-        u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-      ]) {
-        try {
-          const r = await fetch(mkProxy(url), { cache: 'no-store' });
-          if (!r.ok) continue;
-          const d = await r.json();
-          const meta = d?.chart?.result?.[0]?.meta;
-          if (!meta?.regularMarketPrice) continue;
-          const prevClose = meta.previousClose || meta.chartPreviousClose || meta.regularMarketPrice;
-          stockData[sym] = {
-            price:     meta.regularMarketPrice,
-            change:    meta.regularMarketPrice - prevClose,
-            changePct: meta.regularMarketChangePercent || ((meta.regularMarketPrice - prevClose) / prevClose * 100),
-            high52:    meta.fiftyTwoWeekHigh || null,
-            low52:     meta.fiftyTwoWeekLow  || null,
-            ytdPct:    computeYTD(sym, meta.regularMarketPrice),
-            name:      STOCK_NAMES[sym] || meta.shortName || sym,
-          };
-          anyOk = true;
-          loaded = true;
-          saveStockCache();
-          renderStockGrid(); // show each stock as it loads
-          break;
-        } catch(e) { /* try next proxy */ }
-      }
-    }
-    await new Promise(r => setTimeout(r, 250)); // longer delay to avoid rate limiting
+    if (stockData[sym]?.price) continue;
+    try {
+      const r = await fetch(`/api/stock?sym=${encodeURIComponent(sym)}&range=5d&interval=1d`, { cache: 'no-store' });
+      if (!r.ok) continue;
+      const d = await r.json();
+      const meta = d?.chart?.result?.[0]?.meta;
+      if (!meta?.regularMarketPrice) continue;
+      const prevClose = meta.previousClose || meta.chartPreviousClose || meta.regularMarketPrice;
+      stockData[sym] = {
+        price:     meta.regularMarketPrice,
+        change:    meta.regularMarketPrice - prevClose,
+        changePct: meta.regularMarketChangePercent || ((meta.regularMarketPrice - prevClose) / prevClose * 100),
+        high52:    meta.fiftyTwoWeekHigh || null,
+        low52:     meta.fiftyTwoWeekLow  || null,
+        ytdPct:    computeYTD(sym, meta.regularMarketPrice),
+        name:      STOCK_NAMES[sym] || meta.shortName || sym,
+      };
+      anyOk = true;
+      saveStockCache();
+      renderStockGrid();
+    } catch(e) { console.warn('stock:', sym, e.message); }
+    await new Promise(r => setTimeout(r, 100));
   }
   if (anyOk) { if (errEl) errEl.style.display = 'none'; return; }
 
@@ -1853,20 +1783,14 @@ async function fetchStockHistory() {
         if (r.ok) { const d = await r.json(); if (d.s === 'ok' && d.c?.length) closes = d.c; }
       }
       if (!closes) {
-        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=2y&interval=1wk`;
-        for (const mkProxy of [
-          u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-          u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-        ]) {
-          try {
-            const r = await fetch(mkProxy(url), { cache: 'no-store' });
-            if (!r.ok) continue;
+        try {
+          const r = await fetch(`/api/stock?sym=${encodeURIComponent(sym)}&range=2y&interval=1wk`, { cache: 'no-store' });
+          if (r.ok) {
             const d = await r.json();
             const result = d?.chart?.result?.[0];
             const raw = result?.indicators?.quote?.[0]?.close;
             if (raw?.length) {
               closes = raw.filter(v => v != null);
-              // Populate live quote from chart meta if fetchStocks hasn't loaded it yet
               const meta = result?.meta;
               if (meta?.regularMarketPrice && !stockData[sym]?.price) {
                 const prevClose = meta.previousClose || meta.chartPreviousClose || meta.regularMarketPrice;
@@ -1880,10 +1804,9 @@ async function fetchStockHistory() {
                   name:      STOCK_NAMES[sym] || meta.shortName || sym,
                 };
               }
-              break;
             }
-          } catch(e) { /* try next */ }
-        }
+          }
+        } catch(e) { console.warn('stockHist:', sym, e.message); }
       }
       if (closes?.length >= 8) {
         stockHistory[sym] = closes;
@@ -2256,25 +2179,20 @@ async function fetchCongressAllStars(force = false) {
   let histDone = 0;
 
   for (const sym of uniqueTickers) {
-    const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?period1=${p1}&period2=${p2}&interval=1wk`;
-    for (const mkP of [
-      u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-      u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-    ]) {
-      try {
-        const res = await fetch(mkP(chartUrl), { signal: AbortSignal.timeout(8000) });
-        if (!res.ok) continue;
+    try {
+      const res = await fetch(`/api/stock?sym=${encodeURIComponent(sym)}&range=1y&interval=1wk`, { signal: AbortSignal.timeout(8000) });
+      if (res.ok) {
         const data = await res.json();
         const result = data?.chart?.result?.[0];
-        if (!result) continue;
-        const tss    = result.timestamp || [];
-        const closes = result.indicators?.quote?.[0]?.close || [];
-        priceHistory[sym] = tss
-          .map((ts, i) => ({ ts: ts * 1000, close: closes[i] }))
-          .filter(p => p.close != null && p.close > 0);
-        break;
-      } catch(e) {}
-    }
+        if (result) {
+          const tss    = result.timestamp || [];
+          const closes = result.indicators?.quote?.[0]?.close || [];
+          priceHistory[sym] = tss
+            .map((ts, i) => ({ ts: ts * 1000, close: closes[i] }))
+            .filter(p => p.close != null && p.close > 0);
+        }
+      }
+    } catch(e) {}
     histDone++;
     if (histDone % 5 === 0 || histDone === uniqueTickers.length) {
       setS(`Fetching price history... (${histDone} / ${uniqueTickers.length} stocks)`);
@@ -2519,8 +2437,7 @@ async function scanMarket() {
   document.getElementById('marketBody').innerHTML = '<tr><td colspan="8" style="color:var(--muted);padding:20px 10px;">Loading top 100 coins…</td></tr>';
   setStatus('loading', 'Scanning market...');
   try {
-    // CoinCap API — free, no API key, no rate limits, CORS-friendly
-    const r = await fetch('https://api.coincap.io/v2/assets?limit=100');
+    const r = await fetch('/api/scan');
     if (!r.ok) throw new Error('CoinCap ' + r.status);
     const json = await r.json();
     const coins = json.data;
