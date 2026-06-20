@@ -554,8 +554,11 @@ const STOCK_NAMES = {
   OKLO:'Oklo (Sam Altman SMR)', SMR:'NuScale Power (SMR)',
   NNE:'Nano Nuclear Energy', UEC:'Uranium Energy Corp', LEU:'Centrus (Uranium Enrichment)',
   // Robotics & Automation
+  ROK:'Rockwell Automation', TER:'Teradyne (Universal Robots)',
+  CGNX:'Cognex (Machine Vision)', ABB:'ABB (Industrial Robots)',
+  IRBT:'iRobot', BRKS:'Brooks Automation',
   PATH:'UiPath (Software Automation)', ISRG:'Intuitive Surgical (Medical Robotics)',
-  BRKS:'Brooks Automation', TRMB:'Trimble (Industrial AI)',
+  TRMB:'Trimble (Industrial AI)',
   // Semiconductor / CHIPS Act
   INTC:'Intel (CHIPS Act)', TSM:'TSMC (Chip Manufacturing)', QCOM:'Qualcomm',
   LRCX:'Lam Research (Chip Equipment)', KLAC:'KLA Corp (Chip Equipment)',
@@ -595,6 +598,10 @@ const SUPPLY_CHAINS = {
   // Nuclear & SMR — the AI power solution
   CEG:  { name:'Constellation Energy (Nuclear)', suppliers:['CCJ','BWXT','LEU','UEC','ETN','PWR','VST','NRG','OKLO','NNE','VRT'] },
   OKLO: { name:'Oklo (Small Modular Reactor)',   suppliers:['CCJ','BWXT','LEU','UEC','ETN','HON','TRMB','VRT'] },
+  // Robotics & Humanoid — the next industrial revolution
+  TSLA: { name:'Tesla (Optimus Robot)',          suppliers:['NVDA','CGNX','TER','ROK','ABB','ON','AMAT','TSM','HON','TRMB'] },
+  NVDA: { name:'NVIDIA (Robot AI Platform)',     suppliers:['TSM','AMAT','LRCX','KLAC','ARM','MU','SMCI','VRT','ONTO','COHR'] },
+  ROK:  { name:'Rockwell Automation',            suppliers:['HON','CGNX','TER','ABB','NVDA','ANET','EMR'] },
 };
 
 // Keywords in news titles → prime contractor ticker
@@ -628,6 +635,9 @@ const PRIME_KEYWORDS = [
   ['small modular reactor','OKLO'], ['smr reactor','OKLO'],
   ['oklo','OKLO'], ['nuscale','SMR'],
   ['uranium contract','CCJ'], ['cameco','CCJ'],
+  ['tesla optimus','TSLA'],  ['humanoid robot','TSLA'], ['optimus robot','TSLA'],
+  ['figure ai','TSLA'],      ['robot factory','TSLA'],  ['robotics billion','ROK'],
+  ['nvidia robotics','NVDA'], ['nvidia isaac','NVDA'],  ['jensen huang robot','NVDA'],
 ];
 
 let stockWatchlist   = load('rm_stocks', DEFAULT_STOCKS);
@@ -1553,6 +1563,9 @@ async function fetchNews(force = false) {
     // Nuclear & SMR — the power solution
     { q: 'small modular reactor SMR nuclear approval data center 2026',    tag: 'OKLO'     },
     { q: 'nuclear power AI electricity demand Constellation Cameco 2026',  tag: 'CEG'      },
+    // Robotics & humanoid robots
+    { q: 'humanoid robot Tesla Optimus Figure AI factory billion 2026',    tag: 'TSLA'     },
+    { q: 'NVIDIA robotics Isaac platform robot AI Cognex Teradyne 2026',   tag: 'NVDA'     },
     // Cybersecurity contracts
     { q: 'cybersecurity government contract award CrowdStrike Palo Alto',  tag: 'CYBER'    },
     // Watchlist stocks — split into two groups to avoid query length limits
