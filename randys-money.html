@@ -271,12 +271,17 @@
   .sc-alert { padding:10px 14px; border:1px solid var(--border); border-radius:8px; margin:6px 12px 0; cursor:pointer; }
   .sc-alert:hover { background:#1a3555; }
   .sc-alert.has-hit { border-color:#f5a623; background:#150f00; }
+  .sc-alert.pinned { border-color:#7c5cbf; background:#10092a; }
   .sc-alert-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; gap:8px; }
   .sc-alert-prime { font-size:11px; font-weight:900; color:#6aaeff; flex-shrink:0; }
   .sc-alert-title { font-size:13px; color:var(--text); line-height:1.45; margin-bottom:5px; }
   .sc-watchhits { font-size:12px; color:#f5a623; font-weight:700; margin-bottom:5px; }
   .sc-alert-chain { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
   .sc-info { font-size:11px; color:var(--muted); padding:8px 14px 4px; }
+  .sc-pin-btn { font-size:11px; padding:2px 8px; border-radius:5px; border:1px solid #7c5cbf; background:transparent; color:#b08fff; cursor:pointer; white-space:nowrap; flex-shrink:0; }
+  .sc-pin-btn.pinned { background:#7c5cbf22; color:#d4b8ff; }
+  .sc-pin-btn:hover { background:#7c5cbf44; }
+  .sc-pin-label { font-size:10px; color:#b08fff; font-weight:700; letter-spacing:.04em; }
 </style>
 </head>
 <body>
@@ -643,7 +648,9 @@ let congAllStars      = load('rm_congAllStars', []);
 let lastCongAllStars  = load('rm_congAllStarsTs', 0);
 let followedMembers   = load('rm_followed', []);
 const CONG_ALLSTARS_TTL = 24 * 60 * 60 * 1000;
-let scAlerts          = []; // supply chain contract alerts
+let scAlerts          = []; // supply chain contract alerts (live, from current news)
+const SC_PIN_TTL      = 10 * 24 * 3600 * 1000; // 10 days
+let pinnedScAlerts    = load('rm_pinnedSc', []).filter(a => Date.now() - a.pinnedAt < SC_PIN_TTL);
 // Seed macroData from cache so BTC Dominance shows immediately on reload
 const _mc = load('rm_macroCache', null);
 let macroData = (_mc && Date.now() - _mc.ts < 6 * 3600000)
@@ -1566,6 +1573,8 @@ async function fetchNews(force = false) {
   renderSupplyChain();
   if (btn) btn.textContent = '↺ Refresh News';
 }
+// Pre-populate scAlerts from cached news so supply chain renders immediately on load
+if (newsItems.length) { try { scAlerts = detectContractAlerts(newsItems); } catch(_){} }
 
 function renderNews() {
   const el = document.getElementById('newsList');
@@ -1622,39 +1631,76 @@ function detectContractAlerts(items) {
     });
   });
 
-  // Deduplicate
+  // Deduplicate and assign stable key
   const seen = new Set();
   return results.filter(r => {
     const k = r.prime + '|' + r.title.slice(0, 40);
-    return seen.has(k) ? false : (seen.add(k), true);
+    if (seen.has(k)) return false;
+    seen.add(k);
+    r._key = k;
+    return true;
   });
+}
+
+function pinScAlert(key) {
+  const a = scAlerts.find(x => x._key === key);
+  if (!a || pinnedScAlerts.some(p => p._key === key)) return;
+  pinnedScAlerts.unshift({ ...a, pinnedAt: Date.now() });
+  save('rm_pinnedSc', pinnedScAlerts);
+  renderSupplyChain();
+}
+function unpinScAlert(key) {
+  pinnedScAlerts = pinnedScAlerts.filter(p => p._key !== key);
+  save('rm_pinnedSc', pinnedScAlerts);
+  renderSupplyChain();
 }
 
 function renderSupplyChain() {
   const el = document.getElementById('supplyChainList');
   if (!el) return;
 
-  if (scAlerts.length) {
-    el.innerHTML = scAlerts.map(a => {
-      const watchHtml = a.watchHits.length
-        ? `<div class="sc-watchhits">&#128200; On your watchlist: ${a.watchHits.map(s => `<b>${s}</b>`).join(', ')} — potential revenue uplift</div>`
-        : '';
-      const chainHtml = a.allSuppliers.map(s => {
-        const on = a.watchHits.includes(s);
-        return `<span class="sc-chip${on ? ' on-watch' : ''}">${s}${on ? ' &#9733;' : ''}</span>`;
-      }).join('');
-      const safeLink = a.link ? a.link.replace(/'/g, "\\'") : '';
-      return `<div class="sc-alert${a.watchHits.length ? ' has-hit' : ''}" ${safeLink ? `onclick="window.open('${safeLink}','_blank')"` : ''}>
-        <div class="sc-alert-head">
-          <span class="sc-alert-prime">&#128279; ${a.primeName} (${a.prime})</span>
-          <span class="news-time">${timeAgo(a.pubDate)}</span>
-        </div>
-        <div class="sc-alert-title">${a.title}</div>
-        ${watchHtml}
-        <div class="sc-alert-chain">${chainHtml}</div>
-        ${a.source ? `<div class="news-src">${a.source}</div>` : ''}
-      </div>`;
+  function alertCard(a, isPinned) {
+    const watchHtml = a.watchHits.length
+      ? `<div class="sc-watchhits">&#128200; On your watchlist: ${a.watchHits.map(s => `<b>${s}</b>`).join(', ')} — potential revenue uplift</div>`
+      : '';
+    const chainHtml = a.allSuppliers.map(s => {
+      const on = a.watchHits.includes(s);
+      return `<span class="sc-chip${on ? ' on-watch' : ''}">${s}${on ? ' &#9733;' : ''}</span>`;
     }).join('');
+    const safeLink = a.link ? a.link.replace(/'/g, "\\'") : '';
+    const safeKey  = (a._key || '').replace(/'/g, "\\'");
+    const pinBtn   = isPinned
+      ? `<button class="sc-pin-btn pinned" onclick="event.stopPropagation();unpinScAlert('${safeKey}')">&#128204; Unpin</button>`
+      : `<button class="sc-pin-btn" onclick="event.stopPropagation();pinScAlert('${safeKey}')">&#128204; Pin 10d</button>`;
+    const pinnedLabel = isPinned
+      ? `<span class="sc-pin-label">&#128204; PINNED — ${Math.ceil((SC_PIN_TTL - (Date.now() - a.pinnedAt)) / 86400000)}d left</span>`
+      : '';
+    return `<div class="sc-alert${a.watchHits.length ? ' has-hit' : ''}${isPinned ? ' pinned' : ''}" ${safeLink ? `onclick="window.open('${safeLink}','_blank')"` : ''}>
+      <div class="sc-alert-head">
+        <span class="sc-alert-prime">&#128279; ${a.primeName} (${a.prime})</span>
+        <span style="display:flex;align-items:center;gap:6px;">${pinnedLabel}<span class="news-time">${isPinned ? 'pinned ' + timeAgo(a.pinnedAt) : timeAgo(a.pubDate)}</span>${pinBtn}</span>
+      </div>
+      <div class="sc-alert-title">${a.title}</div>
+      ${watchHtml}
+      <div class="sc-alert-chain">${chainHtml}</div>
+      ${a.source ? `<div class="news-src">${a.source}</div>` : ''}
+    </div>`;
+  }
+
+  // Pinned keys so we don't show them twice in live section
+  const pinnedKeys = new Set(pinnedScAlerts.map(p => p._key));
+  const liveOnly   = scAlerts.filter(a => !pinnedKeys.has(a._key));
+  const parts      = [];
+
+  if (pinnedScAlerts.length) {
+    parts.push(...pinnedScAlerts.map(a => alertCard(a, true)));
+  }
+  if (liveOnly.length) {
+    parts.push(...liveOnly.map(a => alertCard(a, false)));
+  }
+
+  if (parts.length) {
+    el.innerHTML = parts.join('');
   } else {
     // No contract stories yet — show the static map
     const watchSet = new Set(stockWatchlist);
