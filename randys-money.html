@@ -631,7 +631,7 @@ const NEWS_TTL      = 5 * 60 * 1000; // 5 minutes
 
 let congressTrades    = [];
 let lastCongressFetch = 0;
-const CONGRESS_TTL    = 6 * 60 * 60 * 1000; // 6 hours
+const CONGRESS_TTL    = 12 * 60 * 60 * 1000; // 12 hours — S3 data only updates daily anyway
 let congFilter        = 'all';
 
 let cBuysData      = load('rm_cBuys', []);
@@ -1928,8 +1928,14 @@ async function fetchCongress(force = false) {
   }
 
   if (!allTrades.length) {
-    if (errEl) { errEl.style.display='block'; errEl.textContent='⚠ Could not load STOCK Act data — try ↻ Refresh.'; }
-    if (listEl) listEl.innerHTML = '';
+    // Keep showing whatever we had before rather than going blank
+    if (congressTrades.length) {
+      if (errEl) { errEl.style.display='block'; errEl.textContent='⚠ STOCK Act servers busy — showing last cached data.'; }
+      renderCongressList();
+    } else {
+      if (errEl) { errEl.style.display='block'; errEl.textContent='⚠ Could not load STOCK Act data — tap ↻ Refresh to try again.'; }
+      if (listEl) listEl.innerHTML = '<div class="news-empty">Tap Refresh above to load House &amp; Senate STOCK Act filings.</div>';
+    }
     return;
   }
 
@@ -2472,29 +2478,47 @@ function copyReport() {
 }
 
 // ── Market Scanner ────────────────────────────────────────────────────────────
-let marketRows = [];
+const _cachedScan = load('rm_marketScan', null);
+let marketRows   = (_cachedScan?.ts && Date.now() - _cachedScan.ts < 30 * 60 * 1000) ? _cachedScan.rows : [];
 let marketFilter = 'all';
-let marketSort = { col: 'rank', dir: 1 };
+let marketSort   = { col: 'rank', dir: 1 };
 
 async function scanMarket() {
   document.getElementById('scannerSection').style.display = 'block';
-  document.getElementById('marketBody').innerHTML = '<tr><td colspan="8" style="color:var(--muted);padding:20px 10px;">Loading top 100 coins...</td></tr>';
+  // Show cached data immediately if we have it
+  if (marketRows.length) renderMarket();
+  document.getElementById('marketBody').innerHTML = '<tr><td colspan="8" style="color:var(--muted);padding:20px 10px;">Refreshing top 100 coins...</td></tr>';
   setStatus('loading', 'Scanning market...');
   try {
     const cgBase = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&price_change_percentage=24h,7d,1y';
-    const mkProxy = u => `https://corsproxy.io/?${encodeURIComponent(u)}`;
     let d1, d2;
-    // Try direct fetch; fall back to proxy on network error OR non-array response (rate limit returns JSON object)
-    try {
-      const [r1, r2] = await Promise.all([fetch(cgBase+'&page=1'), fetch(cgBase+'&page=2')]);
-      if (!r1.ok || !r2.ok) throw new Error('rate limited');
-      [d1, d2] = await Promise.all([r1.json(), r2.json()]);
-      if (!Array.isArray(d1) || !Array.isArray(d2)) throw new Error('bad response');
-    } catch {
-      await new Promise(r => setTimeout(r, 1500)); // brief pause before proxy retry
-      const [r1, r2] = await Promise.all([fetch(mkProxy(cgBase+'&page=1')), fetch(mkProxy(cgBase+'&page=2'))]);
-      [d1, d2] = await Promise.all([r1.json(), r2.json()]);
-      if (!Array.isArray(d1) || !Array.isArray(d2)) throw new Error('CoinGecko rate-limiting — try again in 1 minute');
+    // Try direct, then two proxies — throw if no valid array response
+    const attempts = [
+      () => Promise.all([fetch(cgBase+'&page=1'), fetch(cgBase+'&page=2')]),
+      () => { const p = u => `https://corsproxy.io/?${encodeURIComponent(u)}`; return Promise.all([fetch(p(cgBase+'&page=1')), fetch(p(cgBase+'&page=2'))]); },
+      () => { const p = u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`; return Promise.all([fetch(p(cgBase+'&page=1')), fetch(p(cgBase+'&page=2'))]); },
+    ];
+    let fetched = false;
+    for (const attempt of attempts) {
+      try {
+        const [r1, r2] = await attempt();
+        const [j1, j2] = await Promise.all([r1.json(), r2.json()]);
+        if (Array.isArray(j1) && j1.length && Array.isArray(j2) && j2.length) {
+          d1 = j1; d2 = j2; fetched = true; break;
+        }
+      } catch { /* try next */ }
+      await new Promise(r => setTimeout(r, 1000));
+    }
+    if (!fetched) {
+      // Show cached if available, otherwise show error
+      if (marketRows.length) {
+        renderMarket();
+        setStatus('ok', 'Showing cached scan — CoinGecko busy, try again in 1 min');
+      } else {
+        document.getElementById('marketBody').innerHTML = '<tr><td colspan="8" style="color:var(--bad);padding:16px 10px;">CoinGecko rate-limiting. Wait 1 minute and try again.</td></tr>';
+        setStatus('error', 'Market scan failed — CoinGecko rate-limiting');
+      }
+      return;
     }
     const all = [...d1, ...d2];
     marketRows = all.map((c, i) => ({
@@ -2508,11 +2532,12 @@ async function scanMarket() {
       change1y:  c.price_change_percentage_1y_in_currency,
       marketCap: c.market_cap,
     }));
+    save('rm_marketScan', { rows: marketRows, ts: Date.now() });
     renderMarket();
     setStatus('ok', 'Market scan complete — ' + new Date().toLocaleTimeString());
   } catch(e) {
-    document.getElementById('marketBody').innerHTML = '<tr><td colspan="8" style="color:var(--bad);padding:16px 10px;">Error loading market data. Try again in a moment.</td></tr>';
-    setStatus('error', 'Market scan failed: ' + e.message);
+    if (marketRows.length) { renderMarket(); setStatus('ok', 'Showing cached scan data'); }
+    else { document.getElementById('marketBody').innerHTML = '<tr><td colspan="8" style="color:var(--bad);padding:16px 10px;">Scan failed. Wait 1 min and try again.</td></tr>'; }
   }
 }
 
