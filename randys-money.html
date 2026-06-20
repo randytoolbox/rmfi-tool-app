@@ -490,14 +490,14 @@ function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch 
 
 let portfolio     = load('rm_portfolio', DEFAULT_PORTFOLIO);
 let liveData      = {};
-let histData      = {};
+let histData      = load('rm_histData', {});   // persisted — survives page reloads
 let alertTargets  = load('rm_alertTargets', {});
 let triggeredAlerts = {};
 let arCountdownVal  = 120;
 let arEnabled       = true;
 let lastStockFetch  = 0;
 let lastCryptoHistFetch = load('rm_lastCryptoHist', 0);
-const STOCK_REFRESH_MS    = 5 * 60 * 1000;  // 5 min
+const STOCK_REFRESH_MS    = 5 * 60 * 1000;
 const CRYPTO_HIST_TTL_MS  = 6 * 60 * 60 * 1000; // 6 hours between full history re-fetches
 
 const DEFAULT_STOCKS = ['SPY','QQQ','DIA','IWM'];
@@ -606,7 +606,10 @@ const PRIME_KEYWORDS = [
 ];
 
 let stockWatchlist   = load('rm_stocks', DEFAULT_STOCKS);
-let stockData        = {};
+// Load cached stock data; discard if > 12 hours old (stale after overnight)
+let _cachedStockData = load('rm_stockData', {});
+let _cachedStockDataTs = load('rm_stockDataTs', 0);
+let stockData = (Date.now() - _cachedStockDataTs < 12 * 60 * 60 * 1000) ? _cachedStockData : {};
 let stockAlerts      = load('rm_stockAlerts', {});
 let stockTriggered   = {};
 let stockHistory     = load('rm_stockHistory', {});
@@ -916,6 +919,7 @@ async function fetchHistory(sym) {
     high1y:     Math.max(...last1y),
     low1y:      Math.min(...last1y),
   };
+  save('rm_histData', histData); // persist so page reloads don't lose history
 }
 
 // ── Status helpers ────────────────────────────────────────────────────────────
@@ -955,7 +959,7 @@ async function refreshAll() {
     if (Date.now() - lastStockFetch >= STOCK_REFRESH_MS) {
       try { await fetchStocks(); renderStockGrid(); checkStockAlerts(); lastStockFetch = Date.now(); } catch(se) { console.warn('Stocks:', se); }
     }
-    fetchStockHistory(); // non-blocking — throttled to once/day
+    setTimeout(() => fetchStockHistory(), 8000); // non-blocking, delayed to avoid racing with fetchStocks v8 calls
     fetchNews();           // throttled — 5 min
     fetchCongress();       // throttled — 6 hours (now uses real STOCK Act filings)
     fetchCongressBuys();   // throttled — 4 hours
@@ -1680,42 +1684,49 @@ async function fetchStocks() {
   if (!stockWatchlist.length) return;
   const errEl = document.getElementById('stockErrorMsg');
 
+  const saveStockCache = () => { save('rm_stockData', stockData); save('rm_stockDataTs', Date.now()); };
+
   // Try 1: Yahoo Finance v7 batch (fast — all symbols in one call)
-  const yfUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(stockWatchlist.join(','))}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,fiftyTwoWeekHigh,fiftyTwoWeekLow,shortName`;
-  for (const mkProxy of [
-    u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-    u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-  ]) {
-    try {
-      const res = await fetch(mkProxy(yfUrl), { cache: 'no-store' });
-      if (!res.ok) continue;
-      const data = JSON.parse(await res.text());
-      const results = data?.quoteResponse?.result;
-      if (!results?.length) continue;
-      let anyOk = false;
-      results.forEach(q => {
-        if (!q.regularMarketPrice) return;
-        anyOk = true;
-        stockData[q.symbol] = {
-          price:     q.regularMarketPrice,
-          change:    q.regularMarketChange       || 0,
-          changePct: q.regularMarketChangePercent || 0,
-          high52:    q.fiftyTwoWeekHigh || null,
-          low52:     q.fiftyTwoWeekLow  || null,
-          ytdPct:    computeYTD(q.symbol, q.regularMarketPrice),
-          name:      q.shortName || STOCK_NAMES[q.symbol] || q.symbol,
-        };
-      });
-      if (anyOk) { if (errEl) errEl.style.display = 'none'; return; }
-    } catch(e) { console.warn('YF v7:', e.message); }
+  const syms = stockWatchlist.join(',');
+  for (const baseHost of ['query1', 'query2']) {
+    const yfUrl = `https://${baseHost}.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(syms)}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,fiftyTwoWeekHigh,fiftyTwoWeekLow,shortName`;
+    for (const mkProxy of [
+      u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+      u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    ]) {
+      try {
+        const res = await fetch(mkProxy(yfUrl), { cache: 'no-store' });
+        if (!res.ok) continue;
+        const data = JSON.parse(await res.text());
+        const results = data?.quoteResponse?.result;
+        if (!results?.length) continue;
+        let anyOk = false;
+        results.forEach(q => {
+          if (!q.regularMarketPrice) return;
+          anyOk = true;
+          stockData[q.symbol] = {
+            price:     q.regularMarketPrice,
+            change:    q.regularMarketChange       || 0,
+            changePct: q.regularMarketChangePercent || 0,
+            high52:    q.fiftyTwoWeekHigh || null,
+            low52:     q.fiftyTwoWeekLow  || null,
+            ytdPct:    computeYTD(q.symbol, q.regularMarketPrice),
+            name:      q.shortName || STOCK_NAMES[q.symbol] || q.symbol,
+          };
+        });
+        if (anyOk) { if (errEl) errEl.style.display = 'none'; saveStockCache(); return; }
+      } catch(e) { console.warn('YF v7:', e.message); }
+    }
   }
 
-  // Try 2: Yahoo Finance v8 chart per-symbol (same API that powers sparklines — very reliable)
+  // Try 2: Yahoo Finance v8 chart per-symbol (same API that powers sparklines — reliable)
   let anyOk = false;
   for (const sym of stockWatchlist) {
     if (stockData[sym]?.price) continue; // skip if already loaded from v7
-    try {
-      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=5d&interval=1d`;
+    let loaded = false;
+    for (const baseHost of ['query1', 'query2']) {
+      if (loaded) break;
+      const url = `https://${baseHost}.finance.yahoo.com/v8/finance/chart/${sym}?range=5d&interval=1d`;
       for (const mkProxy of [
         u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
         u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
@@ -1737,11 +1748,14 @@ async function fetchStocks() {
             name:      STOCK_NAMES[sym] || meta.shortName || sym,
           };
           anyOk = true;
+          loaded = true;
+          saveStockCache();
+          renderStockGrid(); // show each stock as it loads
           break;
         } catch(e) { /* try next proxy */ }
       }
-    } catch(e) { console.warn('YF v8', sym, e.message); }
-    await new Promise(r => setTimeout(r, 120));
+    }
+    await new Promise(r => setTimeout(r, 250)); // longer delay to avoid rate limiting
   }
   if (anyOk) { if (errEl) errEl.style.display = 'none'; return; }
 
@@ -1769,7 +1783,7 @@ async function fetchStocks() {
         } catch(se) { console.warn('Finnhub', sym, se.message); }
         await new Promise(r => setTimeout(r, 150));
       }
-      if (anyFn) { if (errEl) errEl.style.display = 'none'; return; }
+      if (anyFn) { if (errEl) errEl.style.display = 'none'; saveStockCache(); return; }
     } catch(e) { console.warn('Finnhub:', e.message); }
   }
 
@@ -2455,16 +2469,21 @@ async function scanMarket() {
   setStatus('loading', 'Scanning market...');
   try {
     const cgBase = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&price_change_percentage=24h,7d,1y';
-    const mkProxyCG = u => `https://corsproxy.io/?${encodeURIComponent(u)}`;
+    const mkProxy = u => `https://corsproxy.io/?${encodeURIComponent(u)}`;
     let d1, d2;
+    // Try direct fetch; fall back to proxy on network error OR non-array response (rate limit returns JSON object)
     try {
       const [r1, r2] = await Promise.all([fetch(cgBase+'&page=1'), fetch(cgBase+'&page=2')]);
+      if (!r1.ok || !r2.ok) throw new Error('rate limited');
       [d1, d2] = await Promise.all([r1.json(), r2.json()]);
+      if (!Array.isArray(d1) || !Array.isArray(d2)) throw new Error('bad response');
     } catch {
-      const [r1, r2] = await Promise.all([fetch(mkProxyCG(cgBase+'&page=1')), fetch(mkProxyCG(cgBase+'&page=2'))]);
+      await new Promise(r => setTimeout(r, 1500)); // brief pause before proxy retry
+      const [r1, r2] = await Promise.all([fetch(mkProxy(cgBase+'&page=1')), fetch(mkProxy(cgBase+'&page=2'))]);
       [d1, d2] = await Promise.all([r1.json(), r2.json()]);
+      if (!Array.isArray(d1) || !Array.isArray(d2)) throw new Error('CoinGecko rate-limiting — try again in 1 minute');
     }
-    const all = [...(Array.isArray(d1)?d1:[]), ...(Array.isArray(d2)?d2:[])];
+    const all = [...d1, ...d2];
     marketRows = all.map((c, i) => ({
       rank:      i + 1,
       id:        c.id,
