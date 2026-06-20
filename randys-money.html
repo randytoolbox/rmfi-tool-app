@@ -2090,6 +2090,12 @@ async function fetchCongressBuys(force = false) {
     }
   });
 
+  // Normalize known bad tickers → correct ones
+  const TICKER_REMAP = { 'BRK': 'BRK.B', 'GOOGL': 'GOOGL', 'GOOG': 'GOOGL' };
+  Object.entries(TICKER_REMAP).forEach(([bad, good]) => {
+    if (counts[bad]) { counts[good] = (counts[good] || 0) + counts[bad]; delete counts[bad]; }
+  });
+
   cBuysData = Object.entries(counts)
     .filter(([s]) => s.length >= 2 && !BAD.has(s))
     .sort((a, b) => b[1] - a[1])
