@@ -536,6 +536,8 @@ const STOCK_NAMES = {
   SAP:'SAP (Enterprise Software)', SNOW:'Snowflake (Data Cloud)',
   // Infrastructure & Industrial
   HON:'Honeywell', URI:'United Rentals', PWR:'Quanta Services',
+  NUE:'Nucor (Steel)', MLM:'Martin Marietta (Aggregates)', VMC:'Vulcan Materials',
+  DE:'Deere & Company', FAST:'Fastenal (Industrial Supply)', GWW:'W.W. Grainger',
   // Energy
   XOM:'ExxonMobil', CVX:'Chevron', COP:'ConocoPhillips',
   // AI Infrastructure — picks & shovels
@@ -584,6 +586,8 @@ const SUPPLY_CHAINS = {
   // Energy / infrastructure
   XOM:  { name:'ExxonMobil',           suppliers:['CAT','URI','HON','XLE','HAL','SLB'] },
   CVX:  { name:'Chevron',              suppliers:['CAT','URI','HON','XLE','HAL','SLB'] },
+  // AI Infrastructure Construction — the physical buildout
+  CAT:  { name:'Caterpillar (AI Build)', suppliers:['VRT','ETN','URI','PWR','NUE','MLM','CEG','VST','XLE','NVDA','EQIX','DLR','TRMB','HON'] },
 };
 
 // Keywords in news titles → prime contractor ticker
@@ -609,6 +613,9 @@ const PRIME_KEYWORDS = [
   ['intel corp','INTC'],
   ['exxon','XOM'],
   ['chevron','CVX'],
+  ['caterpillar','CAT'],
+  ['data center construction','CAT'], ['ai data center build','CAT'],
+  ['infrastructure construction billion','CAT'],
 ];
 
 let stockWatchlist   = load('rm_stocks', DEFAULT_STOCKS);
@@ -1520,6 +1527,9 @@ async function fetchNews(force = false) {
     { q: 'AI data center investment billion NVIDIA AMD chip',              tag: 'AI'       },
     { q: 'CHIPS Act semiconductor factory award billion Intel TSMC',       tag: 'AI'       },
     { q: 'artificial intelligence government contract DoD DARPA 2026',     tag: 'AI'       },
+    // AI infrastructure construction — Caterpillar's lane
+    { q: 'data center construction billion Caterpillar Vertiv Eaton 2026', tag: 'CAT'      },
+    { q: 'AI infrastructure build power grid construction spending 2026',   tag: 'CAT'      },
     // Cybersecurity contracts
     { q: 'cybersecurity government contract award CrowdStrike Palo Alto',  tag: 'CYBER'    },
     // Watchlist stocks — split into two groups to avoid query length limits
