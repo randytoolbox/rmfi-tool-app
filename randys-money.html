@@ -562,6 +562,8 @@ const STOCK_NAMES = {
   // Semiconductor / CHIPS Act
   INTC:'Intel (CHIPS Act)', TSM:'TSMC (Chip Manufacturing)', QCOM:'Qualcomm',
   LRCX:'Lam Research (Chip Equipment)', KLAC:'KLA Corp (Chip Equipment)',
+  // Telecom / Fiber
+  LUMN:'Lumen Technologies (Fiber/AI Infrastructure)', T:'AT&T', VZ:'Verizon',
 };
 
 // ── Supply Chain Map ──────────────────────────────────────────────────────────
@@ -662,7 +664,7 @@ let lastHistoryFetch = load('rm_lastHistFetch', 0);
     changed = true;
   }
   // Add core watchlist stocks if missing
-  const add = ['LMT','RTX','PLTR','CAT','XLE'];
+  const add = ['LMT','RTX','PLTR','CAT','XLE','LUMN'];
   add.forEach(s => { if (!stockWatchlist.includes(s)) { stockWatchlist.push(s); changed = true; } });
   if (changed) save('rm_stocks', stockWatchlist);
 })();
