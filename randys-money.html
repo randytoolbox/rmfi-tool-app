@@ -2330,7 +2330,9 @@ function renderStockGrid() {
     const loading = !d.price;
     const name = d.name || STOCK_NAMES[sym] || sym;
     const alertTarget = stockAlerts[sym];
-    const hitTarget = alertTarget && d.price && d.price >= parseFloat(alertTarget);
+    const alertTgt = alertTarget ? parseFloat(alertTarget) : null;
+    const alertIsDip = alertTgt !== null && d.price && alertTgt < d.price;
+    const hitTarget = alertTgt !== null && d.price && (alertIsDip ? d.price <= alertTgt : d.price >= alertTgt);
     const fromHigh = d.price && d.high52 ? ((d.price - d.high52) / d.high52) * 100 : null;
 
     return `<div class="coin-card stock-card${loading ? ' loading' : ''}${hitTarget ? ' alert-hit' : ''}">
@@ -2346,7 +2348,7 @@ function renderStockGrid() {
       <div class="row"><span class="label">52W Low</span><span class="val">${fmtPrice(d.low52)}</span></div>
       <div class="row"><span class="label">From High</span><span class="val ${cls(fromHigh)}">${fromHigh != null ? fmtPct(fromHigh) : '--'}</span></div>
       <div class="alert-row">
-        <span class="alert-label">&#128276; Alert at:</span>
+        <span class="alert-label">&#128276; ${alertTgt !== null ? (alertIsDip ? 'Dip alert ↓' : 'Rise alert ↑') : 'Alert at'}:</span>
         <input class="alert-input${alertTarget ? ' active' : ''}" type="number" step="any" min="0"
           value="${alertTarget || ''}" placeholder="$ target"
           onchange="setStockAlert('${sym}', this.value)"
@@ -2404,9 +2406,15 @@ function checkStockAlerts() {
     if (!target) return;
     const d = stockData[sym];
     if (!d?.price) return;
-    if (d.price >= parseFloat(target) && !stockTriggered[sym]) {
+    const tgt = parseFloat(target);
+    if (stockTriggered[sym]) return;
+    const isDip = tgt < d.price;  // target below current → dip alert
+    if (isDip && d.price <= tgt) {
       stockTriggered[sym] = true;
-      hits.push(`<b>${sym}</b> hit ${fmtPrice(d.price)} — target: ${fmtPrice(parseFloat(target))}`);
+      hits.push(`<b>${sym}</b> dipped to ${fmtPrice(d.price)} — your dip target: ${fmtPrice(tgt)}`);
+    } else if (!isDip && d.price >= tgt) {
+      stockTriggered[sym] = true;
+      hits.push(`<b>${sym}</b> broke out to ${fmtPrice(d.price)} — your target: ${fmtPrice(tgt)}`);
     }
   });
   if (!hits.length) return;
