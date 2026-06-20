@@ -458,18 +458,18 @@
 </div>
 
 <script>
-// ── Coin registry ─────────────────────────────────────────────────────────────
+// ── Coin registry (CoinCap IDs — free, no rate limits, CORS-friendly) ─────────
 const COINS = {
   BTC:'bitcoin', ETH:'ethereum', SOL:'solana', XRP:'ripple',
-  BNB:'binancecoin', DOGE:'dogecoin', ADA:'cardano', AVAX:'avalanche-2',
-  DOT:'polkadot', MATIC:'matic-network', LINK:'chainlink', LTC:'litecoin',
-  UNI:'uniswap', ATOM:'cosmos', NEAR:'near', ICP:'internet-computer',
+  BNB:'binance-coin', DOGE:'dogecoin', ADA:'cardano', AVAX:'avalanche',
+  DOT:'polkadot', MATIC:'polygon', LINK:'chainlink', LTC:'litecoin',
+  UNI:'uniswap', ATOM:'cosmos', NEAR:'near-protocol', ICP:'internet-computer',
   FIL:'filecoin', APT:'aptos', ARB:'arbitrum', OP:'optimism',
   INJ:'injective-protocol', SUI:'sui', TIA:'celestia',
   WIF:'dogwifcoin', BONK:'bonk', PEPE:'pepe', SHIB:'shiba-inu',
-  TON:'the-open-network', TRX:'tron', XLM:'stellar', HBAR:'hedera-hashgraph',
+  TON:'toncoin', TRX:'tron', XLM:'stellar', HBAR:'hedera-hashgraph',
   VET:'vechain', ALGO:'algorand', ETC:'ethereum-classic', BCH:'bitcoin-cash',
-  QNT:'quant-network', XDC:'xdce-crowd-sale',
+  QNT:'quant-network', XDC:'xdc-network',
 };
 
 const NAMES = {
@@ -879,77 +879,46 @@ async function fetchMacro() {
   renderMacro();
 }
 
-// ── API: Live prices ──────────────────────────────────────────────────────────
+// ── API: Live prices (CoinCap — free, no API key, no rate limits, CORS-OK) ────
 async function fetchLive() {
   const portfolioIds = portfolio.map(s => COINS[s]).filter(Boolean);
-  // Always piggyback BTC + ETH for the macro pulse strip
   const allIds = [...new Set([...portfolioIds, 'bitcoin', 'ethereum'])];
   if (!allIds.length) return;
-  const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${encodeURIComponent(allIds.join(','))}&price_change_percentage=24h,7d,1y&per_page=50`;
-  let data;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('CoinGecko ' + res.status);
-    data = await res.json();
-  } catch {
-    try {
-      const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
-      if (!res.ok) throw new Error('proxy1 ' + res.status);
-      data = await res.json();
-    } catch {
-      const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
-      if (!res.ok) throw new Error('CoinGecko unavailable');
-      data = await res.json();
-    }
-  }
-  data.forEach(c => {
-    // BTC/ETH → macroData
-    if (c.id === 'bitcoin') {
-      macroData.btcPrice = c.current_price;
-      macroData.btcChange24h = c.price_change_percentage_24h;
-    }
-    if (c.id === 'ethereum') {
-      macroData.ethPrice = c.current_price;
-      macroData.ethChange24h = c.price_change_percentage_24h;
-    }
-    // Portfolio coins → liveData
+  const url = `https://api.coincap.io/v2/assets?ids=${encodeURIComponent(allIds.join(','))}&limit=50`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('CoinCap ' + res.status);
+  const json = await res.json();
+  (json.data || []).forEach(c => {
+    const price     = parseFloat(c.priceUsd) || 0;
+    const change24h = parseFloat(c.changePercent24Hr) ?? null;
+    if (c.id === 'bitcoin')  { macroData.btcPrice = price; macroData.btcChange24h = change24h; }
+    if (c.id === 'ethereum') { macroData.ethPrice = price; macroData.ethChange24h = change24h; }
     const sym = Object.keys(COINS).find(k => COINS[k] === c.id);
     if (!sym) return;
     liveData[sym] = {
-      price:     c.current_price,
-      change24h: c.price_change_percentage_24h,
-      change7d:  c.price_change_percentage_7d_in_currency,
-      change1y:  c.price_change_percentage_1y_in_currency,
-      marketCap: c.market_cap,
-      vol24h:    c.total_volume,
+      price,
+      change24h,
+      change7d:  liveData[sym]?.change7d  ?? null,
+      change1y:  liveData[sym]?.change1y  ?? null,
+      marketCap: parseFloat(c.marketCapUsd) || null,
+      vol24h:    parseFloat(c.volumeUsd24Hr) || null,
     };
   });
   save('rm_liveData', { data: liveData, ts: Date.now() });
 }
 
-// ── API: 2-year history ───────────────────────────────────────────────────────
+// ── API: 2-year history (CoinCap — free, no API key, no rate limits) ─────────
 async function fetchHistory(sym) {
   const id = COINS[sym];
   if (!id) return;
-  const url = `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=730&interval=daily`;
-  let data;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('history ' + res.status);
-    data = await res.json();
-  } catch {
-    try {
-      const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
-      if (!res.ok) throw new Error('proxy1 ' + res.status);
-      data = await res.json();
-    } catch {
-      const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
-      if (!res.ok) throw new Error('history unavailable');
-      data = await res.json();
-    }
-  }
-  const prices = (data.prices || []).map(p => p[1]);
-  if (!prices.length) return;
+  const now = Date.now();
+  const twoYearsAgo = now - 730 * 24 * 60 * 60 * 1000;
+  const url = `https://api.coincap.io/v2/assets/${id}/history?interval=d1&start=${twoYearsAgo}&end=${now}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('CoinCap history ' + res.status);
+  const json = await res.json();
+  const prices = (json.data || []).map(p => parseFloat(p.priceUsd)).filter(v => !isNaN(v));
+  if (prices.length < 10) return;
   const mid = Math.floor(prices.length / 2);
   const last1y = prices.slice(mid);
   histData[sym] = {
@@ -960,7 +929,11 @@ async function fetchHistory(sym) {
     high1y:     Math.max(...last1y),
     low1y:      Math.min(...last1y),
   };
-  save('rm_histData', histData); // persist so page reloads don't lose history
+  // Compute 7d change from history and store in liveData
+  const p7 = prices[prices.length - 8];
+  const pNow = prices[prices.length - 1];
+  if (p7 && liveData[sym]) liveData[sym].change7d = ((pNow - p7) / p7) * 100;
+  save('rm_histData', histData);
 }
 
 // ── Status helpers ────────────────────────────────────────────────────────────
@@ -2602,8 +2575,8 @@ function renderMarket() {
   }).join('');
 }
 
-function addFromMarket(sym, cgId) {
-  if (!COINS[sym]) COINS[sym] = cgId;
+function addFromMarket(sym, ccId) {
+  if (!COINS[sym]) COINS[sym] = ccId;
   if (!NAMES[sym]) NAMES[sym] = sym;
   if (!portfolio.includes(sym)) {
     portfolio.push(sym);
