@@ -2354,10 +2354,11 @@ function renderStockGrid() {
     const d = stockData[sym] || {};
     const loading = !d.price;
     const name = d.name || STOCK_NAMES[sym] || sym;
-    const alertTarget = stockAlerts[sym];
-    const alertTgt = alertTarget ? parseFloat(alertTarget) : null;
-    const alertIsDip = alertTgt !== null && d.price && alertTgt < d.price;
-    const hitTarget = alertTgt !== null && d.price && (alertIsDip ? d.price <= alertTgt : d.price >= alertTgt);
+    const alertObj = stockAlerts[sym];
+    const alertA = alertObj && typeof alertObj === 'object' ? alertObj : {};
+    const dipTgt  = alertA.dip  ? parseFloat(alertA.dip)  : null;
+    const riseTgt = alertA.rise ? parseFloat(alertA.rise) : null;
+    const hitTarget = (dipTgt !== null && d.price && d.price <= dipTgt) || (riseTgt !== null && d.price && d.price >= riseTgt);
     const fromHigh = d.price && d.high52 ? ((d.price - d.high52) / d.high52) * 100 : null;
 
     return `<div class="coin-card stock-card${loading ? ' loading' : ''}${hitTarget ? ' alert-hit' : ''}">
@@ -2396,10 +2397,17 @@ function renderStockGrid() {
       ${hasPos && pnlDollar != null ? `<div class="row" style="margin-top:4px;"><span class="label">My P&amp;L</span><span class="val" style="color:${pnlColor};font-weight:800;">${pnlDollar >= 0 ? '+' : ''}${fmtPrice(pnlDollar)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)</span></div>` : ''}`;
       })()}
       <div class="alert-row">
-        <span class="alert-label">&#128276; ${alertTgt !== null ? (alertIsDip ? 'Dip alert ↓' : 'Rise alert ↑') : 'Alert at'}:</span>
-        <input class="alert-input${alertTarget ? ' active' : ''}" type="number" step="any" min="0"
-          value="${alertTarget || ''}" placeholder="$ target"
-          onchange="setStockAlert('${sym}', this.value)"
+        <span class="alert-label">&#128276; Dip alert ↓</span>
+        <input class="alert-input${dipTgt ? ' active' : ''}" type="number" step="any" min="0"
+          value="${alertA.dip || ''}" placeholder="$ low target"
+          onchange="setStockAlert('${sym}','dip',this.value)"
+          onclick="event.stopPropagation()" />
+      </div>
+      <div class="alert-row">
+        <span class="alert-label">&#128276; Rise alert ↑</span>
+        <input class="alert-input${riseTgt ? ' active' : ''}" type="number" step="any" min="0"
+          value="${alertA.rise || ''}" placeholder="$ high target"
+          onchange="setStockAlert('${sym}','rise',this.value)"
           onclick="event.stopPropagation()" />
       </div>
     </div>`;
@@ -2435,15 +2443,16 @@ function removeStock(sym) {
   renderStockGrid();
 }
 
-function setStockAlert(sym, val) {
+function setStockAlert(sym, type, val) {
   const v = String(val).trim();
+  if (!stockAlerts[sym] || typeof stockAlerts[sym] !== 'object') stockAlerts[sym] = {};
   if (v === '' || isNaN(parseFloat(v))) {
-    delete stockAlerts[sym];
-    delete stockTriggered[sym];
+    delete stockAlerts[sym][type];
   } else {
-    stockAlerts[sym] = v;
-    delete stockTriggered[sym];
+    stockAlerts[sym][type] = v;
+    delete stockTriggered[sym + '_' + type];
   }
+  if (!stockAlerts[sym].dip && !stockAlerts[sym].rise) delete stockAlerts[sym];
   save('rm_stockAlerts', stockAlerts);
   renderStockGrid();
 }
@@ -2526,19 +2535,25 @@ function downloadStockCSV() {
 function checkStockAlerts() {
   const hits = [];
   stockWatchlist.forEach(sym => {
-    const target = stockAlerts[sym];
-    if (!target) return;
+    const alert = stockAlerts[sym];
+    if (!alert) return;
     const d = stockData[sym];
     if (!d?.price) return;
-    const tgt = parseFloat(target);
-    if (stockTriggered[sym]) return;
-    const isDip = tgt < d.price;  // target below current → dip alert
-    if (isDip && d.price <= tgt) {
-      stockTriggered[sym] = true;
-      hits.push(`<b>${sym}</b> dipped to ${fmtPrice(d.price)} — your dip target: ${fmtPrice(tgt)}`);
-    } else if (!isDip && d.price >= tgt) {
-      stockTriggered[sym] = true;
-      hits.push(`<b>${sym}</b> broke out to ${fmtPrice(d.price)} — your target: ${fmtPrice(tgt)}`);
+    // Support both old string format and new {dip, rise} object format
+    const a = typeof alert === 'object' ? alert : { dip: parseFloat(alert) < d.price ? String(alert) : undefined, rise: parseFloat(alert) >= d.price ? String(alert) : undefined };
+    if (a.dip) {
+      const tgt = parseFloat(a.dip);
+      if (!stockTriggered[sym + '_dip'] && d.price <= tgt) {
+        stockTriggered[sym + '_dip'] = true;
+        hits.push(`<b>${sym}</b> dipped to ${fmtPrice(d.price)} — your dip alert: ${fmtPrice(tgt)}`);
+      }
+    }
+    if (a.rise) {
+      const tgt = parseFloat(a.rise);
+      if (!stockTriggered[sym + '_rise'] && d.price >= tgt) {
+        stockTriggered[sym + '_rise'] = true;
+        hits.push(`<b>${sym}</b> rose to ${fmtPrice(d.price)} — your rise alert: ${fmtPrice(tgt)}`);
+      }
     }
   });
   if (!hits.length) return;
