@@ -1665,7 +1665,8 @@ function renderSupplyChain() {
       : '';
     const chainHtml = a.allSuppliers.map(s => {
       const on = a.watchHits.includes(s);
-      return `<span class="sc-chip${on ? ' on-watch' : ''}">${s}${on ? ' &#9733;' : ''}</span>`;
+      const name = STOCK_NAMES[s] || s;
+      return `<span class="sc-chip${on ? ' on-watch' : ''}" title="${name} — click for Yahoo Finance" onclick="event.stopPropagation();window.open('https://finance.yahoo.com/quote/${s}','_blank')" style="cursor:pointer;">${s}${on ? ' &#9733;' : ''}</span>`;
     }).join('');
     const safeLink = a.link ? a.link.replace(/'/g, "\\'") : '';
     const safeKey  = (a._key || '').replace(/'/g, "\\'");
@@ -1711,7 +1712,7 @@ function renderSupplyChain() {
           <span class="sc-arrow">&#8594;</span>
           <span class="sc-chips">${chain.suppliers.map(s => {
             const on = watchSet.has(s);
-            return `<span class="sc-chip${on ? ' on-watch' : ''}" title="${STOCK_NAMES[s]||s}">${s}${on ? ' &#9733;' : ''}</span>`;
+            return `<span class="sc-chip${on ? ' on-watch' : ''}" title="${STOCK_NAMES[s]||s} — click for Yahoo Finance" onclick="window.open('https://finance.yahoo.com/quote/${s}','_blank')" style="cursor:pointer;">${s}${on ? ' &#9733;' : ''}</span>`;
           }).join('')}</span>
         </div>`
       ).join('');
