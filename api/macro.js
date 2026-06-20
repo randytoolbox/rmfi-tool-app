@@ -1,4 +1,4 @@
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   const results = {};
   try {
     const r = await fetch('https://api.coingecko.com/api/v3/global');
@@ -20,4 +20,4 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.json(results);
-}
+};

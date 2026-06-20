@@ -1,18 +1,3 @@
-const CC_TO_BINANCE = {
-  'bitcoin':'BTCUSDT','ethereum':'ETHUSDT','ripple':'XRPUSDT','solana':'SOLUSDT',
-  'binance-coin':'BNBUSDT','dogecoin':'DOGEUSDT','cardano':'ADAUSDT','avalanche':'AVAXUSDT',
-  'polkadot':'DOTUSDT','polygon':'MATICUSDT','chainlink':'LINKUSDT','litecoin':'LTCUSDT',
-  'uniswap':'UNIUSDT','cosmos':'ATOMUSDT','near-protocol':'NEARUSDT',
-  'internet-computer':'ICPUSDT','filecoin':'FILUSDT','aptos':'APTUSDT',
-  'arbitrum':'ARBUSDT','optimism':'OPUSDT','injective-protocol':'INJUSDT',
-  'sui':'SUIUSDT','celestia':'TIAUSDT','dogwifcoin':'WIFUSDT','bonk':'BONKUSDT',
-  'pepe':'PEPEUSDT','shiba-inu':'SHIBUSDT','toncoin':'TONUSDT','tron':'TRXUSDT',
-  'stellar':'XLMUSDT','hedera-hashgraph':'HBARUSDT','vechain':'VETUSDT',
-  'algorand':'ALGOUSDT','ethereum-classic':'ETCUSDT','bitcoin-cash':'BCHUSDT',
-  'quant-network':'QNTUSDT',
-};
-const BINANCE_TO_CC = Object.fromEntries(Object.entries(CC_TO_BINANCE).map(([cc,bn])=>[bn,cc]));
-
 const CC_TO_YAHOO = {
   'bitcoin':'BTC-USD','ethereum':'ETH-USD','ripple':'XRP-USD','solana':'SOL-USD',
   'binance-coin':'BNB-USD','dogecoin':'DOGE-USD','cardano':'ADA-USD','avalanche':'AVAX-USD',
@@ -28,7 +13,7 @@ const CC_TO_YAHOO = {
 };
 const YAHOO_TO_CC = Object.fromEntries(Object.entries(CC_TO_YAHOO).map(([cc,y])=>[y,cc]));
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   const { ids } = req.query;
   if (!ids) return res.status(400).json({ error: 'ids required' });
   const idList = ids.split(',').map(s => s.trim());
@@ -45,22 +30,26 @@ export default async function handler(req, res) {
     }
   } catch {}
 
-  // 2) Binance
+  // 2) CryptoCompare (reliable server-to-server, no API key needed)
   try {
-    const pairs = idList.map(id => CC_TO_BINANCE[id]).filter(Boolean);
-    if (pairs.length) {
-      const r = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbols=${encodeURIComponent(JSON.stringify(pairs))}`);
+    const syms = idList.map(id => (CC_TO_YAHOO[id] || '').replace('-USD','')).filter(Boolean);
+    if (syms.length) {
+      const r = await fetch(`https://min-api.cryptocompare.com/data/pricemultifull?fsyms=${syms.join(',')}&tsyms=USD`);
       if (r.ok) {
-        const tickers = await r.json();
-        if (Array.isArray(tickers) && tickers.length) {
-          const data = tickers.map(t => ({
-            id: BINANCE_TO_CC[t.symbol] || t.symbol,
-            symbol: t.symbol.replace('USDT',''),
-            priceUsd: t.lastPrice,
-            changePercent24Hr: t.priceChangePercent,
-            volumeUsd24Hr: t.quoteVolume,
-            marketCapUsd: null,
-          }));
+        const json = await r.json();
+        const raw = json.RAW || {};
+        const data = Object.entries(raw).map(([sym, v]) => {
+          const usd = v.USD || {};
+          const ccId = YAHOO_TO_CC[sym + '-USD'] || sym.toLowerCase();
+          return {
+            id: ccId, symbol: sym,
+            priceUsd: String(usd.PRICE || 0),
+            changePercent24Hr: String(usd.CHANGEPCT24HOUR || 0),
+            volumeUsd24Hr: String(usd.VOLUME24HOURTO || 0),
+            marketCapUsd: String(usd.MKTCAP || 0),
+          };
+        }).filter(d => parseFloat(d.priceUsd) > 0);
+        if (data.length) {
           res.setHeader('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=60');
           return res.json({ data });
         }
@@ -68,27 +57,35 @@ export default async function handler(req, res) {
     }
   } catch {}
 
-  // 3) Yahoo Finance crypto (same server as stock quotes — known to work from Vercel)
+  // 3) Yahoo Finance v8 chart per-symbol
   try {
     const yahooSyms = idList.map(id => CC_TO_YAHOO[id]).filter(Boolean);
-    if (!yahooSyms.length) throw new Error('no yahoo syms');
-    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(yahooSyms.join(','))}&fields=regularMarketPrice,regularMarketChangePercent,regularMarketVolume,marketCap`;
-    const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; randy-money/1.0)' } });
-    if (!r.ok) throw new Error('yahoo ' + r.status);
-    const json = await r.json();
-    const results = json?.quoteResponse?.result;
-    if (!results?.length) throw new Error('no results');
-    const data = results.map(q => ({
-      id: YAHOO_TO_CC[q.symbol] || q.symbol,
-      symbol: q.symbol.replace('-USD',''),
-      priceUsd: String(q.regularMarketPrice ?? 0),
-      changePercent24Hr: String(q.regularMarketChangePercent ?? 0),
-      volumeUsd24Hr: String((q.regularMarketVolume ?? 0) * (q.regularMarketPrice ?? 1)),
-      marketCapUsd: String(q.marketCap ?? 0),
-    }));
-    res.setHeader('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=60');
-    return res.json({ data });
-  } catch (e) {
-    return res.status(502).json({ error: 'all sources failed: ' + e.message });
-  }
-}
+    if (!yahooSyms.length) throw new Error('no symbols');
+    const results = [];
+    for (const ySym of yahooSyms.slice(0, 10)) {
+      try {
+        const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${ySym}?range=2d&interval=1d`, {
+          headers: { 'User-Agent': 'Mozilla/5.0' }
+        });
+        if (!r.ok) continue;
+        const json = await r.json();
+        const meta = json?.chart?.result?.[0]?.meta;
+        if (!meta?.regularMarketPrice) continue;
+        const ccId = YAHOO_TO_CC[ySym] || ySym;
+        results.push({
+          id: ccId, symbol: ySym.replace('-USD',''),
+          priceUsd: String(meta.regularMarketPrice),
+          changePercent24Hr: String(meta.regularMarketChangePercent || 0),
+          volumeUsd24Hr: String(meta.regularMarketVolume || 0),
+          marketCapUsd: String(meta.marketCap || 0),
+        });
+      } catch {}
+    }
+    if (results.length) {
+      res.setHeader('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=60');
+      return res.json({ data: results });
+    }
+  } catch {}
+
+  return res.status(502).json({ error: 'all sources failed' });
+};
