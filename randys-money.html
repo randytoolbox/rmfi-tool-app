@@ -353,6 +353,7 @@
   </div>
   <div id="stockErrorMsg" style="display:none;"></div>
   <div class="coin-grid" id="stockGrid"></div>
+  <div id="stockPortfolioSummary"></div>
   <div class="add-row" style="margin-bottom:28px;">
     <span style="font-size:13px;font-weight:700;color:var(--muted);">Add a stock:</span>
     <input id="addStockInput" placeholder="e.g. AAPL, TSLA..." maxlength="10" style="text-transform:uppercase;" />
@@ -617,6 +618,7 @@ let _cachedStockDataTs = load('rm_stockDataTs', 0);
 let stockData = (Date.now() - _cachedStockDataTs < 12 * 60 * 60 * 1000) ? _cachedStockData : {};
 let stockAlerts      = load('rm_stockAlerts', {});
 let stockTriggered   = {};
+let stockHoldings    = load('rm_stockHoldings', {}); // { SYM: { qty, cost } }
 let stockHistory     = load('rm_stockHistory', {});
 let lastHistoryFetch = load('rm_lastHistFetch', 0);
 
@@ -2345,6 +2347,7 @@ function renderStockGrid() {
   if (!grid) return;
   if (!stockWatchlist.length) {
     grid.innerHTML = '<div style="color:var(--muted);font-size:14px;">No stocks yet — add a ticker below.</div>';
+    renderStockPortfolioSummary();
     return;
   }
   grid.innerHTML = stockWatchlist.map(sym => {
@@ -2369,6 +2372,29 @@ function renderStockGrid() {
       <div class="row"><span class="label">52W High</span><span class="val">${fmtPrice(d.high52)}</span></div>
       <div class="row"><span class="label">52W Low</span><span class="val">${fmtPrice(d.low52)}</span></div>
       <div class="row"><span class="label">From High</span><span class="val ${cls(fromHigh)}">${fromHigh != null ? fmtPct(fromHigh) : '--'}</span></div>
+      ${(()=>{
+        const h = stockHoldings[sym] || {};
+        const hasPos = h.qty && h.cost;
+        const pnlDollar = hasPos && d.price ? (d.price - h.cost) * h.qty : null;
+        const pnlPct    = hasPos && d.price ? ((d.price - h.cost) / h.cost) * 100 : null;
+        const pnlColor  = pnlDollar == null ? '' : pnlDollar >= 0 ? 'var(--good)' : 'var(--bad)';
+        return `
+      <div class="alert-row" style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px;">
+        <span class="alert-label">Shares:</span>
+        <input class="alert-input${h.qty ? ' active' : ''}" type="number" step="any" min="0"
+          value="${h.qty || ''}" placeholder="0"
+          onchange="setStockHolding('${sym}','qty',this.value)"
+          onclick="event.stopPropagation()" />
+      </div>
+      <div class="alert-row">
+        <span class="alert-label">Paid each:</span>
+        <input class="alert-input${h.cost ? ' active' : ''}" type="number" step="any" min="0"
+          value="${h.cost || ''}" placeholder="$0.00"
+          onchange="setStockHolding('${sym}','cost',this.value)"
+          onclick="event.stopPropagation()" />
+      </div>
+      ${hasPos && pnlDollar != null ? `<div class="row" style="margin-top:4px;"><span class="label">My P&amp;L</span><span class="val" style="color:${pnlColor};font-weight:800;">${pnlDollar >= 0 ? '+' : ''}${fmtPrice(pnlDollar)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)</span></div>` : ''}`;
+      })()}
       <div class="alert-row">
         <span class="alert-label">&#128276; ${alertTgt !== null ? (alertIsDip ? 'Dip alert ↓' : 'Rise alert ↑') : 'Alert at'}:</span>
         <input class="alert-input${alertTarget ? ' active' : ''}" type="number" step="any" min="0"
@@ -2378,6 +2404,7 @@ function renderStockGrid() {
       </div>
     </div>`;
   }).join('');
+  renderStockPortfolioSummary();
 }
 
 function addStock() {
@@ -2419,6 +2446,81 @@ function setStockAlert(sym, val) {
   }
   save('rm_stockAlerts', stockAlerts);
   renderStockGrid();
+}
+
+function setStockHolding(sym, field, val) {
+  const v = parseFloat(String(val).trim());
+  if (!stockHoldings[sym]) stockHoldings[sym] = {};
+  if (!val || isNaN(v) || v <= 0) delete stockHoldings[sym][field];
+  else stockHoldings[sym][field] = v;
+  if (!stockHoldings[sym].qty && !stockHoldings[sym].cost) delete stockHoldings[sym];
+  save('rm_stockHoldings', stockHoldings);
+  renderStockGrid();
+  renderStockPortfolioSummary();
+}
+
+function renderStockPortfolioSummary() {
+  const el = document.getElementById('stockPortfolioSummary');
+  if (!el) return;
+  let totalCost = 0, totalValue = 0, rows = [];
+  stockWatchlist.forEach(sym => {
+    const h = stockHoldings[sym];
+    if (!h?.qty || !h?.cost) return;
+    const price = stockData[sym]?.price;
+    const cost  = h.qty * h.cost;
+    const value = price ? h.qty * price : null;
+    const gain  = value != null ? value - cost : null;
+    const gainPct = gain != null ? (gain / cost) * 100 : null;
+    totalCost  += cost;
+    if (value != null) totalValue += value;
+    rows.push({ sym, qty: h.qty, cost: h.cost, totalCost: cost, value, gain, gainPct });
+  });
+  if (!rows.length) { el.innerHTML = ''; return; }
+  const totalGain = totalValue - totalCost;
+  const totalGainPct = totalCost ? (totalGain / totalCost) * 100 : 0;
+  const cls = v => v == null ? '' : v >= 0 ? 'good' : 'bad';
+  el.innerHTML = `
+    <div class="section-label" style="margin-top:18px;">&#128200; My Stock Portfolio</div>
+    <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:8px;">
+      <div style="display:flex;gap:24px;padding:12px 16px;flex-wrap:wrap;border-bottom:1px solid var(--border);">
+        <div><div style="font-size:10px;color:var(--muted);">INVESTED</div><div style="font-size:18px;font-weight:800;">${fmtPrice(totalCost)}</div></div>
+        <div><div style="font-size:10px;color:var(--muted);">CURRENT VALUE</div><div style="font-size:18px;font-weight:800;">${totalValue ? fmtPrice(totalValue) : '--'}</div></div>
+        <div><div style="font-size:10px;color:var(--muted);">TOTAL P&amp;L</div><div style="font-size:18px;font-weight:800;color:var(--${cls(totalGain)})">${totalValue ? (totalGain >= 0 ? '+' : '') + fmtPrice(totalGain) + ' (' + (totalGainPct >= 0 ? '+' : '') + totalGainPct.toFixed(2) + '%)' : '--'}</div></div>
+        <div style="margin-left:auto;align-self:center;">
+          <button class="btn btn-sm" onclick="downloadStockCSV()" style="background:#1e4060;color:var(--text);border:1px solid var(--border);">&#11015; Download CSV</button>
+        </div>
+      </div>
+      ${rows.map(r => `
+        <div style="display:flex;align-items:center;gap:12px;padding:8px 16px;border-bottom:1px solid #0f2a45;flex-wrap:wrap;">
+          <span style="font-weight:800;font-size:13px;min-width:48px;">${r.sym}</span>
+          <span style="font-size:12px;color:var(--muted);">${r.qty} sh @ ${fmtPrice(r.cost)}</span>
+          <span style="font-size:12px;color:var(--muted);">cost ${fmtPrice(r.totalCost)}</span>
+          <span style="font-size:13px;font-weight:700;color:var(--${cls(r.gain)});margin-left:auto;">
+            ${r.gain != null ? (r.gain >= 0 ? '+' : '') + fmtPrice(r.gain) + ' (' + (r.gainPct >= 0 ? '+' : '') + r.gainPct.toFixed(2) + '%)' : 'price loading...'}
+          </span>
+        </div>`).join('')}
+    </div>`;
+}
+
+function downloadStockCSV() {
+  const rows = [['Ticker','Shares','Cost/Share','Total Cost','Current Price','Current Value','P&L $','P&L %','Date Exported']];
+  const today = new Date().toLocaleDateString('en-US');
+  stockWatchlist.forEach(sym => {
+    const h = stockHoldings[sym];
+    if (!h?.qty || !h?.cost) return;
+    const price = stockData[sym]?.price;
+    const totalCost  = (h.qty * h.cost).toFixed(2);
+    const totalValue = price ? (h.qty * price).toFixed(2) : '';
+    const gain       = price ? (h.qty * price - h.qty * h.cost).toFixed(2) : '';
+    const gainPct    = price ? (((h.qty * price - h.qty * h.cost) / (h.qty * h.cost)) * 100).toFixed(2) + '%' : '';
+    rows.push([sym, h.qty, h.cost.toFixed(2), totalCost, price ? price.toFixed(2) : '', totalValue, gain, gainPct, today]);
+  });
+  if (rows.length < 2) { alert('Add shares and cost to your stock cards first.'); return; }
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = `randys-portfolio-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
 }
 
 function checkStockAlerts() {
