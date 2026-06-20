@@ -488,7 +488,8 @@ function load(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.p
 function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
 
 let portfolio     = load('rm_portfolio', DEFAULT_PORTFOLIO);
-let liveData      = {};
+const _cachedLive = load('rm_liveData', null);
+let liveData      = (_cachedLive?.ts && Date.now() - _cachedLive.ts < 24 * 3600000) ? (_cachedLive.data || {}) : {};
 let histData      = load('rm_histData', {});   // persisted — survives page reloads
 let alertTargets  = load('rm_alertTargets', {});
 let triggeredAlerts = {};
@@ -885,9 +886,22 @@ async function fetchLive() {
   const allIds = [...new Set([...portfolioIds, 'bitcoin', 'ethereum'])];
   if (!allIds.length) return;
   const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${encodeURIComponent(allIds.join(','))}&price_change_percentage=24h,7d,1y&per_page=50`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('CoinGecko ' + res.status);
-  const data = await res.json();
+  let data;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('CoinGecko ' + res.status);
+    data = await res.json();
+  } catch {
+    try {
+      const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
+      if (!res.ok) throw new Error('proxy1 ' + res.status);
+      data = await res.json();
+    } catch {
+      const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
+      if (!res.ok) throw new Error('CoinGecko unavailable');
+      data = await res.json();
+    }
+  }
   data.forEach(c => {
     // BTC/ETH → macroData
     if (c.id === 'bitcoin') {
@@ -910,6 +924,7 @@ async function fetchLive() {
       vol24h:    c.total_volume,
     };
   });
+  save('rm_liveData', { data: liveData, ts: Date.now() });
 }
 
 // ── API: 2-year history ───────────────────────────────────────────────────────
@@ -917,9 +932,22 @@ async function fetchHistory(sym) {
   const id = COINS[sym];
   if (!id) return;
   const url = `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=730&interval=daily`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('history ' + res.status);
-  const data = await res.json();
+  let data;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('history ' + res.status);
+    data = await res.json();
+  } catch {
+    try {
+      const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
+      if (!res.ok) throw new Error('proxy1 ' + res.status);
+      data = await res.json();
+    } catch {
+      const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
+      if (!res.ok) throw new Error('history unavailable');
+      data = await res.json();
+    }
+  }
   const prices = (data.prices || []).map(p => p[1]);
   if (!prices.length) return;
   const mid = Math.floor(prices.length / 2);
@@ -980,8 +1008,23 @@ async function refreshAll() {
     setStatus('ok', 'All data loaded — ' + now);
     arCountdownVal = 120;
   } catch (e) {
-    setStatus('error', 'Error: ' + e.message + '. CoinGecko may be rate-limiting. Try again in a minute.');
-    console.error(e);
+    console.error('refreshAll error:', e);
+    const hasCached = Object.keys(liveData).length > 0;
+    if (hasCached) {
+      renderGrid();
+      renderMacro();
+      setStatus('error', '⚠ Live prices unavailable — showing cached data. Will retry.');
+    } else {
+      setStatus('error', 'Error: ' + e.message + '. CoinGecko may be rate-limiting. Try again in a minute.');
+    }
+    // Still run non-CoinGecko fetches
+    fetchNews();
+    fetchCongress();
+    fetchCongressBuys();
+    if (Date.now() - lastStockFetch >= STOCK_REFRESH_MS) {
+      fetchStocks().then(() => { renderStockGrid(); checkStockAlerts(); lastStockFetch = Date.now(); }).catch(() => {});
+    }
+    arCountdownVal = 120;
   }
 }
 
