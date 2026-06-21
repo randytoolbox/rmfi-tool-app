@@ -1943,11 +1943,13 @@ async function fetchCongress(force = false) {
   if (listEl) listEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:10px 0;">Loading STOCK Act filings from House &amp; Senate databases…</div>';
 
   let trades = [];
+  let dataSources = [];
   try {
-    const r = await fetch('/api/congress', { signal: AbortSignal.timeout(30000) });
+    const r = await fetch('/api/congress', { signal: AbortSignal.timeout(50000) });
     if (r.ok) {
       const d = await r.json();
       trades = d.trades || [];
+      dataSources = d.sources || [];
     }
   } catch(e) {}
 
@@ -1977,6 +1979,13 @@ async function fetchCongress(force = false) {
   }));
 
   lastCongressFetch = Date.now();
+  if (errEl && dataSources.length && dataSources.length < 2) {
+    errEl.style.display = 'block';
+    errEl.style.color = 'var(--muted)';
+    errEl.textContent = `ℹ Loaded ${dataSources.join(' only')} data — House filing server slow. Who's Buying shows ${dataSources.join('')} members.`;
+  } else if (errEl) {
+    errEl.style.display = 'none';
+  }
   renderCongressList();
   renderCongressMembers();
 }
