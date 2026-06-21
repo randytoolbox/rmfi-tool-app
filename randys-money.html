@@ -351,14 +351,15 @@
       oninput="saveStockKey(this.value)" />
     <span style="font-size:11px;color:var(--muted);">Free at <b style="color:#6aaeff;">finnhub.io</b> — 2 min signup</span>
   </div>
+  <div class="add-row" style="margin-bottom:12px;">
+    <span style="font-size:13px;font-weight:700;color:var(--muted);">Add a stock:</span>
+    <input id="addStockInput" placeholder="e.g. HON, EMR, NVDA..." maxlength="10" style="text-transform:uppercase;" />
+    <button class="btn btn-blue btn-sm" onclick="addStock()">Add</button>
+    <span class="hint">Any US ticker — AAPL, MSFT, NVDA, TSLA, XLE, JPM, GLD...</span>
+  </div>
   <div id="stockErrorMsg" style="display:none;"></div>
   <div class="coin-grid" id="stockGrid"></div>
   <div id="stockPortfolioSummary"></div>
-  <div class="add-row" style="margin-bottom:28px;">
-    <span style="font-size:13px;font-weight:700;color:var(--muted);">Add a stock:</span>
-    <input id="addStockInput" placeholder="e.g. AAPL, TSLA..." maxlength="10" style="text-transform:uppercase;" />
-    <button class="btn btn-blue btn-sm" onclick="addStock()">Add</button>
-    <span class="hint">Any US ticker — AAPL, MSFT, NVDA, TSLA, XLE, JPM, GLD...</span>
   </div>
 
   <!-- NEWS FEED -->
