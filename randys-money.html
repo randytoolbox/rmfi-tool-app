@@ -1529,9 +1529,13 @@ function timeAgo(dateStr) {
 }
 
 function detectTicker(title) {
+  // Case-sensitive match only — "Cat lounge" must not match CAT ticker
+  // Skip 1-char tickers in auto-detect (too many false positives)
+  const SHORT_SKIP = new Set(['A','F','S','T','X','M','B','C','D','G','K','L','N','O','P','R','W']);
   const allSyms = [...new Set([...stockWatchlist, ...Object.keys(STOCK_NAMES)])];
   for (const s of allSyms) {
-    if (new RegExp(`\\b${s}\\b`,'i').test(title)) return s;
+    if (SHORT_SKIP.has(s)) continue;
+    if (new RegExp(`\\b${s}\\b`).test(title)) return s;
   }
   return null;
 }
