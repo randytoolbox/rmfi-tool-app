@@ -555,9 +555,16 @@ const STOCK_NAMES = {
   AAPL:'Apple', MSFT:'Microsoft', NVDA:'NVIDIA', TSLA:'Tesla', AMZN:'Amazon',
   GOOGL:'Alphabet (Google)', META:'Meta Platforms', JPM:'JPMorgan Chase',
   BAC:'Bank of America', WFC:'Wells Fargo', GS:'Goldman Sachs',
-  XLE:'Energy Select ETF', XLF:'Financial ETF', XLI:'Industrial ETF',
+  XLE:'Energy Select ETF (Oil & Gas)', XLF:'Financial ETF', XLI:'Industrial ETF',
   XLK:'Technology ETF', XLV:'Health Care ETF', XLU:'Utilities ETF',
-  GLD:'Gold ETF', SLV:'Silver ETF', USO:'Oil ETF',
+  GLD:'Gold ETF', SLV:'Silver ETF', USO:'Crude Oil ETF',
+  // Oil & Gas — Hormuz / geopolitical plays
+  XOM:'ExxonMobil', CVX:'Chevron', OXY:'Occidental Petroleum',
+  COP:'ConocoPhillips', MRO:'Marathon Oil', EOG:'EOG Resources',
+  HAL:'Halliburton (Oilfield Services)', SLB:'SLB / Schlumberger (Oil Services)',
+  BKR:'Baker Hughes (Oil Services)', KMI:'Kinder Morgan (Pipelines)',
+  WMB:'Williams Companies (Natural Gas)', ET:'Energy Transfer (Pipelines)',
+  STNG:'Scorpio Tankers', FRO:'Frontline (Oil Tankers)', DHT:'DHT Holdings (Tankers)',
   AMGN:'Amgen', JNJ:'Johnson & Johnson', PFE:'Pfizer',
   F:'Ford Motor', GM:'General Motors', BA:'Boeing', CAT:'Caterpillar',
   DIS:'Disney', NFLX:'Netflix', UBER:'Uber',
@@ -651,6 +658,14 @@ const SUPPLY_CHAINS = {
   NVDA: { name:'NVIDIA (Robot AI Platform)',     suppliers:['TSM','AMAT','LRCX','KLAC','ARM','MU','SMCI','VRT','ONTO','COHR','AMBA','QCOM'] },
   ROK:  { name:'Rockwell Automation',            suppliers:['HON','CGNX','TER','ABB','NVDA','ANET','EMR','SYM'] },
   HMC:  { name:'Hyundai (Boston Dynamics Atlas)',suppliers:['NVDA','AMBA','MP','CGNX','TER','ROK','ABB','QCOM','HON'] },
+  // ── Oil & Gas — Strait of Hormuz / geopolitical tension plays ────────────
+  // XLE is Tier-1 trigger: when it moves 3%+ the lag detector flags the downstream plays
+  XLE:  { name:'Oil & Gas ETF (Hormuz trigger)',  suppliers:['OXY','XOM','CVX','COP','MRO','EOG','HAL','SLB','BKR'] },
+  XOM:  { name:'ExxonMobil',                      suppliers:['HAL','SLB','BKR','KMI','WMB','ET','STNG','FRO'] },
+  CVX:  { name:'Chevron',                          suppliers:['HAL','SLB','BKR','OXY','KMI','WMB','ET'] },
+  OXY:  { name:'Occidental Petroleum',             suppliers:['HAL','SLB','BKR','KMI','DVN','FANG'] },
+  // Tankers move fast on Hormuz news — often same-day or ahead of XLE
+  STNG: { name:'Scorpio Tankers (Hormuz direct)',  suppliers:['FRO','DHT','KMI','WMB'] },
 };
 
 // Keywords in news titles → prime contractor ticker
@@ -691,6 +706,15 @@ const PRIME_KEYWORDS = [
   ['rare earth magnet','MP'], ['mp materials','MP'],   ['robot actuator','MP'],
   ['ambarella robot','AMBA'], ['symbotic','SYM'],      ['warehouse robot','SYM'],
   ['agility robotics','TER'], ['digit robot','TER'],   ['qualcomm robot','QCOM'],
+  // Oil & Gas — Strait of Hormuz / geopolitical triggers
+  ['strait of hormuz','XLE'], ['hormuz','XLE'],        ['iran oil','XLE'],
+  ['crude oil','XLE'],        ['oil prices','XLE'],    ['oil price','XLE'],
+  ['opec','XLE'],             ['oil supply','XLE'],    ['oil tanker','STNG'],
+  ['tanker seized','STNG'],   ['tanker attack','STNG'],['shipping lane','STNG'],
+  ['halliburton','HAL'],      ['schlumberger','SLB'],  ['baker hughes','BKR'],
+  ['kinder morgan','KMI'],    ['exxon','XOM'],         ['exxonmobil','XOM'],
+  ['chevron','CVX'],          ['occidental','OXY'],    ['marathon oil','MRO'],
+  ['natural gas price','WMB'],['lng export','WMB'],    ['pipeline','KMI'],
 ];
 
 let stockWatchlist   = load('rm_stocks', DEFAULT_STOCKS);
