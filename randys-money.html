@@ -371,6 +371,17 @@
     <div class="news-empty">News loads on first refresh — click &#8635; Refresh Data or wait for auto-refresh.</div>
   </div>
 
+  <!-- POLICY WATCH — Trump Truth Social + tariffs + trade deals + sanctions -->
+  <div id="sec-policy" style="margin-top:24px; margin-bottom:28px;">
+    <div class="section-label" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+      <span>&#127981; Policy Watch <span style="font-size:10px;color:var(--muted);font-weight:400;">— Trump Truth Social &bull; tariffs &bull; trade deals &bull; oil sanctions &bull; auto-updates 15 min</span></span>
+      <button class="btn btn-sm" onclick="fetchPolicyNews(true)" style="background:#1e2a00;color:#f9a825;border:1px solid #f9a825;">&#8635; Refresh</button>
+    </div>
+    <div class="news-wrap" style="margin-top:8px;">
+      <div id="policyList"><div class="news-empty">Loading policy alerts...</div></div>
+    </div>
+  </div>
+
   <!-- CONGRESSIONAL TRADES -->
   <div id="sec-congress" class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
     <span>&#127963; Congress Trades <span style="font-size:10px;color:var(--muted);font-weight:400;">— actual STOCK Act filings &bull; House &amp; Senate &bull; last 90 days</span></span>
@@ -1091,6 +1102,7 @@ async function refreshAll() {
     fetchCongressBuys();      // throttled — 4 hours
     fetchHouseLeaderboard();  // throttled — 7 days (official PTR rankings)
     fetchEarnings();          // throttled — 24 hours (earnings date warnings)
+    fetchPolicyNews();        // throttled — 15 min (Trump/tariff/policy alerts)
     document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
     setStatus('ok', 'All data loaded — ' + now);
     arCountdownVal = 120;
@@ -1584,6 +1596,105 @@ function checkAlerts() {
       body: h.replace(/<[^>]+>/g, ''),
     }));
   }
+}
+
+// ── Policy Watch — Trump Truth Social + tariffs + sanctions ──────────────────
+const POLICY_QUERIES = [
+  'Trump Truth Social tariff trade stocks market 2026',
+  'Trump executive order oil Iran sanctions trade deal 2026',
+  'White House tariff announcement trade company stocks 2026',
+  'Trump statement oil OPEC Iran Hormuz energy 2026',
+];
+
+// keyword in headline → which stocks are impacted
+const POLICY_IMPACTS = [
+  [['tariff china','china trade','trade war','chip export ban'],        ['AAPL','NVDA','TSM','QCOM','AMAT']],
+  [['tariff steel','steel tariff','aluminum tariff'],                   ['NUE','X','STLD','AA']],
+  [['iran','hormuz','oil sanction','crude sanction'],                   ['XLE','OXY','STNG','FRO','HAL']],
+  [['oil price','crude oil','opec','energy sanction'],                  ['XLE','OXY','CVX','XOM','MRO']],
+  [['defense','military budget','pentagon','nato spending'],            ['LMT','RTX','NOC','GD','PLTR']],
+  [['pharmaceutical price','drug price','medicare'],                    ['PFE','LLY','AMGN','MRK']],
+  [['nvidia','ai chip','semiconductor export','chip ban'],              ['NVDA','AMD','TSM','AMAT']],
+  [['tesla','electric vehicle','ev subsidy','ev credit'],               ['TSLA']],
+  [['apple','iphone tariff','china apple'],                             ['AAPL']],
+  [['natural gas','lng','pipeline','gas price'],                        ['XLE','KMI','WMB','ET']],
+  [['bitcoin','crypto','digital asset','stablecoin'],                   ['BTC','ETH']],
+  [['palantir','government contract','doge cut','federal spending'],    ['PLTR','SAIC','LDOS','BAH']],
+  [['lockheed','raytheon','boeing defense','general dynamics'],         ['LMT','RTX','BA','GD']],
+];
+
+let policyNews      = [];
+let lastPolicyFetch = 0;
+const POLICY_TTL    = 15 * 60 * 1000;
+
+async function fetchPolicyNews(force = false) {
+  if (!force && Date.now() - lastPolicyFetch < POLICY_TTL && policyNews.length) {
+    renderPolicyWatch(); return;
+  }
+  const el = document.getElementById('policyList');
+  if (el) el.innerHTML = '<div class="news-empty" style="color:var(--muted);">Scanning Trump Truth Social + policy feeds…</div>';
+
+  const all = [];
+  for (const q of POLICY_QUERIES) {
+    try {
+      const r = await fetch('/api/news?q=' + encodeURIComponent(q), { signal: AbortSignal.timeout(9000) });
+      if (r.ok) { const d = await r.json(); all.push(...(d.items || [])); }
+    } catch(_) {}
+    await new Promise(r => setTimeout(r, 200));
+  }
+
+  // Dedupe by title prefix
+  const seen = new Set();
+  policyNews = all.filter(item => {
+    const key = item.title.slice(0, 60).toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key); return true;
+  }).sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate)).slice(0, 20);
+
+  lastPolicyFetch = Date.now();
+  renderPolicyWatch();
+}
+
+function getPolicyImpact(title) {
+  const t = title.toLowerCase();
+  const tags = new Set();
+  for (const [keywords, stocks] of POLICY_IMPACTS) {
+    if (keywords.some(kw => t.includes(kw))) stocks.forEach(s => tags.add(s));
+  }
+  return [...tags];
+}
+
+function renderPolicyWatch() {
+  const el = document.getElementById('policyList');
+  if (!el) return;
+  if (!policyNews.length) {
+    el.innerHTML = '<div class="news-empty">No policy alerts found — click ↻ Refresh.</div>';
+    return;
+  }
+  const watchSet = new Set(stockWatchlist);
+  el.innerHTML = policyNews.map(item => {
+    const tags  = getPolicyImpact(item.title);
+    const age   = item.pubDate ? timeAgo(item.pubDate) : '';
+    const isTruth = item.title.toLowerCase().includes('truth social') || item.source?.toLowerCase().includes('truth');
+    const tagHtml = tags.map(s => {
+      const inW = watchSet.has(s);
+      return `<span onclick="addToWatchlist('${s}')" style="display:inline-block;padding:2px 7px;border-radius:5px;
+        font-size:10px;font-weight:800;margin:2px 2px 0 0;cursor:pointer;
+        background:${inW?'#0d2d1a':'#0a1a2e'};color:${inW?'var(--good)':'var(--accent)'};
+        border:1px solid ${inW?'var(--good)':'var(--border)'};">${s}${inW?' ★':''}</span>`;
+    }).join('');
+    return `<div class="news-item" onclick="window.open('${item.link}','_blank')" style="border-left:3px solid #f9a825;cursor:pointer;">
+      <div class="news-meta" style="min-width:44px;">
+        <span style="font-size:8px;color:#f9a825;font-weight:800;display:block;">${isTruth?'TRUTH':'POLICY'}</span>
+        <span class="news-time">${age}</span>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:700;line-height:1.3;">${item.title}</div>
+        ${tagHtml ? `<div style="margin-top:4px;">${tagHtml}</div>` : ''}
+        <div style="font-size:10px;color:var(--muted);margin-top:2px;">${item.source || ''}</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ── News Feed ─────────────────────────────────────────────────────────────────
@@ -3384,9 +3495,12 @@ renderSupplyChain();
 renderCongressBuys();
 renderCongressAllStars();
 renderTradeJournal();
+renderPolicyWatch();
 refreshAll();
 // Dedicated news refresh every 5 minutes
 setInterval(() => fetchNews(), NEWS_TTL);
+// Policy Watch refresh every 15 minutes
+setInterval(() => fetchPolicyNews(), POLICY_TTL);
 </script>
 
 <!-- ── Bottom Navigation Bar ─────────────────────────────────────────────── -->
