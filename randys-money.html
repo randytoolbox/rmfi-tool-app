@@ -427,6 +427,25 @@
     <div class="news-empty">Supply chain map loads with news — click &#8635; Refresh Data or wait for auto-refresh. &#9733; = on your watchlist.</div>
   </div>
 
+  <!-- LAG DETECTOR -->
+  <div id="lagSection" style="margin-bottom:28px;display:none;">
+    <div class="section-label" style="margin-top:0; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+      <span>&#9889; Lag Opportunities <span style="font-size:10px;color:var(--muted);font-weight:400;">— big movers whose supply chain hasn't caught up yet &bull; 24-48hr window</span></span>
+      <button class="btn btn-sm" onclick="runLagDetector()" style="background:#1a2e1a;color:#00e676;border:1px solid #00e676;">&#9889; Scan Lags</button>
+    </div>
+    <div id="lagList"><div class="news-empty">Click &#9889; Scan Lags after prices load.</div></div>
+  </div>
+
+  <!-- SWING TRADE SCREENER -->
+  <div style="margin-bottom:28px;">
+    <div class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+      <span>&#127919; Swing Screener <span style="font-size:10px;color:var(--muted);font-weight:400;">— ranks your watchlist + supply chain stocks by swing-trade suitability &bull; 2-yr history</span></span>
+      <button class="btn btn-sm" id="screenerBtn" onclick="runScreener()" style="background:#1a1a3e;color:#d4b4ff;border:1px solid #4a2a8e;">&#127919; Run Screener</button>
+    </div>
+    <div id="screenerStatus" style="font-size:12px;color:var(--muted);padding:4px 0 6px;min-height:16px;"></div>
+    <div id="screenerList"><div class="news-empty">Click &#127919; Run Screener to analyze your watchlist + supply chain stocks for swing-trade setups.</div></div>
+  </div>
+
   <!-- MARKET SCANNER -->
   <div id="scannerSection" style="display:none; margin-bottom:28px;">
     <div class="section-label" style="margin-top:24px;">Market Scanner — Top 100 Coins</div>
@@ -1646,6 +1665,205 @@ function renderNews() {
       </div>
     </div>`;
   }).join('');
+}
+
+// ── Lag Detector ─────────────────────────────────────────────────────────────
+// Finds Tier-1 stocks that moved big today whose supply chain hasn't caught up
+async function runLagDetector() {
+  const listEl = document.getElementById('lagList');
+  const sec    = document.getElementById('lagSection');
+  if (!listEl) return;
+  if (sec) sec.style.display = 'block';
+  listEl.innerHTML = '<div class="news-empty" style="color:var(--muted);">Fetching current prices for supply chain stocks…</div>';
+
+  // Collect all supply chain tickers not already in stockData
+  const scSyms = [...new Set(Object.values(SUPPLY_CHAINS).flatMap(c => c.suppliers || []))];
+  const missing = scSyms.filter(s => !stockData[s]?.price);
+
+  // Fetch missing prices in one batch
+  if (missing.length) {
+    try {
+      const r = await fetch(`/api/prices?syms=${encodeURIComponent(missing.join(','))}`, { signal: AbortSignal.timeout(12000) });
+      if (r.ok) {
+        const d = await r.json();
+        Object.assign(stockData, d.data || {});
+      }
+    } catch(_) {}
+  }
+
+  // Find big movers (>3% today) in our Tier-1 list
+  const BIG_MOVE = 3.0;
+  const opportunities = [];
+
+  for (const [tier1sym, chain] of Object.entries(SUPPLY_CHAINS)) {
+    const d1 = stockData[tier1sym];
+    if (!d1?.price || Math.abs(d1.changePercent || 0) < BIG_MOVE) continue;
+    const isUp = (d1.changePercent || 0) > 0;
+
+    const lagging = [];
+    for (const sup of (chain.suppliers || [])) {
+      const ds = stockData[sup];
+      if (!ds?.price) continue;
+      const supPct = ds.changePercent || 0;
+      // Supply chain should move in same direction — flag if it hasn't moved much
+      if (isUp && supPct < BIG_MOVE * 0.4) lagging.push({ sym: sup, pct: supPct });
+      if (!isUp && supPct > -BIG_MOVE * 0.4) lagging.push({ sym: sup, pct: supPct });
+    }
+    if (lagging.length) {
+      opportunities.push({
+        tier1: tier1sym,
+        tier1name: chain.name || tier1sym,
+        tier1pct: d1.changePercent || 0,
+        isUp,
+        lagging: lagging.sort((a, b) => Math.abs(a.pct) - Math.abs(b.pct)),
+      });
+    }
+  }
+
+  if (!opportunities.length) {
+    listEl.innerHTML = '<div class="news-empty">No lag opportunities right now — no Tier-1 stocks moved >3% today, or all supply chain stocks already moved with them.</div>';
+    return;
+  }
+
+  opportunities.sort((a, b) => Math.abs(b.tier1pct) - Math.abs(a.tier1pct));
+  const watching = new Set(stockWatchlist);
+
+  listEl.innerHTML = opportunities.map(op => {
+    const dir      = op.isUp ? '▲' : '▼';
+    const dirColor = op.isUp ? 'var(--good)' : 'var(--bad)';
+    const chips    = op.lagging.map(l => {
+      const inWatch = watching.has(l.sym);
+      const lag     = op.isUp ? `${l.pct >= 0 ? '+' : ''}${l.pct.toFixed(1)}% (lag)` : `${l.pct >= 0 ? '+' : ''}${l.pct.toFixed(1)}% (lag)`;
+      return `<span onclick="addToWatchlist('${l.sym}')" title="Tap to add ${l.sym} to watchlist"
+        style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;
+          background:${inWatch?'#132613':'var(--input-bg)'};border:1px solid ${inWatch?'var(--good)':'var(--border)'};color:${inWatch?'var(--good)':'var(--accent)'};margin:2px;">
+        ${l.sym} <span style="font-size:10px;color:var(--muted);font-weight:400;">${lag}</span>${inWatch?' ✓':''}
+      </span>`;
+    }).join('');
+    return `<div style="background:var(--card-bg);border:1.5px solid ${dirColor}33;border-left:3px solid ${dirColor};border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+        <span style="font-size:15px;font-weight:800;color:var(--accent);">${op.tier1}</span>
+        <span style="font-size:13px;font-weight:700;color:${dirColor};">${dir}${Math.abs(op.tier1pct).toFixed(1)}% today</span>
+        <span style="font-size:11px;color:var(--muted);">${op.tier1name}</span>
+        <span style="font-size:10px;color:#f0c040;background:#2a2000;padding:2px 8px;border-radius:4px;margin-left:auto;">⏱ ${op.lagging.length} lagging</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Supply chain stocks that haven't followed yet — 24-48hr window:</div>
+      <div style="display:flex;flex-wrap:wrap;gap:2px;">${chips}</div>
+    </div>`;
+  }).join('') + `<div style="font-size:10px;color:var(--muted);padding:6px 0 0;">Lag = Tier-1 moved >${BIG_MOVE}% but supplier moved <${(BIG_MOVE*0.4).toFixed(0)}% in same direction. Tap any chip to add to watchlist.</div>`;
+}
+
+function addToWatchlist(sym) {
+  sym = (TICKER_ALIAS[sym] || sym).toUpperCase();
+  if (stockWatchlist.includes(sym)) return;
+  stockWatchlist.push(sym);
+  save('rm_stocks', stockWatchlist);
+  renderStockGrid();
+  fetchStocks().then(() => renderStockGrid());
+  // Re-render lag detector chips to show ✓
+  runLagDetector();
+}
+
+// ── Swing Trade Screener ──────────────────────────────────────────────────────
+let screenerData = [];
+let screenerTs   = 0;
+const SCREENER_TTL = 6 * 60 * 60 * 1000;
+
+async function runScreener(force = false) {
+  if (!force && screenerData.length && Date.now() - screenerTs < SCREENER_TTL) {
+    renderScreener();
+    return;
+  }
+  const btn      = document.getElementById('screenerBtn');
+  const statusEl = document.getElementById('screenerStatus');
+  const listEl   = document.getElementById('screenerList');
+  const setS     = msg => { if (statusEl) statusEl.textContent = msg; };
+
+  if (btn) btn.disabled = true;
+  setS('Building stock universe from your watchlist + supply chain stocks…');
+  if (listEl) listEl.innerHTML = '';
+
+  // Universe: watchlist + all supply chain stocks (deduped)
+  const scSyms = [...new Set(Object.values(SUPPLY_CHAINS).flatMap(c => c.suppliers || []))];
+  const universe = [...new Set([...stockWatchlist, ...scSyms])].filter(s => /^[A-Z]{1,5}$/.test(s));
+
+  setS(`Analyzing ${universe.length} stocks (2-year history)… this takes ~15–20 sec, cached 6 hrs.`);
+
+  try {
+    const r = await fetch(`/api/screener?syms=${encodeURIComponent(universe.join(','))}`, {
+      signal: AbortSignal.timeout(44000),
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    screenerData = d.results || [];
+    screenerTs   = Date.now();
+    setS(`Screened ${d.screened} stocks · ${d.total} returned results · cached 6 hrs`);
+    renderScreener();
+  } catch(e) {
+    setS(`Error: ${e.message} — try again in a moment.`);
+  }
+  if (btn) btn.disabled = false;
+}
+
+function renderScreener() {
+  const listEl = document.getElementById('screenerList');
+  if (!listEl || !screenerData.length) return;
+  const watching = new Set(stockWatchlist);
+
+  const gradeLabels = {
+    A: 'Best swing setup — right volatility, in uptrend, not overextended',
+    B: 'Good swing candidate',
+    C: 'Borderline — verify trend before trading',
+    D: 'Poor swing setup — too quiet, too wild, or already overextended',
+  };
+
+  // Show top 25, grouped by grade
+  const byGrade = { A: [], B: [], C: [], D: [] };
+  screenerData.slice(0, 50).forEach(s => { (byGrade[s.grade] || byGrade.D).push(s); });
+
+  let html = '';
+  for (const [grade, stocks] of Object.entries(byGrade)) {
+    if (!stocks.length) continue;
+    const gradeColor = stocks[0]?.gradeColor || '#888';
+    html += `<div style="font-size:11px;font-weight:700;color:${gradeColor};padding:8px 0 4px;border-bottom:1px solid var(--border);margin-bottom:6px;">
+      Grade ${grade} — ${gradeLabels[grade]}
+    </div>`;
+    html += stocks.map(s => {
+      const inWatch  = watching.has(s.sym);
+      const trendCol = s.trend === 'Strong Up' ? 'var(--good)' : s.trend === 'Up' ? '#aeea00' : 'var(--bad)';
+      const retCol   = s.yearReturn >= 0 ? 'var(--good)' : 'var(--bad)';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--border)22;flex-wrap:wrap;">
+        <span style="font-size:22px;font-weight:900;color:${s.gradeColor};min-width:24px;">${grade}</span>
+        <div style="flex:1;min-width:120px;">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span style="font-size:14px;font-weight:800;color:var(--accent);">${s.sym}</span>
+            <span style="font-size:11px;color:${trendCol};">▲ ${s.trend}</span>
+            <span style="font-size:10px;color:var(--muted);">±${s.avgMove}%/wk</span>
+            <span style="font-size:10px;color:${retCol};">${s.yearReturn >= 0 ? '+' : ''}${s.yearReturn}% yr</span>
+            ${s.gainFrom52Low > 150 ? `<span style="font-size:10px;color:var(--bad);">⚠ +${s.gainFrom52Low}% off low</span>` : ''}
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px;">
+            Score ${s.score}/100 · ${s.winRate}% win rate · $${s.current} ·
+            ${s.distFrom52High > 0 ? s.distFrom52High + '% below 52wk high' : 'at 52wk high'}
+          </div>
+        </div>
+        <button onclick="addCongressPick('${s.sym}')"
+          style="padding:4px 10px;font-size:10px;border-radius:5px;border:1px solid ${inWatch?'var(--good)':'var(--border)'};
+            background:${inWatch?'#132613':'var(--input-bg)'};color:${inWatch?'var(--good)':'var(--text)'};cursor:pointer;white-space:nowrap;">
+          ${inWatch ? '✓ Watching' : '+ Watch'}
+        </button>
+      </div>`;
+    }).join('');
+  }
+
+  html += `<div style="font-size:10px;color:var(--muted);padding:10px 0 0;">
+    Score = swing suitability (0–100). Grades A/B = best setups right now.
+    ±%/wk = average absolute weekly move (sweet spot: 2–5%).
+    ⚠ = possibly overextended — higher risk entry.
+    Last run: ${screenerTs ? new Date(screenerTs).toLocaleString() : 'just now'}
+  </div>`;
+
+  listEl.innerHTML = html;
 }
 
 // ── Supply Chain Intelligence ─────────────────────────────────────────────────
