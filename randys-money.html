@@ -450,6 +450,15 @@
       <div id="screenerList"><div class="news-empty">Click &#127919; Run Screener to analyze your watchlist + supply chain stocks for swing-trade setups.</div></div>
     </div>
 
+    <!-- TRADE JOURNAL -->
+    <div id="sec-journal" style="margin-bottom:28px;">
+      <div class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+        <span>&#128211; Trade Journal <span style="font-size:10px;color:var(--muted);font-weight:400;">— your paper trade history &bull; win rate &bull; total P&amp;L</span></span>
+        <button class="btn btn-sm" onclick="clearJournal()" style="background:#2a0a0a;color:#ff5252;border:1px solid #ff5252;">&#128465; Clear All</button>
+      </div>
+      <div id="journalList"></div>
+    </div>
+
   </div>
 
   <!-- MARKET SCANNER -->
@@ -1057,6 +1066,7 @@ async function refreshAll() {
     fetchCongress();          // throttled — 6 hours (news-based trade feed)
     fetchCongressBuys();      // throttled — 4 hours
     fetchHouseLeaderboard();  // throttled — 7 days (official PTR rankings)
+    fetchEarnings();          // throttled — 24 hours (earnings date warnings)
     document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
     setStatus('ok', 'All data loaded — ' + now);
     arCountdownVal = 120;
@@ -1773,7 +1783,101 @@ function addToWatchlist(sym) {
 // ── Swing Trade Screener ──────────────────────────────────────────────────────
 let screenerData = [];
 let screenerTs   = 0;
+
+// ── Earnings Calendar ──────────────────────────────────────────────────────────
+let earningsData     = load('rm_earnings', {});
+let lastEarningsFetch = load('rm_earningsFetch', 0);
+const EARNINGS_TTL   = 24 * 60 * 60 * 1000;
+
+// ── Trade Journal ──────────────────────────────────────────────────────────────
+let tradeJournal = load('rm_journal', []);
 const SCREENER_TTL = 6 * 60 * 60 * 1000;
+
+// ── Earnings Calendar fetch ────────────────────────────────────────────────────
+async function fetchEarnings(force = false) {
+  if (!force && Date.now() - lastEarningsFetch < EARNINGS_TTL && Object.keys(earningsData).length) return;
+  if (!stockWatchlist.length) return;
+  try {
+    const syms = [...new Set(stockWatchlist)].slice(0, 25).join(',');
+    const r = await fetch(`/api/earnings?syms=${syms}`, { signal: AbortSignal.timeout(13000) });
+    if (!r.ok) return;
+    const d = await r.json();
+    earningsData     = d.earnings || {};
+    lastEarningsFetch = Date.now();
+    save('rm_earnings', earningsData);
+    save('rm_earningsFetch', lastEarningsFetch);
+    renderStockGrid();
+  } catch(_) {}
+}
+
+// ── Trade Journal ─────────────────────────────────────────────────────────────
+function toggleClosePanel(sym) {
+  const el = document.getElementById('closePanel_' + sym);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function recordCloseTrade(sym) {
+  const h = stockHoldings[sym];
+  if (!h || !h.qty || !h.cost) return;
+  const exitPrice = parseFloat(document.getElementById('exitPrice_' + sym)?.value);
+  if (!exitPrice || isNaN(exitPrice) || exitPrice <= 0) { alert('Enter a valid exit price.'); return; }
+  const note = document.getElementById('exitNote_' + sym)?.value || '';
+  const pnlDollar = +(( exitPrice - h.cost) * h.qty).toFixed(2);
+  const pnlPct    = +(((exitPrice - h.cost) / h.cost) * 100).toFixed(2);
+  tradeJournal.unshift({
+    id: Date.now(), sym, qty: h.qty,
+    entryPrice: h.cost, entryDate: h.entryDate || null,
+    exitPrice, exitDate: new Date().toISOString().slice(0, 10),
+    pnlDollar, pnlPct, note,
+  });
+  save('rm_journal', tradeJournal);
+  delete stockHoldings[sym];
+  save('rm_stockHoldings', stockHoldings);
+  renderStockGrid();
+  renderStockPortfolioSummary();
+  renderTradeJournal();
+  document.getElementById('sec-journal')?.scrollIntoView({ behavior: 'smooth' });
+}
+
+function renderTradeJournal() {
+  const el = document.getElementById('journalList');
+  if (!el) return;
+  if (!tradeJournal.length) {
+    el.innerHTML = '<div class="news-empty">No closed trades yet — close a position from your stock card to log it here.</div>';
+    return;
+  }
+  const wins     = tradeJournal.filter(t => t.pnlDollar > 0).length;
+  const totalPnl = tradeJournal.reduce((s, t) => s + t.pnlDollar, 0);
+  const winRate  = Math.round(wins / tradeJournal.length * 100);
+  el.innerHTML = `
+    <div style="display:flex;gap:20px;padding:10px 0 14px;border-bottom:1px solid var(--border);margin-bottom:8px;flex-wrap:wrap;">
+      <div style="text-align:center;"><div style="font-size:10px;color:var(--muted);margin-bottom:2px;">TRADES</div><div style="font-size:22px;font-weight:900;">${tradeJournal.length}</div></div>
+      <div style="text-align:center;"><div style="font-size:10px;color:var(--muted);margin-bottom:2px;">WIN RATE</div><div style="font-size:22px;font-weight:900;color:${winRate>=50?'var(--good)':'var(--bad)'};">${winRate}%</div></div>
+      <div style="text-align:center;"><div style="font-size:10px;color:var(--muted);margin-bottom:2px;">TOTAL P&L</div><div style="font-size:22px;font-weight:900;color:${totalPnl>=0?'var(--good)':'var(--bad)'};">${totalPnl>=0?'+':''}$${Math.abs(totalPnl).toFixed(2)}</div></div>
+      <div style="text-align:center;"><div style="font-size:10px;color:var(--muted);margin-bottom:2px;">WINNERS</div><div style="font-size:22px;font-weight:900;color:var(--good);">${wins}</div></div>
+    </div>
+    ${tradeJournal.map(t => {
+      const won = t.pnlDollar > 0;
+      return `<div style="padding:10px 0;border-bottom:1px solid #0f2a45;display:flex;align-items:center;gap:10px;">
+        <div style="min-width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;
+          background:${won?'#0d2d1a':'#2d0d0d'};color:${won?'var(--good)':'var(--bad)'};">${won?'WIN':'LOSS'}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:800;">${t.sym} &nbsp;
+            <span style="color:${won?'var(--good)':'var(--bad)'};">${t.pnlDollar>=0?'+':''}$${t.pnlDollar.toFixed(2)} (${t.pnlPct>=0?'+':''}${t.pnlPct.toFixed(1)}%)</span>
+          </div>
+          <div style="font-size:10px;color:var(--muted);">${t.qty} sh &bull; bought $${t.entryPrice} &rarr; sold $${t.exitPrice} &bull; ${t.exitDate}</div>
+          ${t.note?`<div style="font-size:10px;color:#6aaeff;margin-top:2px;font-style:italic;">"${t.note}"</div>`:''}
+        </div>
+      </div>`;
+    }).join('')}`;
+}
+
+function clearJournal() {
+  if (!confirm('Delete all trade history? This cannot be undone.')) return;
+  tradeJournal = [];
+  save('rm_journal', []);
+  renderTradeJournal();
+}
 
 async function runScreener(force = false) {
   if (!force && screenerData.length && Date.now() - screenerTs < SCREENER_TTL) {
@@ -2853,10 +2957,44 @@ function renderStockGrid() {
     const hitTarget = (dipTgt !== null && d.price && d.price <= dipTgt) || (riseTgt !== null && d.price && d.price >= riseTgt);
     const fromHigh = d.price && d.high52 ? ((d.price - d.high52) / d.high52) * 100 : null;
 
+    // ── Earnings badge ───────────────────────────────────────────────────────
+    const earn = earningsData[sym];
+    let earningsBadge = '';
+    if (earn?.earningsTs) {
+      const days = Math.ceil((earn.earningsTs - Date.now()) / 86400000);
+      if (days >= 0 && days <= 21) {
+        const urgent = days <= 7;
+        earningsBadge = `<div style="font-size:10px;padding:3px 8px;border-radius:6px;margin-bottom:6px;font-weight:700;
+          background:${urgent?'#3d0a0a':'#2a1a00'};color:${urgent?'#ff5252':'#f9a825'};border:1px solid ${urgent?'#ff5252':'#f9a825'};">
+          ${urgent?'⚠️ EARNINGS':'📅 Earnings'} in ${days} day${days===1?'':'s'} · ${urgent?'HIGH RISK — consider closing':'size down before report'}
+        </div>`;
+      }
+    }
+
+    // ── Buy Zone badge (from screener data if available) ─────────────────────
+    const sr = screenerData.find ? screenerData.find(s => s.sym === sym) : null;
+    let zoneBadge = '';
+    if (sr) {
+      const { trend, distFromMa } = sr;
+      if (trend === 'Strong Up' || trend === 'Up') {
+        if (distFromMa >= -3 && distFromMa <= 10) {
+          zoneBadge = `<span style="font-size:10px;padding:2px 8px;border-radius:6px;background:#0a2a0a;color:#00e676;border:1px solid #00e676;font-weight:700;">🟢 Buy Zone</span> `;
+        } else if (distFromMa > 18) {
+          zoneBadge = `<span style="font-size:10px;padding:2px 8px;border-radius:6px;background:#2a1500;color:#f9a825;border:1px solid #f9a825;font-weight:700;">🔥 Extended — wait for pullback</span> `;
+        } else {
+          zoneBadge = `<span style="font-size:10px;padding:2px 8px;border-radius:6px;background:#0a1a2a;color:#6aaeff;border:1px solid #6aaeff;font-weight:700;">📈 Uptrend</span> `;
+        }
+      } else {
+        zoneBadge = `<span style="font-size:10px;padding:2px 8px;border-radius:6px;background:#2a0a0a;color:#ff5252;border:1px solid #ff5252;font-weight:700;">📉 Below MA — avoid</span> `;
+      }
+    }
+
     return `<div class="coin-card stock-card${loading ? ' loading' : ''}${hitTarget ? ' alert-hit' : ''}">
       <button class="remove-btn" onclick="removeStock('${sym}')" title="Remove">&#x2715;</button>
       <div class="ticker">${sym}</div>
       <div class="cname">${name}</div>
+      ${earningsBadge}
+      ${zoneBadge ? `<div style="margin-bottom:6px;">${zoneBadge}</div>` : ''}
       <div class="price">${fmtPrice(d.price)}</div>
       ${renderSparkline(sym)}
       <div class="row"><span class="label">Day</span><span class="val ${cls(d.changePct)}">${d.changePct != null ? fmtPct(d.changePct) : '--'}</span></div>
@@ -2871,6 +3009,7 @@ function renderStockGrid() {
         const pnlDollar = hasPos && d.price ? (d.price - h.cost) * h.qty : null;
         const pnlPct    = hasPos && d.price ? ((d.price - h.cost) / h.cost) * 100 : null;
         const pnlColor  = pnlDollar == null ? '' : pnlDollar >= 0 ? 'var(--good)' : 'var(--bad)';
+        const curPrice  = d.price ? d.price.toFixed(2) : (h.cost || '');
         return `
       <div class="alert-row" style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px;">
         <span class="alert-label">Shares:</span>
@@ -2886,7 +3025,26 @@ function renderStockGrid() {
           onchange="setStockHolding('${sym}','cost',this.value)"
           onclick="event.stopPropagation()" />
       </div>
-      ${hasPos && pnlDollar != null ? `<div class="row" style="margin-top:4px;"><span class="label">My P&amp;L</span><span class="val" style="color:${pnlColor};font-weight:800;">${pnlDollar >= 0 ? '+' : ''}${fmtPrice(pnlDollar)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)</span></div>` : ''}`;
+      ${hasPos && pnlDollar != null ? `<div class="row" style="margin-top:4px;"><span class="label">My P&amp;L</span><span class="val" style="color:${pnlColor};font-weight:800;">${pnlDollar >= 0 ? '+' : ''}${fmtPrice(pnlDollar)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)</span></div>` : ''}
+      ${hasPos ? `
+      <button onclick="toggleClosePanel('${sym}')" style="width:100%;margin-top:8px;padding:6px;font-size:11px;font-weight:700;
+        border-radius:7px;border:1px solid #4a2a8e;background:#1a1a3e;color:#d4b4ff;cursor:pointer;">
+        📓 Close / Sell Trade
+      </button>
+      <div id="closePanel_${sym}" style="display:none;margin-top:8px;padding:10px;background:#08080f;border-radius:8px;border:1px solid #2a2a5e;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Exit price per share:</div>
+        <input id="exitPrice_${sym}" type="number" step="any" value="${curPrice}"
+          style="width:100%;box-sizing:border-box;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);font-size:14px;margin-bottom:8px;"
+          onclick="event.stopPropagation()" />
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Note (optional — why did you sell?):</div>
+        <input id="exitNote_${sym}" type="text" placeholder="e.g. hit target, news, stop loss..."
+          style="width:100%;box-sizing:border-box;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);font-size:11px;margin-bottom:8px;"
+          onclick="event.stopPropagation()" />
+        <button onclick="recordCloseTrade('${sym}')"
+          style="width:100%;padding:8px;font-size:13px;font-weight:800;border-radius:7px;border:none;background:#00c853;color:#001a08;cursor:pointer;">
+          ✓ Record Sale &amp; Log to Journal
+        </button>
+      </div>` : ''}`;
       })()}
       <div class="alert-row">
         <span class="alert-label">&#128276; Dip alert ↓</span>
@@ -2954,6 +3112,10 @@ function setStockHolding(sym, field, val) {
   if (!stockHoldings[sym]) stockHoldings[sym] = {};
   if (!val || isNaN(v) || v <= 0) delete stockHoldings[sym][field];
   else stockHoldings[sym][field] = v;
+  // Record entry date the first time shares are set
+  if (field === 'qty' && v > 0 && !stockHoldings[sym].entryDate) {
+    stockHoldings[sym].entryDate = new Date().toISOString().slice(0, 10);
+  }
   if (!stockHoldings[sym].qty && !stockHoldings[sym].cost) delete stockHoldings[sym];
   save('rm_stockHoldings', stockHoldings);
   renderStockGrid();
@@ -3195,6 +3357,7 @@ renderStockGrid();
 renderSupplyChain();
 renderCongressBuys();
 renderCongressAllStars();
+renderTradeJournal();
 refreshAll();
 // Dedicated news refresh every 5 minutes
 setInterval(() => fetchNews(), NEWS_TTL);
