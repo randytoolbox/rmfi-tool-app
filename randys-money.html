@@ -2187,12 +2187,22 @@ function renderCongressMembers() {
     }).join('');
     const isFollowed = followedSet.has(m.name);
     const safeName = m.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    // Look up official PTR data
+    const officialData = HOUSE_TOP_TRADERS.find(t =>
+      m.name.toLowerCase().includes(t.last.toLowerCase()) ||
+      t.name.toLowerCase().includes(m.name.split(' ').slice(-1)[0].toLowerCase())
+    );
+    const officialRankStr = officialData ? `<span style="font-size:10px;color:#f0c040;background:#2a2000;padding:2px 7px;border-radius:4px;" title="Official 2025+2026 PTR filing rank from disclosures.house.gov">&#128196; ${officialData.ptrs} official filings</span>` : '';
+    const latestDoc = officialData?.docs2026?.slice(-1)[0];
+    const pdfLink = latestDoc ? `<a href="https://disclosures.house.gov/public_disc/ptr-pdfs/2026/${latestDoc}.pdf" target="_blank" style="font-size:10px;color:#6aaeff;text-decoration:none;padding:2px 7px;border:1px solid #1e4060;border-radius:4px;background:#0a1a2a;">&#128196; Official PDF</a>` : '';
     return `<div style="background:var(--card-bg);border:1.5px solid ${isFollowed?'#f0c040':'var(--border)'};border-radius:10px;padding:12px 14px;margin-bottom:8px;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;flex-wrap:wrap;">
         <span style="font-size:14px;font-weight:900;color:${rankColors[i]||'var(--muted)'};">#${i+1}</span>
         <span style="font-size:13px;font-weight:700;color:var(--text);">${m.name}</span>
         <span style="font-size:10px;color:var(--muted);background:var(--input-bg);padding:2px 7px;border-radius:4px;">${m.chamber}</span>
-        <span style="font-size:10px;color:#6aaeff;background:#1e4060;padding:2px 7px;border-radius:4px;">&#128722; ${m.buys.length} buy${m.buys.length>1?'s':''}</span>
+        <span style="font-size:10px;color:#6aaeff;background:#1e4060;padding:2px 7px;border-radius:4px;">&#128722; ${m.buys.length} news buy${m.buys.length>1?'s':''}</span>
+        ${officialRankStr}
+        ${pdfLink}
         <button onclick="${isFollowed?`unfollowMember('${safeName}')`:`followMember('${safeName}')`}"
           style="margin-left:auto;padding:4px 12px;font-size:11px;border-radius:6px;border:1px solid ${isFollowed?'#f0c040':'var(--border)'};background:${isFollowed?'#2a2000':'var(--input-bg)'};color:${isFollowed?'#f0c040':'var(--text)'};cursor:pointer;font-weight:600;">
           ${isFollowed?'★ Unfollow':'☆ Follow'}
@@ -2206,6 +2216,40 @@ function renderCongressMembers() {
 
 // Tickers that need normalizing (common mis-tickers from news/RSS)
 const TICKER_ALIAS = { 'BRK': 'BRK.B', 'GOOG': 'GOOGL', 'FB': 'META' };
+
+// Official PTR DocIDs from 2025+2026 disclosures.house.gov index
+// PTR = Periodic Transaction Report (45-day STOCK Act trade disclosure)
+// Link: https://disclosures.house.gov/public_disc/ptr-pdfs/{year}/{docId}.pdf
+const HOUSE_TOP_TRADERS = [
+  { name:'Marjorie Taylor Greene', last:'Greene',   state:'GA-14', ptrs:25, docs2026:[] },
+  { name:'Kelly Morrison',         last:'Morrison', state:'MN-03', ptrs:25, docs2026:['20033830','20033928','20033989','20034056','20034082','20034102','20034123','20034156','20034213','20034300','20034520'] },
+  { name:'Suzan DelBene',          last:'DelBene',  state:'WA-01', ptrs:22, docs2026:['20033766','20033835','20034155','20034400','20034466','20034615','20034727'] },
+  { name:'David Taylor',           last:'Taylor',   state:'OH-02', ptrs:21, docs2026:['20033845','20033916','20033918','20034036','20034138','20034207','20034280','20034489','20034650','20034780'] },
+  { name:'Rob Bresnahan',          last:'Bresnahan',state:'PA-08', ptrs:20, docs2026:['20034044','20034202'] },
+  { name:'Tim Moore',              last:'Moore',    state:'NC-14', ptrs:19, docs2026:['20033746','20033856','20034034','20034217','20034424','20034587','20034721'] },
+  { name:'Josh Gottheimer',        last:'Gottheimer',state:'NJ-05',ptrs:18, docs2026:['20033756','20033930','20034130','20034305','20034585','20034693'] },
+  { name:'Thomas Kean',            last:'Kean',     state:'NJ-07', ptrs:18, docs2026:['20033821','20034025','20034190','20034327','20034616','20034783'] },
+  { name:'Richard Allen',          last:'Allen',    state:'GA-12', ptrs:17, docs2026:['20033751','20033945','20034133','20034315','20034473','20034740'] },
+  { name:'Gilbert Cisneros',       last:'Cisneros', state:'CA-31', ptrs:17, docs2026:['20033762','20033983','20034144','20034285','20034500','20034713'] },
+  { name:'Cleo Fields',            last:'Fields',   state:'LA-06', ptrs:17, docs2026:['20033732','20033858','20034018','20034179','20034295','20034357','20034591'] },
+  { name:'Ro Khanna',              last:'Khanna',   state:'CA-17', ptrs:17, docs2026:['8221322','8221358','9115726','9115822','9116142'] },
+  { name:'Michael McCaul',         last:'McCaul',   state:'TX-10', ptrs:17, docs2026:['8221326','8221359','9115728','9115820','9116141'] },
+  { name:'Scott Peters',           last:'Peters',   state:'CA-50', ptrs:17, docs2026:['20033815','20034010','20034178','20034342','20034579'] },
+  { name:'Hal Rogers',             last:'Rogers',   state:'KY-05', ptrs:17, docs2026:['8221332','9115711','9115762','9115808','9116146'] },
+  { name:'April Delaney',          last:'Delaney',  state:'MD-06', ptrs:16, docs2026:['20033737','20033921','20034159','20034299','20034487','20034718'] },
+  { name:'Jonathan Jackson',       last:'Jackson',  state:'IL-01', ptrs:16, docs2026:['20033739','20033929','20034113','20034301','20034519','20034688'] },
+  { name:'Steve Cohen',            last:'Cohen',    state:'TN-09', ptrs:14, docs2026:['20033754','20033813','20033889','20034119','20034167','20034368','20034452','20034589','20034796'] },
+  { name:'Byron Donalds',          last:'Donalds',  state:'FL-19', ptrs:13, docs2026:['20033747','20033780','20033981','20034134','20034297','20034478'] },
+  { name:'Julie Johnson',          last:'Johnson',  state:'TX-32', ptrs:13, docs2026:['20033789','20034706'] },
+  { name:'Mike Kelly',             last:'Kelly',    state:'PA-16', ptrs:13, docs2026:['20033763','20033991','20034168','20034302','20034607','20034767'] },
+  { name:'Max Miller',             last:'Miller',   state:'OH-07', ptrs:13, docs2026:['20033881','20034247','20034419','20034651'] },
+  { name:'Lloyd Doggett',          last:'Doggett',  state:'TX-37', ptrs:12, docs2026:['20033713','20034132','20034292','20034486','20034712'] },
+  { name:'Virginia Foxx',          last:'Foxx',     state:'NC-05', ptrs:12, docs2026:['20033734','20033947','20034095','20034670'] },
+  { name:'Kevin Hern',             last:'Hern',     state:'OK-01', ptrs:12, docs2026:['20033829','20034012','20034128','20034262','20034461','20034695'] },
+  { name:'Jefferson Shreve',       last:'Shreve',   state:'IN-06', ptrs:12, docs2026:['20033705','20033709','20034084','20034653'] },
+  { name:'Nancy Pelosi',           last:'Pelosi',   state:'CA-11', ptrs:4,  docs2026:['20033725'] },
+  { name:'David Rouzer',           last:'Rouzer',   state:'NC-07', ptrs:2,  docs2026:['20033758','20033759'] },
+];
 
 function normalizeTicker(sym) {
   return TICKER_ALIAS[sym] || sym;

@@ -1,27 +1,53 @@
 // Congressional trading via targeted news searches for known active traders
 // Avoids the S3 bulk-file timeout problem entirely
+//
+// Top traders ranked by official 2025+2026 PTR filing count from disclosures.house.gov
+// (PTR = Periodic Transaction Report = 45-day STOCK Act disclosure)
 
 const ACTIVE_TRADERS = [
-  // Senate — most active traders
-  'Tommy Tuberville', 'Shelley Moore Capito', 'Mark Kelly', 'Gary Peters',
-  'Jon Ossoff', 'John Hoeven', 'Roger Marshall', 'Markwayne Mullin',
-  'Rick Scott', 'Bill Hagerty', 'Dan Sullivan', 'Mike Braun',
-  'Tom Carper', 'Bob Casey', 'Jacky Rosen', 'Kyrsten Sinema',
-  // House — most active traders
-  'Nancy Pelosi', 'Paul Pelosi', 'Dan Crenshaw', 'Michael McCaul',
-  'David Rouzer', 'Brian Mast', 'Josh Gottheimer', 'Ro Khanna',
-  'Mark Takano', 'Michael Garcia', 'Pete Sessions', 'Greg Gianforte',
-  'Virginia Foxx', 'Bill Johnson', 'Marjorie Taylor Greene', 'Matt Gaetz',
-  'Debbie Wasserman Schultz', 'Susie Lee', 'Lois Frankel', 'Patrick McHenry',
+  // House — TOP 30 by official PTR filing count (2025+2026 combined)
+  'Marjorie Taylor Greene',  // #1 — 25 PTRs
+  'Kelly Morrison',          // #2 — 25 PTRs (Kelly Louise Morrison, MN-03)
+  'Suzan DelBene',           // #3 — 22 PTRs
+  'David Taylor',            // #4 — 21 PTRs (OH-02)
+  'Rob Bresnahan',           // #5 — 20 PTRs
+  'Tim Moore',               // #6 — 19 PTRs (NC-14)
+  'Josh Gottheimer',         // #7 — 18 PTRs
+  'Thomas Kean',             // #8 — 18 PTRs
+  'Richard Allen',           // #9 — 17 PTRs
+  'Gilbert Cisneros',        // #10 — 17 PTRs
+  'Cleo Fields',             // #11 — 17 PTRs
+  'Ro Khanna',               // #12 — 17 PTRs
+  'Michael McCaul',          // #13 — 17 PTRs
+  'Scott Peters',            // #14 — 17 PTRs
+  'Hal Rogers',              // #15 — 17 PTRs (Harold Dallas Rogers)
+  'April Delaney',           // #16 — 16 PTRs
+  'Jonathan Jackson',        // #17 — 16 PTRs
+  'Steve Cohen',             // #18 — 14 PTRs
+  'Byron Donalds',           // #19 — 13 PTRs
+  'Julie Johnson',           // #20 — 13 PTRs
+  'Mike Kelly',              // #21 — 13 PTRs
+  'Max Miller',              // #22 — 13 PTRs
+  'Lloyd Doggett',           // #24 — 12 PTRs
+  'Virginia Foxx',           // #25 — 12 PTRs
+  'Kevin Hern',              // #26 — 12 PTRs
+  'Jefferson Shreve',        // #27 — 12 PTRs
+  'David Rouzer',            // active House trader
+  'Nancy Pelosi',            // #60 — 4 PTRs (high media attention)
+  // Senate — confirmed active STOCK Act filers
+  'Tommy Tuberville', 'Mark Kelly', 'Gary Peters', 'Jon Ossoff',
+  'Roger Marshall', 'Markwayne Mullin', 'Rick Scott', 'Bill Hagerty',
+  'Dan Sullivan', 'John Hoeven', 'Shelley Moore Capito',
 ];
 
 // News queries that reliably surface named trades
 const QUERIES = [
   'senator representative purchased bought stock shares STOCK Act disclosure 2026',
-  'congress member stock trade disclosure filed SEC STOCK Act buy purchase 2026',
-  'Pelosi Tuberville Crenshaw stock purchase trade disclosure 2026',
-  'senator bought stock options shares disclosure investment 2026',
-  'house representative stock purchase STOCK Act filing 2026',
+  'congress member stock trade disclosure filed STOCK Act buy purchase 2026',
+  'Gottheimer Greene Morrison DelBene stock purchase trade disclosure 2026',
+  'senator representative bought stock options shares disclosure investment 2026',
+  'house representative stock purchase STOCK Act periodic transaction report 2026',
+  'Pelosi Tuberville Khanna Donalds congress stock trade 2026',
 ];
 
 const ALIAS = { BRK: 'BRK.B', GOOG: 'GOOGL', FB: 'META' };
