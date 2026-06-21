@@ -2492,28 +2492,32 @@ let houseLeaderTs   = 0;
 const LEADER_TTL    = 7 * 24 * 60 * 60 * 1000;
 
 async function fetchHouseLeaderboard(force = false) {
-  if (!force && houseLeaderData.length && Date.now() - houseLeaderTs < LEADER_TTL) {
+  // Always show hardcoded data immediately — never a blank leaderboard
+  if (!houseLeaderData.length) {
+    houseLeaderData = HOUSE_TOP_TRADERS.map((t, i) => ({ ...t, rank: i + 1, totalPtrs: t.ptrs }));
     renderHouseLeaderboard();
-    return;
   }
+
+  // Serve from cache if fresh enough and not forced
+  if (!force && houseLeaderTs && Date.now() - houseLeaderTs < LEADER_TTL) return;
+
   const statusEl = document.getElementById('houseLeaderStatus');
-  const listEl   = document.getElementById('houseLeaderList');
   const setS = msg => { if (statusEl) statusEl.textContent = msg; };
-  if (listEl) listEl.innerHTML = '';
-  setS('Fetching official PTR rankings from disclosures.house.gov…');
+  setS('Checking for updated official PTR filings…');
 
   try {
     const r = await fetch('/api/house-traders', { signal: AbortSignal.timeout(28000) });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const d = await r.json();
-    houseLeaderData = d.traders || [];
-    houseLeaderTs   = Date.now();
+    if (d.traders && d.traders.length) {
+      houseLeaderData = d.traders;
+      houseLeaderTs   = Date.now();
+      renderHouseLeaderboard();
+    }
     setS('');
-    renderHouseLeaderboard();
   } catch(e) {
-    setS('Could not reach government site — showing cached rankings.');
-    houseLeaderData = HOUSE_TOP_TRADERS.map((t, i) => ({ ...t, rank: i + 1, totalPtrs: t.ptrs }));
-    renderHouseLeaderboard();
+    setS('Using built-in rankings (government site unreachable).');
+    // Keep existing hardcoded data — already rendered above
   }
 }
 
