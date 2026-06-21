@@ -377,7 +377,7 @@
   </div>
   <div id="congErrorMsg" style="display:none;font-size:12px;color:var(--bad);padding:10px 0;"></div>
   <div class="news-wrap" id="congList" style="margin-bottom:28px;">
-    <div class="news-empty">Click &#8635; Refresh to load actual STOCK Act filings from the last 90 days.</div>
+    <div class="news-empty" style="font-size:12px;">Click &#8635; Refresh to attempt loading individual STOCK Act filings (may be slow).</div>
   </div>
 
   <!-- CONGRESS BUYS LEADERBOARD -->
@@ -1582,9 +1582,9 @@ async function fetchNews(force = false) {
     { q: 'NVIDIA robotics Isaac platform robot AI Cognex Teradyne 2026',   tag: 'NVDA'     },
     // Cybersecurity contracts
     { q: 'cybersecurity government contract award CrowdStrike Palo Alto',  tag: 'CYBER'    },
-    // Watchlist stocks — split into two groups to avoid query length limits
-    { q: stockWatchlist.slice(0, 5).join(' OR '),                         tag: null       },
-    { q: stockWatchlist.slice(5, 10).join(' OR '),                        tag: null       },
+    // Watchlist stocks — use $TICKER format so Google News treats them as stock symbols not words
+    { q: stockWatchlist.slice(0, 5).map(s => '$' + s).join(' OR '),      tag: null       },
+    { q: stockWatchlist.slice(5, 10).map(s => '$' + s).join(' OR '),     tag: null       },
   ].filter(x => x.q.trim());
 
   const all = [];
@@ -1957,8 +1957,8 @@ async function fetchCongress(force = false) {
       renderCongressList();
       renderCongressMembers();
     } else {
-      if (errEl) { errEl.style.display='block'; errEl.textContent='⚠ Could not load STOCK Act data — tap ↻ Refresh to try again.'; }
-      if (listEl) listEl.innerHTML = '<div class="news-empty">Tap Refresh above to load House &amp; Senate STOCK Act filings.</div>';
+      if (errEl) { errEl.style.display='block'; errEl.textContent='⚠ Individual filing data unavailable — government servers too slow. Congress Buys leaderboard below still works.'; }
+      if (listEl) listEl.innerHTML = '';
     }
     return;
   }
