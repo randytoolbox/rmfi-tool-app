@@ -390,6 +390,14 @@
     <div class="news-empty">Click &#8635; Scan to load — discovers what senators &amp; representatives are actively buying.</div>
   </div>
 
+  <!-- CONGRESS MEMBER LEADERBOARD -->
+  <div class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+    <span>&#128100; Who's Buying <span style="font-size:10px;color:var(--muted);font-weight:400;">— most active members by purchase count &bull; last 90 days</span></span>
+  </div>
+  <div id="congMembersList" style="margin-bottom:28px;">
+    <div class="news-empty">Load Congress Trades above (↻ Refresh) to see who's buying what.</div>
+  </div>
+
   <!-- CONGRESS ALL-STARS LEADERBOARD -->
   <div class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
     <span>&#127942; Congress All-Stars <span style="font-size:10px;color:var(--muted);font-weight:400;">— ranked by 1-yr return on STOCK Act purchases &bull; House &amp; Senate</span></span>
@@ -1984,9 +1992,10 @@ async function fetchCongress(force = false) {
   });
 
   filtered.sort((a, b) => b._ts - a._ts);
-  congressTrades = filtered.slice(0, 60);
+  congressTrades = filtered.slice(0, 200);
   lastCongressFetch = Date.now();
   renderCongressList();
+  renderCongressMembers();
 }
 
 function setCongFilter(f) {
@@ -1996,6 +2005,7 @@ function setCongFilter(f) {
   const btn = document.getElementById(map[f]);
   if (btn) btn.classList.add('active');
   renderCongressList();
+  renderCongressMembers();
 }
 
 function renderCongressList() {
@@ -2134,6 +2144,51 @@ function renderCongressBuys() {
       </div>`;
     }).join('')
   }</div><div style="font-size:10px;color:var(--muted);padding:6px 0;">Based on STOCK Act purchase disclosures and congressional trade news. ×N = times mentioned in recent filings.</div>`;
+}
+
+function renderCongressMembers() {
+  const el = document.getElementById('congMembersList');
+  if (!el) return;
+  if (!congressTrades.length) {
+    el.innerHTML = '<div class="news-empty">Load Congress Trades above (↻ Refresh) to see who\'s buying what.</div>';
+    return;
+  }
+  // Group purchases by member name
+  const members = {};
+  congressTrades.forEach(t => {
+    const isBuy = t._type.includes('purchase') || t._type.includes('buy');
+    if (!isBuy || !t._name) return;
+    if (!members[t._name]) members[t._name] = { name: t._name, chamber: t._chamber, buys: [] };
+    members[t._name].buys.push(t);
+  });
+  const ranked = Object.values(members).sort((a, b) => b.buys.length - a.buys.length).slice(0, 15);
+  if (!ranked.length) {
+    el.innerHTML = '<div class="news-empty">No purchase data found — try ↻ Refresh on Congress Trades.</div>';
+    return;
+  }
+  const watching = new Set(stockWatchlist);
+  const rankColors = ['#ffd700','#c0c0c0','#cd7f32'];
+  el.innerHTML = ranked.map((m, i) => {
+    const stockMap = {};
+    m.buys.forEach(t => {
+      if (!stockMap[t._sym]) stockMap[t._sym] = { sym: t._sym, count: 0, amt: t._amt };
+      stockMap[t._sym].count++;
+    });
+    const stocks = Object.values(stockMap).sort((a, b) => b.count - a.count);
+    const chips = stocks.map(s => {
+      const inWatch = watching.has(s.sym);
+      return `<span onclick="addCongressPick('${s.sym}')" title="Tap to add ${s.sym} to watchlist" style="cursor:pointer;display:inline-block;padding:3px 9px;border-radius:5px;font-size:11px;font-weight:700;background:${inWatch?'#132613':'var(--input-bg)'};border:1px solid ${inWatch?'var(--good)':'var(--border)'};color:${inWatch?'var(--good)':'var(--accent)'};margin:2px;">${s.sym}${s.count>1?` ×${s.count}`:''}${inWatch?' ★':''}</span>`;
+    }).join('');
+    return `<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;flex-wrap:wrap;">
+        <span style="font-size:14px;font-weight:900;color:${rankColors[i]||'var(--muted)'};">#${i+1}</span>
+        <span style="font-size:13px;font-weight:700;color:var(--text);">${m.name}</span>
+        <span style="font-size:10px;color:var(--muted);background:var(--input-bg);padding:2px 7px;border-radius:4px;">${m.chamber}</span>
+        <span style="font-size:10px;color:#6aaeff;background:#1e4060;padding:2px 7px;border-radius:4px;margin-left:auto;">&#128722; ${m.buys.length} buy${m.buys.length>1?'s':''}</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:2px;">${chips}</div>
+    </div>`;
+  }).join('');
 }
 
 // Tickers that need normalizing (common mis-tickers from news/RSS)
