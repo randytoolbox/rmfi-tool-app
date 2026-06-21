@@ -398,14 +398,14 @@
     <div class="news-empty">Load Congress Trades above (↻ Refresh) to see who's buying what.</div>
   </div>
 
-  <!-- CONGRESS ALL-STARS LEADERBOARD -->
+  <!-- CONGRESS LEADERBOARD — official PTR filing counts from disclosures.house.gov -->
   <div class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-    <span>&#127942; Congress All-Stars <span style="font-size:10px;color:var(--muted);font-weight:400;">— ranked by 1-yr return on STOCK Act purchases &bull; House &amp; Senate</span></span>
-    <button class="btn btn-sm" onclick="fetchCongressAllStars(true)" style="background:#2a1a4e;color:#d4b4ff;border:1px solid #4a2a8e;">&#8635; Load Rankings</button>
+    <span>&#127942; Congress Leaderboard <span style="font-size:10px;color:var(--muted);font-weight:400;">— ranked by STOCK Act filing count &bull; official House data &bull; auto-updates weekly</span></span>
+    <button class="btn btn-sm" onclick="fetchHouseLeaderboard(true)" style="background:#2a1a4e;color:#d4b4ff;border:1px solid #4a2a8e;">&#8635; Refresh</button>
   </div>
-  <div id="congAllStarsStatus" style="font-size:12px;color:var(--muted);padding:4px 0 6px;min-height:16px;"></div>
-  <div id="congAllStarsList" style="margin-bottom:10px;">
-    <div class="news-empty">Click "Load Rankings" — pulls all STOCK Act purchase disclosures, calculates returns vs. today. Takes ~1–2 min the first time, cached 24 hrs.</div>
+  <div id="houseLeaderStatus" style="font-size:12px;color:var(--muted);padding:4px 0 6px;min-height:16px;"></div>
+  <div id="houseLeaderList" style="margin-bottom:10px;">
+    <div class="news-empty">Loading official rankings from disclosures.house.gov…</div>
   </div>
 
   <!-- FOLLOWED MEMBERS FEED -->
@@ -1027,8 +1027,9 @@ async function refreshAll() {
     }
     setTimeout(() => fetchStockHistory(), 8000); // non-blocking, delayed to avoid racing with fetchStocks v8 calls
     fetchNews();           // throttled — 5 min
-    fetchCongress();       // throttled — 6 hours (now uses real STOCK Act filings)
-    fetchCongressBuys();   // throttled — 4 hours
+    fetchCongress();          // throttled — 6 hours (news-based trade feed)
+    fetchCongressBuys();      // throttled — 4 hours
+    fetchHouseLeaderboard();  // throttled — 7 days (official PTR rankings)
     document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
     setStatus('ok', 'All data loaded — ' + now);
     arCountdownVal = 120;
@@ -2265,12 +2266,102 @@ function addCongressPick(sym) {
   fetchStocks().then(() => renderStockGrid());
 }
 
-// ── Congress All-Stars: rank members by actual STOCK Act purchase returns ──────
-async function fetchCongressAllStars(force = false) {
-  if (!force && congAllStars.length && Date.now() - lastCongAllStars < CONG_ALLSTARS_TTL) {
-    renderCongressAllStars();
+// ── Congress Leaderboard — live from disclosures.house.gov via /api/house-traders ──
+let houseLeaderData = [];
+let houseLeaderTs   = 0;
+const LEADER_TTL    = 7 * 24 * 60 * 60 * 1000;
+
+async function fetchHouseLeaderboard(force = false) {
+  if (!force && houseLeaderData.length && Date.now() - houseLeaderTs < LEADER_TTL) {
+    renderHouseLeaderboard();
     return;
   }
+  const statusEl = document.getElementById('houseLeaderStatus');
+  const listEl   = document.getElementById('houseLeaderList');
+  const setS = msg => { if (statusEl) statusEl.textContent = msg; };
+  if (listEl) listEl.innerHTML = '';
+  setS('Fetching official PTR rankings from disclosures.house.gov…');
+
+  try {
+    const r = await fetch('/api/house-traders', { signal: AbortSignal.timeout(28000) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    houseLeaderData = d.traders || [];
+    houseLeaderTs   = Date.now();
+    setS('');
+    renderHouseLeaderboard();
+  } catch(e) {
+    setS('Could not reach government site — showing cached rankings.');
+    houseLeaderData = HOUSE_TOP_TRADERS.map((t, i) => ({ ...t, rank: i + 1, totalPtrs: t.ptrs }));
+    renderHouseLeaderboard();
+  }
+}
+
+function renderHouseLeaderboard() {
+  const listEl = document.getElementById('houseLeaderList');
+  if (!listEl) return;
+  if (!houseLeaderData.length) {
+    listEl.innerHTML = '<div class="news-empty">No data — click ↻ Refresh.</div>';
+    return;
+  }
+  const followedSet = new Set(followedMembers);
+  const medals = ['🥇','🥈','🥉'];
+
+  const PERF = {
+    'Tim Moore':              { ret: '+52%', note: '#1 return in Congress 2025' },
+    'Marjorie Taylor Greene': { ret: '+30%', note: '74.5% win rate · 476% gain since 2021' },
+    'Suzan DelBene':          { ret: null,   note: '$142M net worth · +$1.4M in May 2026' },
+    'Josh Gottheimer':        { ret: null,   note: '$185M STOCK Act volume' },
+    'David Taylor':           { ret: null,   note: 'AVGO, LLY, V · 132 trades in 14 months' },
+    'Rob Bresnahan':          { ret: null,   note: '⚠ Sold Medicaid stocks before Medicaid cuts vote' },
+    'Kelly Morrison':         { ret: null,   note: '⚠ $2.9M filed late · STOCK Act violation' },
+  };
+
+  listEl.innerHTML = houseLeaderData.slice(0, 20).map((m, i) => {
+    const isFollowed = followedSet.has(m.name);
+    const safeName   = m.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const rank       = medals[i] || `#${i + 1}`;
+    const perf       = PERF[m.name] || {};
+    const latestDoc  = m.latestDoc || (m.docs2026 || []).slice(-1)[0];
+    const pdfHref    = latestDoc ? `https://disclosures.house.gov/public_disc/ptr-pdfs/2026/${latestDoc}.pdf` : '';
+    const retBadge   = perf.ret ? `<span style="font-size:11px;font-weight:800;color:var(--good);">${perf.ret}</span>` : '';
+
+    return `<div style="background:var(--card-bg);border:1.5px solid ${isFollowed?'#f0c040':'var(--border)'};border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+      <span style="font-size:16px;min-width:28px;">${rank}</span>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:13px;font-weight:700;color:var(--text);">${m.name}</span>
+          <span style="font-size:10px;color:var(--muted);">${m.state || ''}</span>
+          ${retBadge}
+          ${isFollowed ? '<span style="font-size:10px;color:#f0c040;">★ Following</span>' : ''}
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">
+          <span style="color:#6aaeff;font-weight:700;">${m.totalPtrs || m.ptrs || 0} STOCK Act filings</span>
+          ${m.ptrs2026 ? ` · ${m.ptrs2026} in ${m.year || 2026}` : ''}
+          ${perf.note ? ` · <span style="color:${perf.note.includes('⚠')?'var(--bad)':'var(--muted)'};">${perf.note}</span>` : ''}
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+        ${pdfHref ? `<a href="${pdfHref}" target="_blank" style="font-size:10px;color:#6aaeff;text-decoration:none;padding:3px 8px;border:1px solid #1e4060;border-radius:4px;background:#0a1a2a;">📄 Latest Filing</a>` : ''}
+        <button onclick="${isFollowed?`unfollowMember('${safeName}')`:`followMember('${safeName}')`}"
+          style="padding:4px 12px;font-size:11px;border-radius:6px;border:1px solid ${isFollowed?'#f0c040':'var(--border)'};background:${isFollowed?'#2a2000':'var(--input-bg)'};color:${isFollowed?'#f0c040':'var(--text)'};cursor:pointer;font-weight:600;">
+          ${isFollowed?'★ Unfollow':'☆ Follow'}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+
+  const ts = houseLeaderTs ? `Updated ${new Date(houseLeaderTs).toLocaleDateString()}` : 'Cached data';
+  listEl.insertAdjacentHTML('beforeend', `<div style="font-size:10px;color:var(--muted);padding:4px 0;">${ts} · Source: disclosures.house.gov · Ranked by total STOCK Act PTR filings 2025+2026</div>`);
+}
+
+// ── (dead code kept for reference — replaced by fetchHouseLeaderboard) ──────────
+async function fetchCongressAllStars(force = false) {
+  fetchHouseLeaderboard(force);
+}
+function renderCongressAllStars() { renderHouseLeaderboard(); }
+
+async function _OLD_fetchCongressAllStars(force = false) {
   const statusEl = document.getElementById('congAllStarsStatus');
   const listEl   = document.getElementById('congAllStarsList');
   const setS = msg => { if (statusEl) statusEl.textContent = msg; };

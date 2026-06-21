@@ -42,12 +42,13 @@ const ACTIVE_TRADERS = [
 
 // News queries that reliably surface named trades
 const QUERIES = [
+  // Target the real top performers by name
+  'Tim Moore congressman stock purchase trade disclosure 2026',
+  'Suzan DelBene Marjorie Taylor Greene stock bought purchased disclosure 2026',
+  'Josh Gottheimer David Taylor Rob Bresnahan stock trade STOCK Act 2026',
   'senator representative purchased bought stock shares STOCK Act disclosure 2026',
   'congress member stock trade disclosure filed STOCK Act buy purchase 2026',
-  'Gottheimer Greene Morrison DelBene stock purchase trade disclosure 2026',
-  'senator representative bought stock options shares disclosure investment 2026',
-  'house representative stock purchase STOCK Act periodic transaction report 2026',
-  'Pelosi Tuberville Khanna Donalds congress stock trade 2026',
+  'Pelosi Tuberville Khanna Donalds Morrison congress stock trade 2026',
 ];
 
 const ALIAS = { BRK: 'BRK.B', GOOG: 'GOOGL', FB: 'META' };
