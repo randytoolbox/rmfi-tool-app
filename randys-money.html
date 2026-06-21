@@ -1824,6 +1824,8 @@ function recordCloseTrade(sym) {
   const note = document.getElementById('exitNote_' + sym)?.value || '';
   const pnlDollar = +(( exitPrice - h.cost) * h.qty).toFixed(2);
   const pnlPct    = +(((exitPrice - h.cost) / h.cost) * 100).toFixed(2);
+  const confirmMsg = `Close ${h.qty} shares of ${sym}?\n\nSold at: $${exitPrice}\nP&L: ${pnlDollar >= 0 ? '+' : ''}$${pnlDollar} (${pnlPct >= 0 ? '+' : ''}${pnlPct}%)\n\nThis will remove the position from your portfolio.`;
+  if (!confirm(confirmMsg)) return;
   tradeJournal.unshift({
     id: Date.now(), sym, qty: h.qty,
     entryPrice: h.cost, entryDate: h.entryDate || null,
