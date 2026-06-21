@@ -574,6 +574,8 @@ const STOCK_NAMES = {
   LRCX:'Lam Research (Chip Equipment)', KLAC:'KLA Corp (Chip Equipment)',
   // Telecom / Fiber
   LUMN:'Lumen Technologies (Fiber/AI Infrastructure)', T:'AT&T', VZ:'Verizon',
+  // Clean Energy
+  BE:'Bloom Energy (Fuel Cells / Data Center Power)',
 };
 
 // ── Supply Chain Map ──────────────────────────────────────────────────────────
@@ -679,7 +681,7 @@ let lastHistoryFetch = load('rm_lastHistFetch', 0);
     changed = true;
   }
   // Add core watchlist stocks if missing
-  const add = ['LMT','RTX','PLTR','CAT','XLE','LUMN'];
+  const add = ['LMT','RTX','PLTR','CAT','XLE','LUMN','BE'];
   add.forEach(s => { if (!stockWatchlist.includes(s)) { stockWatchlist.push(s); changed = true; } });
   if (changed) save('rm_stocks', stockWatchlist);
 })();
