@@ -1938,33 +1938,20 @@ async function fetchCongress(force = false) {
   if (errEl) errEl.style.display = 'none';
   if (listEl) listEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:10px 0;">Loading STOCK Act filings from House &amp; Senate databases…</div>';
 
-  const HOUSE_URL  = 'https://house-stock-watcher-data.s3-us-east-2.amazonaws.com/data/all_transactions.json';
-  const SENATE_URL = 'https://senate-stock-watcher-data.s3-us-east-2.amazonaws.com/aggregate/all_transactions.json';
-  let allTrades = [];
-
-  for (const [dataUrl, chamber] of [[HOUSE_URL, 'House'], [SENATE_URL, 'Senate']]) {
-    for (const mkP of [
-      u => u,
-      u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-      u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-    ]) {
-      try {
-        const res = await fetch(mkP(dataUrl), { signal: AbortSignal.timeout(30000) });
-        if (!res.ok) continue;
-        const raw = await res.json();
-        const rows = Array.isArray(raw) ? raw : (raw.data || raw.transactions || []);
-        rows.forEach(t => { t._chamber = chamber; });
-        allTrades = allTrades.concat(rows);
-        break;
-      } catch(e) {}
+  let trades = [];
+  try {
+    const r = await fetch('/api/congress', { signal: AbortSignal.timeout(30000) });
+    if (r.ok) {
+      const d = await r.json();
+      trades = d.trades || [];
     }
-  }
+  } catch(e) {}
 
-  if (!allTrades.length) {
-    // Keep showing whatever we had before rather than going blank
+  if (!trades.length) {
     if (congressTrades.length) {
       if (errEl) { errEl.style.display='block'; errEl.textContent='⚠ STOCK Act servers busy — showing last cached data.'; }
       renderCongressList();
+      renderCongressMembers();
     } else {
       if (errEl) { errEl.style.display='block'; errEl.textContent='⚠ Could not load STOCK Act data — tap ↻ Refresh to try again.'; }
       if (listEl) listEl.innerHTML = '<div class="news-empty">Tap Refresh above to load House &amp; Senate STOCK Act filings.</div>';
@@ -1972,27 +1959,19 @@ async function fetchCongress(force = false) {
     return;
   }
 
-  // Filter to last 90 days, valid tickers, normalize
-  const cutoff90 = Date.now() - 90 * 24 * 60 * 60 * 1000;
-  const SKIP = new Set(['N/A','--','NA','NONE','ETF']);
-  const filtered = allTrades.filter(t => {
-    const dateStr = t.transaction_date || t.transactionDate || t.date || '';
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime()) || d.getTime() < cutoff90) return false;
-    const sym = (t.ticker || t.symbol || '').replace(/[$\s]/g,'').toUpperCase();
-    if (!sym || SKIP.has(sym) || sym.length > 5) return false;
-    t._sym  = normalizeTicker(sym);
-    t._date = dateStr;
-    t._ts   = d.getTime();
-    t._name = (t.representative || t.senator || t.name || '').trim();
-    t._type = (t.type || t.transaction_type || '').toLowerCase();
-    t._desc = t.asset_description || '';
-    t._amt  = t.amount || '';
-    return !!t._name;
-  });
+  // Map server fields to internal underscore-prefixed fields
+  congressTrades = trades.map(t => ({
+    ...t,
+    _sym:    t.sym,
+    _date:   t.date,
+    _ts:     t.ts,
+    _name:   t.name,
+    _chamber:t.chamber,
+    _type:   t.type,
+    _desc:   t.desc,
+    _amt:    t.amt,
+  }));
 
-  filtered.sort((a, b) => b._ts - a._ts);
-  congressTrades = filtered.slice(0, 200);
   lastCongressFetch = Date.now();
   renderCongressList();
   renderCongressMembers();
