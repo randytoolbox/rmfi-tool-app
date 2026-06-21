@@ -1981,6 +1981,7 @@ async function fetchCongress(force = false) {
     _name:   t.name,
     _chamber:t.chamber,
     _type:   t.type,
+    _link:   t.link || '',
     _desc:   t.desc,
     _amt:    t.amt,
   }));
@@ -2033,7 +2034,9 @@ function renderCongressList() {
     const isWatch  = watchSet.has(t._sym);
     const price    = stockData[t._sym]?.price;
     const priceStr = price ? ` · Now $${price.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '';
-    return `<div class="news-item${isWatch?' watchlist-match':''}" style="${isWatch?'border-left:3px solid var(--accent);':''}">
+    const safeLink = (t._link||'').replace(/'/g,"\\'");
+    const clickH   = safeLink ? ` onclick="window.open('${safeLink}','_blank')" style="cursor:pointer;${isWatch?'border-left:3px solid var(--accent);':''}"` : `style="${isWatch?'border-left:3px solid var(--accent);':''}"`;
+    return `<div class="news-item${isWatch?' watchlist-match':''}"${clickH}>
       <div style="flex:1;min-width:0;">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <span style="font-size:15px;font-weight:800;color:var(--accent);">${t._sym}</span>

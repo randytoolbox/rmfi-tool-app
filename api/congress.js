@@ -1,111 +1,123 @@
-// Congressional trading data — tries multiple sources in order of reliability
-const SOURCES = [
-  // Unusual Whales — lightweight paginated API, no auth needed for recent trades
-  {
-    name: 'UnusualWhales',
-    fetch: () => fetchUnusualWhales(),
-  },
-  // Senate eFD search index — official Senate API, returns filing metadata
-  {
-    name: 'SenateEFD',
-    fetch: () => fetchSenateEFD(),
-  },
+// Congressional trading via targeted news searches for known active traders
+// Avoids the S3 bulk-file timeout problem entirely
+
+const ACTIVE_TRADERS = [
+  // Senate — most active traders
+  'Tommy Tuberville', 'Shelley Moore Capito', 'Mark Kelly', 'Gary Peters',
+  'Jon Ossoff', 'John Hoeven', 'Roger Marshall', 'Markwayne Mullin',
+  'Rick Scott', 'Bill Hagerty', 'Dan Sullivan', 'Mike Braun',
+  'Tom Carper', 'Bob Casey', 'Jacky Rosen', 'Kyrsten Sinema',
+  // House — most active traders
+  'Nancy Pelosi', 'Paul Pelosi', 'Dan Crenshaw', 'Michael McCaul',
+  'David Rouzer', 'Brian Mast', 'Josh Gottheimer', 'Ro Khanna',
+  'Mark Takano', 'Michael Garcia', 'Pete Sessions', 'Greg Gianforte',
+  'Virginia Foxx', 'Bill Johnson', 'Marjorie Taylor Greene', 'Matt Gaetz',
+  'Debbie Wasserman Schultz', 'Susie Lee', 'Lois Frankel', 'Patrick McHenry',
+];
+
+// News queries that reliably surface named trades
+const QUERIES = [
+  'senator representative purchased bought stock shares STOCK Act disclosure 2026',
+  'congress member stock trade disclosure filed SEC STOCK Act buy purchase 2026',
+  'Pelosi Tuberville Crenshaw stock purchase trade disclosure 2026',
+  'senator bought stock options shares disclosure investment 2026',
+  'house representative stock purchase STOCK Act filing 2026',
 ];
 
 const ALIAS = { BRK: 'BRK.B', GOOG: 'GOOGL', FB: 'META' };
-const SKIP  = new Set(['N/A', '--', 'NA', 'NONE', 'ETF', 'CASH', 'SP500', 'UNKNOWN']);
+const SKIP  = new Set(['N/A', '--', 'NA', 'NONE', 'ETF', 'CASH']);
 
-function normSym(s) {
-  const clean = (s || '').replace(/[$\s]/g, '').toUpperCase();
-  return ALIAS[clean] || clean;
+// Common ticker pattern in headlines: $NVDA, (NVDA), NVDA stock
+const TICKER_RE = /\$([A-Z]{1,5})\b|\(([A-Z]{2,5})\)|([A-Z]{2,5})\s+(?:stock|shares|options|call|put)/g;
+const BUY_RE    = /\b(bought|purchased|buy|buys|buying|invested|investment|acquired|long)\b/i;
+const SELL_RE   = /\b(sold|sale|selling|sells|short)\b/i;
+
+function extractTickers(text) {
+  const tickers = new Set();
+  let m;
+  TICKER_RE.lastIndex = 0;
+  while ((m = TICKER_RE.exec(text)) !== null) {
+    const raw = (m[1] || m[2] || m[3] || '').toUpperCase();
+    if (raw && raw.length >= 2 && raw.length <= 5) {
+      tickers.add(ALIAS[raw] || raw);
+    }
+  }
+  return [...tickers];
+}
+
+function matchMember(text) {
+  for (const name of ACTIVE_TRADERS) {
+    const parts = name.split(' ');
+    // Match on last name at minimum
+    const last = parts[parts.length - 1];
+    if (text.includes(name) || (last.length > 4 && text.includes(last))) {
+      return name;
+    }
+  }
+  return null;
 }
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=7200');
+  res.setHeader('Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=3600');
 
-  const cutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
-  let trades  = [];
-  let source  = 'none';
+  const trades = [];
+  const seen   = new Set();
 
-  for (const s of SOURCES) {
-    try {
-      const raw = await s.fetch();
-      if (raw && raw.length) {
-        trades = raw.filter(t => t.ts >= cutoff);
-        source = s.name;
-        break;
-      }
-    } catch (e) { /* try next */ }
+  // Run news queries in parallel (3 at a time)
+  const chunks = [QUERIES.slice(0, 3), QUERIES.slice(3)];
+  for (const chunk of chunks) {
+    const results = await Promise.allSettled(
+      chunk.map(q =>
+        fetch(`${getBase(req)}/api/news?q=${encodeURIComponent(q)}`, {
+          signal: AbortSignal.timeout(8000),
+        }).then(r => r.ok ? r.json() : { items: [] })
+      )
+    );
+
+    results.forEach(r => {
+      if (r.status !== 'fulfilled') return;
+      const items = r.value?.items || [];
+      items.forEach(item => {
+        const text = (item.title || '') + ' ' + (item.source || '');
+        if (!BUY_RE.test(text)) return;              // only purchases
+        if (SELL_RE.test(text) && !BUY_RE.test(text)) return;
+
+        const member  = matchMember(text);
+        const tickers = extractTickers(text);
+        if (!member && !tickers.length) return;
+
+        const key = item.link || item.title;
+        if (seen.has(key)) return;
+        seen.add(key);
+
+        // One trade entry per ticker found, or a generic entry if only name matched
+        const tickerList = tickers.length ? tickers : ['?'];
+        tickerList.forEach(sym => {
+          if (SKIP.has(sym)) return;
+          trades.push({
+            sym,
+            date:    item.pubDate || '',
+            ts:      item.pubDate ? new Date(item.pubDate).getTime() || Date.now() : Date.now(),
+            name:    member || 'Congress Member',
+            chamber: 'Congress',
+            type:    'purchase',
+            amt:     '',
+            desc:    item.title || '',
+            link:    item.link  || '',
+            source:  item.source || '',
+          });
+        });
+      });
+    });
   }
 
   trades.sort((a, b) => b.ts - a.ts);
-  res.json({ trades: trades.slice(0, 400), count: trades.length, source });
+  res.json({ trades: trades.slice(0, 200), count: trades.length, source: 'news' });
 };
 
-// ── Unusual Whales ────────────────────────────────────────────────────────────
-async function fetchUnusualWhales() {
-  const url = 'https://api.unusualwhales.com/api/congress/trades?limit=200&trade_type=buy';
-  const r = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (compatible; randy-money/1.0)',
-      'Accept': 'application/json',
-    },
-    signal: AbortSignal.timeout(12000),
-  });
-  if (!r.ok) throw new Error(`UW HTTP ${r.status}`);
-  const json = await r.json();
-  const rows = json.data || json.trades || json || [];
-  if (!Array.isArray(rows) || !rows.length) throw new Error('UW empty');
-
-  return rows.map(t => {
-    const dateStr = t.traded_at || t.date || t.transaction_date || '';
-    const d = new Date(dateStr);
-    const sym = normSym(t.ticker || t.symbol || '');
-    if (!sym || sym.length > 5 || SKIP.has(sym)) return null;
-    const name = (t.politician_name || t.representative || t.senator || t.name || '').trim();
-    if (!name) return null;
-    return {
-      sym, date: dateStr, ts: isNaN(d.getTime()) ? 0 : d.getTime(),
-      name, chamber: t.chamber || t.politician_type || 'Congress',
-      type: (t.transaction_type || t.type || 'purchase').toLowerCase(),
-      amt: t.amount || t.range || '',
-      desc: t.asset_name || t.asset_description || '',
-    };
-  }).filter(Boolean);
-}
-
-// ── Senate eFD search index ───────────────────────────────────────────────────
-async function fetchSenateEFD() {
-  const from = new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString().slice(0, 10);
-  const to   = new Date().toISOString().slice(0, 10);
-  const url  = `https://efts.senate.gov/LATEST/search-index?q=%22%22&dateRange=custom&fromDate=${from}&toDate=${to}&category=ptr`;
-  const r = await fetch(url, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; randy-money/1.0)' },
-    signal: AbortSignal.timeout(10000),
-  });
-  if (!r.ok) throw new Error(`EFD HTTP ${r.status}`);
-  const json = await r.json();
-  const hits = json.hits?.hits || json.hits || [];
-  if (!hits.length) throw new Error('EFD empty');
-
-  // Senate eFD returns filing metadata, not individual trades — extract what we can
-  const out = [];
-  hits.forEach(h => {
-    const src = h._source || h;
-    const name = (src.first_name && src.last_name)
-      ? `${src.first_name} ${src.last_name}`
-      : (src.full_name || src.name || '').trim();
-    if (!name) return;
-    const dateStr = src.filed_at_date || src.date || '';
-    const d = new Date(dateStr);
-    // Filing-level entry (no individual ticker) — mark as generic signal
-    out.push({
-      sym: 'PTR', date: dateStr, ts: isNaN(d.getTime()) ? Date.now() : d.getTime(),
-      name, chamber: 'Senate',
-      type: 'purchase', amt: '', desc: 'Periodic Transaction Report filed',
-    });
-  });
-  if (!out.length) throw new Error('EFD no names');
-  return out;
+function getBase(req) {
+  const proto = req.headers['x-forwarded-proto'] || 'https';
+  const host  = req.headers['x-forwarded-host'] || req.headers.host || '';
+  return `${proto}://${host}`;
 }
