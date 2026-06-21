@@ -2016,7 +2016,9 @@ function renderCongressList() {
     return;
   }
   const watchSet = new Set([...stockWatchlist, ...portfolio]);
+  const CRYPTO_SKIP = new Set(['XRP','BTC','ETH','DOGE','SOL','ADA','AVAX','MATIC','DOT','LTC']);
   const filtered = congressTrades.filter(t => {
+    if (t._sym === '?' || CRYPTO_SKIP.has(t._sym)) return false;
     if (congFilter === 'purchase') return t._type.includes('purchase') || t._type.includes('buy');
     if (congFilter === 'sale')     return t._type.includes('sale') || t._type.includes('sell');
     if (congFilter === 'watchlist') return watchSet.has(t._sym);
@@ -2157,9 +2159,10 @@ function renderCongressMembers() {
   }
   // Group purchases by member name
   const members = {};
+  const CM_CRYPTO_SKIP = new Set(['XRP','BTC','ETH','DOGE','SOL','ADA','AVAX','MATIC','DOT','LTC']);
   congressTrades.forEach(t => {
     const isBuy = t._type.includes('purchase') || t._type.includes('buy');
-    if (!isBuy || !t._name) return;
+    if (!isBuy || !t._name || t._sym === '?' || CM_CRYPTO_SKIP.has(t._sym)) return;
     if (!members[t._name]) members[t._name] = { name: t._name, chamber: t._chamber, buys: [] };
     members[t._name].buys.push(t);
   });
@@ -2169,6 +2172,7 @@ function renderCongressMembers() {
     return;
   }
   const watching = new Set(stockWatchlist);
+  const followedSet = new Set(followedMembers);
   const rankColors = ['#ffd700','#c0c0c0','#cd7f32'];
   el.innerHTML = ranked.map((m, i) => {
     const stockMap = {};
@@ -2181,16 +2185,23 @@ function renderCongressMembers() {
       const inWatch = watching.has(s.sym);
       return `<span onclick="addCongressPick('${s.sym}')" title="Tap to add ${s.sym} to watchlist" style="cursor:pointer;display:inline-block;padding:3px 9px;border-radius:5px;font-size:11px;font-weight:700;background:${inWatch?'#132613':'var(--input-bg)'};border:1px solid ${inWatch?'var(--good)':'var(--border)'};color:${inWatch?'var(--good)':'var(--accent)'};margin:2px;">${s.sym}${s.count>1?` ×${s.count}`:''}${inWatch?' ★':''}</span>`;
     }).join('');
-    return `<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+    const isFollowed = followedSet.has(m.name);
+    const safeName = m.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `<div style="background:var(--card-bg);border:1.5px solid ${isFollowed?'#f0c040':'var(--border)'};border-radius:10px;padding:12px 14px;margin-bottom:8px;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;flex-wrap:wrap;">
         <span style="font-size:14px;font-weight:900;color:${rankColors[i]||'var(--muted)'};">#${i+1}</span>
         <span style="font-size:13px;font-weight:700;color:var(--text);">${m.name}</span>
         <span style="font-size:10px;color:var(--muted);background:var(--input-bg);padding:2px 7px;border-radius:4px;">${m.chamber}</span>
-        <span style="font-size:10px;color:#6aaeff;background:#1e4060;padding:2px 7px;border-radius:4px;margin-left:auto;">&#128722; ${m.buys.length} buy${m.buys.length>1?'s':''}</span>
+        <span style="font-size:10px;color:#6aaeff;background:#1e4060;padding:2px 7px;border-radius:4px;">&#128722; ${m.buys.length} buy${m.buys.length>1?'s':''}</span>
+        <button onclick="${isFollowed?`unfollowMember('${safeName}')`:`followMember('${safeName}')`}"
+          style="margin-left:auto;padding:4px 12px;font-size:11px;border-radius:6px;border:1px solid ${isFollowed?'#f0c040':'var(--border)'};background:${isFollowed?'#2a2000':'var(--input-bg)'};color:${isFollowed?'#f0c040':'var(--text)'};cursor:pointer;font-weight:600;">
+          ${isFollowed?'★ Unfollow':'☆ Follow'}
+        </button>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:2px;">${chips}</div>
     </div>`;
   }).join('');
+  renderFollowedPicks();
 }
 
 // Tickers that need normalizing (common mis-tickers from news/RSS)
@@ -2410,29 +2421,34 @@ function renderFollowedPicks() {
   const el = document.getElementById('followedPicksList');
   if (!el) return;
   if (!followedMembers.length) {
-    el.innerHTML = '<div class="news-empty">Follow members above to track their purchases here.</div>';
+    el.innerHTML = '<div class="news-empty">Tap ☆ Follow on a member above to track their purchases here.</div>';
     return;
   }
-  const followedData = congAllStars.filter(m => followedMembers.includes(m.name));
-  const allPicks = [];
-  followedData.forEach(m => (m.recentPicks || []).forEach(p => allPicks.push({ member: m.name, ...p })));
-  allPicks.sort((a, b) => b.dateTs - a.dateTs);
-  if (!allPicks.length) { el.innerHTML = '<div class="news-empty">No purchase data loaded yet. Click "Load Rankings" first.</div>'; return; }
+  // Use news-based congressTrades — filter to followed members
+  const followedSet = new Set(followedMembers);
+  const picks = congressTrades.filter(t =>
+    t._name && followedSet.has(t._name) &&
+    (t._type.includes('purchase') || t._type.includes('buy')) &&
+    t._sym && t._sym !== '?'
+  ).sort((a, b) => b._ts - a._ts);
 
-  el.innerHTML = allPicks.slice(0, 20).map(p => {
-    const retColor = p.returnPct != null ? (p.returnPct >= 0 ? 'var(--good)' : 'var(--bad)') : 'var(--muted)';
-    const retStr   = p.returnPct != null ? `${p.returnPct >= 0 ? '+' : ''}${p.returnPct.toFixed(1)}%` : '--';
-    const inWatch  = stockWatchlist.includes(p.sym);
-    const lastName = p.member.split(' ').slice(-1)[0];
-    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border);flex-wrap:wrap;">
+  if (!picks.length) {
+    el.innerHTML = '<div class="news-empty">No recent purchases found for followed members. Try refreshing Congress Trades.</div>';
+    return;
+  }
+
+  el.innerHTML = picks.slice(0, 30).map(p => {
+    const inWatch  = stockWatchlist.includes(p._sym);
+    const lastName = p._name.split(' ').slice(-1)[0];
+    const dateStr  = p._date ? new Date(p._date).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--border);flex-wrap:wrap;">
       <span style="font-size:11px;color:#f0c040;font-weight:700;min-width:80px;">${lastName}</span>
-      <span style="font-size:15px;font-weight:800;color:var(--accent);min-width:55px;">${p.sym}</span>
-      <span style="font-size:11px;color:var(--muted);flex:1;">${p.date}</span>
-      <span style="font-size:13px;font-weight:700;color:${retColor};min-width:55px;text-align:right;">${retStr}</span>
-      ${p.currentPrice ? `<span style="font-size:11px;color:var(--muted);">$${p.currentPrice.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>` : ''}
-      <button onclick="addCongressPick('${p.sym}')"
-        style="padding:4px 10px;font-size:10px;border-radius:5px;border:1px solid ${inWatch ? 'var(--good)' : 'var(--border)'};background:${inWatch ? '#132613' : 'var(--input-bg)'};color:${inWatch ? 'var(--good)' : 'var(--text)'};cursor:pointer;">
-        ${inWatch ? '✓ Watching' : '+ Watch'}
+      <span style="font-size:15px;font-weight:800;color:var(--accent);min-width:55px;">${p._sym}</span>
+      <span style="font-size:11px;color:var(--muted);flex:1;">${dateStr}</span>
+      ${p._desc ? `<span style="font-size:10px;color:var(--muted);width:100%;margin-top:2px;line-height:1.3;">${p._desc.length>90?p._desc.slice(0,87)+'…':p._desc}</span>` : ''}
+      <button onclick="addCongressPick('${p._sym}')"
+        style="padding:4px 10px;font-size:10px;border-radius:5px;border:1px solid ${inWatch?'var(--good)':'var(--border)'};background:${inWatch?'#132613':'var(--input-bg)'};color:${inWatch?'var(--good)':'var(--text)'};cursor:pointer;">
+        ${inWatch?'✓ Watching':'+ Watch'}
       </button>
     </div>`;
   }).join('');
@@ -2442,14 +2458,14 @@ function followMember(name) {
   if (!followedMembers.includes(name)) {
     followedMembers.push(name);
     save('rm_followed', followedMembers);
-    renderCongressAllStars();
+    renderCongressMembers();
   }
 }
 
 function unfollowMember(name) {
   followedMembers = followedMembers.filter(n => n !== name);
   save('rm_followed', followedMembers);
-  renderCongressAllStars();
+  renderCongressMembers();
 }
 
 function renderStockGrid() {
