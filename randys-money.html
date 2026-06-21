@@ -59,12 +59,12 @@
   }
   #bottomNav button {
     background: none; border: none; color: #557799;
-    font-size: 20px; cursor: pointer;
+    font-size: 18px; cursor: pointer;
     display: flex; flex-direction: column; align-items: center; gap: 1px;
-    padding: 4px 10px; border-radius: 8px; flex: 1;
+    padding: 4px 2px; border-radius: 8px; flex: 1; min-width: 0;
     transition: color .15s, background .15s;
   }
-  #bottomNav button span { font-size: 9px; font-weight: 700; letter-spacing: .3px; }
+  #bottomNav button span { font-size: 8px; font-weight: 700; letter-spacing: .2px; white-space: nowrap; }
   #bottomNav button:active { background: #1e3a5f; color: #6aaeff; }
 
   /* Coin Cards */
@@ -271,12 +271,17 @@
   .sc-alert { padding:10px 14px; border:1px solid var(--border); border-radius:8px; margin:6px 12px 0; cursor:pointer; }
   .sc-alert:hover { background:#1a3555; }
   .sc-alert.has-hit { border-color:#f5a623; background:#150f00; }
+  .sc-alert.pinned { border-color:#7c5cbf; background:#10092a; }
   .sc-alert-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; gap:8px; }
   .sc-alert-prime { font-size:11px; font-weight:900; color:#6aaeff; flex-shrink:0; }
   .sc-alert-title { font-size:13px; color:var(--text); line-height:1.45; margin-bottom:5px; }
   .sc-watchhits { font-size:12px; color:#f5a623; font-weight:700; margin-bottom:5px; }
   .sc-alert-chain { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
   .sc-info { font-size:11px; color:var(--muted); padding:8px 14px 4px; }
+  .sc-pin-btn { font-size:11px; padding:2px 8px; border-radius:5px; border:1px solid #7c5cbf; background:transparent; color:#b08fff; cursor:pointer; white-space:nowrap; flex-shrink:0; }
+  .sc-pin-btn.pinned { background:#7c5cbf22; color:#d4b8ff; }
+  .sc-pin-btn:hover { background:#7c5cbf44; }
+  .sc-pin-label { font-size:10px; color:#b08fff; font-weight:700; letter-spacing:.04em; }
 </style>
 </head>
 <body>
@@ -297,7 +302,7 @@
   <button class="btn btn-green" onclick="generateReport()">Generate Report for Claude</button>
   <button class="btn btn-gold" onclick="generateBriefing()" style="background:linear-gradient(135deg,#7b3fa0,#4a1a6e);color:#fff;border:none;">&#9733; Daily Briefing</button>
   <button class="btn btn-sm" id="arToggle" onclick="toggleAutoRefresh()" style="background:#1e4060;color:var(--text);border:1px solid var(--border);">&#9646;&#9646; Pause</button>
-  <span id="arCountdown">Auto-refresh in <b id="arSecs">60</b>s</span>
+  <span id="arCountdown">Auto-refresh in <b id="arSecs">120</b>s</span>
 </div>
 
 <div id="alertToast">
@@ -346,13 +351,15 @@
       oninput="saveStockKey(this.value)" />
     <span style="font-size:11px;color:var(--muted);">Free at <b style="color:#6aaeff;">finnhub.io</b> — 2 min signup</span>
   </div>
-  <div id="stockErrorMsg" style="display:none;"></div>
-  <div class="coin-grid" id="stockGrid"></div>
-  <div class="add-row" style="margin-bottom:28px;">
+  <div class="add-row" style="margin-bottom:12px;">
     <span style="font-size:13px;font-weight:700;color:var(--muted);">Add a stock:</span>
-    <input id="addStockInput" placeholder="e.g. AAPL, TSLA..." maxlength="10" style="text-transform:uppercase;" />
+    <input id="addStockInput" placeholder="e.g. HON, EMR, NVDA..." maxlength="10" style="text-transform:uppercase;" />
     <button class="btn btn-blue btn-sm" onclick="addStock()">Add</button>
     <span class="hint">Any US ticker — AAPL, MSFT, NVDA, TSLA, XLE, JPM, GLD...</span>
+  </div>
+  <div id="stockErrorMsg" style="display:none;"></div>
+  <div class="coin-grid" id="stockGrid"></div>
+  <div id="stockPortfolioSummary"></div>
   </div>
 
   <!-- NEWS FEED -->
@@ -364,6 +371,17 @@
     <div class="news-empty">News loads on first refresh — click &#8635; Refresh Data or wait for auto-refresh.</div>
   </div>
 
+  <!-- POLICY WATCH — Trump Truth Social + tariffs + trade deals + sanctions -->
+  <div id="sec-policy" style="margin-top:24px; margin-bottom:28px;">
+    <div class="section-label" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+      <span>&#127981; Policy Watch <span style="font-size:10px;color:var(--muted);font-weight:400;">— Trump Truth Social &bull; tariffs &bull; trade deals &bull; oil sanctions &bull; auto-updates 15 min</span></span>
+      <button class="btn btn-sm" onclick="fetchPolicyNews(true)" style="background:#1e2a00;color:#f9a825;border:1px solid #f9a825;">&#8635; Refresh</button>
+    </div>
+    <div class="news-wrap" style="margin-top:8px;">
+      <div id="policyList"><div class="news-empty">Loading policy alerts...</div></div>
+    </div>
+  </div>
+
   <!-- CONGRESSIONAL TRADES -->
   <div id="sec-congress" class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
     <span>&#127963; Congress Trades <span style="font-size:10px;color:var(--muted);font-weight:400;">— actual STOCK Act filings &bull; House &amp; Senate &bull; last 90 days</span></span>
@@ -371,7 +389,7 @@
   </div>
   <div id="congErrorMsg" style="display:none;font-size:12px;color:var(--bad);padding:10px 0;"></div>
   <div class="news-wrap" id="congList" style="margin-bottom:28px;">
-    <div class="news-empty">Click &#8635; Refresh to load actual STOCK Act filings from the last 90 days.</div>
+    <div class="news-empty" style="font-size:12px;">Click &#8635; Refresh to attempt loading individual STOCK Act filings (may be slow).</div>
   </div>
 
   <!-- CONGRESS BUYS LEADERBOARD -->
@@ -384,14 +402,22 @@
     <div class="news-empty">Click &#8635; Scan to load — discovers what senators &amp; representatives are actively buying.</div>
   </div>
 
-  <!-- CONGRESS ALL-STARS LEADERBOARD -->
+  <!-- CONGRESS MEMBER LEADERBOARD -->
   <div class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-    <span>&#127942; Congress All-Stars <span style="font-size:10px;color:var(--muted);font-weight:400;">— ranked by 1-yr return on STOCK Act purchases &bull; House &amp; Senate</span></span>
-    <button class="btn btn-sm" onclick="fetchCongressAllStars(true)" style="background:#2a1a4e;color:#d4b4ff;border:1px solid #4a2a8e;">&#8635; Load Rankings</button>
+    <span>&#128100; Who's Buying <span style="font-size:10px;color:var(--muted);font-weight:400;">— most active members by purchase count &bull; last 90 days</span></span>
   </div>
-  <div id="congAllStarsStatus" style="font-size:12px;color:var(--muted);padding:4px 0 6px;min-height:16px;"></div>
-  <div id="congAllStarsList" style="margin-bottom:10px;">
-    <div class="news-empty">Click "Load Rankings" — pulls all STOCK Act purchase disclosures, calculates returns vs. today. Takes ~1–2 min the first time, cached 24 hrs.</div>
+  <div id="congMembersList" style="margin-bottom:28px;">
+    <div class="news-empty">Load Congress Trades above (↻ Refresh) to see who's buying what.</div>
+  </div>
+
+  <!-- CONGRESS LEADERBOARD — official PTR filing counts from disclosures.house.gov -->
+  <div class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+    <span>&#127942; Congress Leaderboard <span style="font-size:10px;color:var(--muted);font-weight:400;">— ranked by STOCK Act filing count &bull; official House data &bull; auto-updates weekly</span></span>
+    <button class="btn btn-sm" onclick="fetchHouseLeaderboard(true)" style="background:#2a1a4e;color:#d4b4ff;border:1px solid #4a2a8e;">&#8635; Refresh</button>
+  </div>
+  <div id="houseLeaderStatus" style="font-size:12px;color:var(--muted);padding:4px 0 6px;min-height:16px;"></div>
+  <div id="houseLeaderList" style="margin-bottom:10px;">
+    <div class="news-empty">Loading official rankings from disclosures.house.gov…</div>
   </div>
 
   <!-- FOLLOWED MEMBERS FEED -->
@@ -413,13 +439,46 @@
     <div class="news-empty">Supply chain map loads with news — click &#8635; Refresh Data or wait for auto-refresh. &#9733; = on your watchlist.</div>
   </div>
 
+  <!-- TRADE TOOLS: LAG DETECTOR + SWING SCREENER -->
+  <div id="sec-trade" style="scroll-margin-top:8px;">
+
+    <!-- LAG DETECTOR -->
+    <div id="lagSection" style="margin-bottom:28px;display:none;">
+      <div class="section-label" style="margin-top:0; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+        <span>&#9889; Lag Opportunities <span style="font-size:10px;color:var(--muted);font-weight:400;">— big movers whose supply chain hasn't caught up yet &bull; 24-48hr window</span></span>
+        <button class="btn btn-sm" onclick="runLagDetector()" style="background:#1a2e1a;color:#00e676;border:1px solid #00e676;">&#9889; Scan Lags</button>
+      </div>
+      <div id="lagList"><div class="news-empty">Click &#9889; Scan Lags after prices load.</div></div>
+    </div>
+
+    <!-- SWING TRADE SCREENER -->
+    <div style="margin-bottom:28px;">
+      <div class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+        <span>&#127919; Swing Screener <span style="font-size:10px;color:var(--muted);font-weight:400;">— ranks your watchlist + supply chain stocks by swing-trade suitability &bull; 2-yr history</span></span>
+        <button class="btn btn-sm" id="screenerBtn" onclick="runScreener()" style="background:#1a1a3e;color:#d4b4ff;border:1px solid #4a2a8e;">&#127919; Run Screener</button>
+      </div>
+      <div id="screenerStatus" style="font-size:12px;color:var(--muted);padding:4px 0 6px;min-height:16px;"></div>
+      <div id="screenerList"><div class="news-empty">Click &#127919; Run Screener to analyze your watchlist + supply chain stocks for swing-trade setups.</div></div>
+    </div>
+
+    <!-- TRADE JOURNAL -->
+    <div id="sec-journal" style="margin-bottom:28px;">
+      <div class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+        <span>&#128211; Trade Journal <span style="font-size:10px;color:var(--muted);font-weight:400;">— your paper trade history &bull; win rate &bull; total P&amp;L</span></span>
+        <button class="btn btn-sm" onclick="clearJournal()" style="background:#2a0a0a;color:#ff5252;border:1px solid #ff5252;">&#128465; Clear All</button>
+      </div>
+      <div id="journalList"></div>
+    </div>
+
+  </div>
+
   <!-- MARKET SCANNER -->
   <div id="scannerSection" style="display:none; margin-bottom:28px;">
     <div class="section-label" style="margin-top:24px;">Market Scanner — Top 100 Coins</div>
     <div class="scanner-controls">
       <button class="filter-btn active" id="fAll"    onclick="setFilter('all')">All</button>
-      <button class="filter-btn"        id="fGainers" onclick="setFilter('gainers')">&#9650; 1Y Gainers</button>
-      <button class="filter-btn"        id="fLosers"  onclick="setFilter('losers')">&#9660; 1Y Losers</button>
+      <button class="filter-btn"        id="fGainers" onclick="setFilter('gainers')">&#9650; 24h Gainers</button>
+      <button class="filter-btn"        id="fLosers"  onclick="setFilter('losers')">&#9660; 24h Losers</button>
       <span style="font-size:12px;color:var(--muted);margin-left:6px;">Click a column header to sort &bull; Click "+ Portfolio" to add a coin</span>
     </div>
     <div class="market-wrap">
@@ -431,8 +490,7 @@
               <th onclick="sortMarket('symbol')">Coin</th>
               <th onclick="sortMarket('price')" class="num">Price</th>
               <th onclick="sortMarket('change24h')" class="num">24h %</th>
-              <th onclick="sortMarket('change7d')" class="num">7d %</th>
-              <th onclick="sortMarket('change1y')" class="num">1Y %</th>
+              <th onclick="sortMarket('marketCap')" class="num">Mkt Cap</th>
               <th onclick="sortMarket('marketCap')" class="num">Mkt Cap</th>
               <th></th>
             </tr>
@@ -459,18 +517,18 @@
 </div>
 
 <script>
-// ── Coin registry ─────────────────────────────────────────────────────────────
+// ── Coin registry (CoinCap IDs — free, no rate limits, CORS-friendly) ─────────
 const COINS = {
   BTC:'bitcoin', ETH:'ethereum', SOL:'solana', XRP:'ripple',
-  BNB:'binancecoin', DOGE:'dogecoin', ADA:'cardano', AVAX:'avalanche-2',
-  DOT:'polkadot', MATIC:'matic-network', LINK:'chainlink', LTC:'litecoin',
-  UNI:'uniswap', ATOM:'cosmos', NEAR:'near', ICP:'internet-computer',
+  BNB:'binance-coin', DOGE:'dogecoin', ADA:'cardano', AVAX:'avalanche',
+  DOT:'polkadot', MATIC:'polygon', LINK:'chainlink', LTC:'litecoin',
+  UNI:'uniswap', ATOM:'cosmos', NEAR:'near-protocol', ICP:'internet-computer',
   FIL:'filecoin', APT:'aptos', ARB:'arbitrum', OP:'optimism',
   INJ:'injective-protocol', SUI:'sui', TIA:'celestia',
   WIF:'dogwifcoin', BONK:'bonk', PEPE:'pepe', SHIB:'shiba-inu',
-  TON:'the-open-network', TRX:'tron', XLM:'stellar', HBAR:'hedera-hashgraph',
+  TON:'toncoin', TRX:'tron', XLM:'stellar', HBAR:'hedera-hashgraph',
   VET:'vechain', ALGO:'algorand', ETC:'ethereum-classic', BCH:'bitcoin-cash',
-  QNT:'quant-network', XDC:'xdce-crowd-sale',
+  QNT:'quant-network', XDC:'xdc-network',
 };
 
 const NAMES = {
@@ -489,14 +547,17 @@ function load(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.p
 function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
 
 let portfolio     = load('rm_portfolio', DEFAULT_PORTFOLIO);
-let liveData      = {};
-let histData      = {};
+const _cachedLive = load('rm_liveData', null);
+let liveData      = (_cachedLive?.ts && Date.now() - _cachedLive.ts < 24 * 3600000) ? (_cachedLive.data || {}) : {};
+let histData      = load('rm_histData', {});   // persisted — survives page reloads
 let alertTargets  = load('rm_alertTargets', {});
 let triggeredAlerts = {};
-let arCountdownVal  = 60;
+let arCountdownVal  = 120;
 let arEnabled       = true;
 let lastStockFetch  = 0;
-const STOCK_REFRESH_MS = 5 * 60 * 1000; // 5 min — Yahoo Finance primary (no daily limit)
+let lastCryptoHistFetch = load('rm_lastCryptoHist', 0);
+const STOCK_REFRESH_MS    = 5 * 60 * 1000;
+const CRYPTO_HIST_TTL_MS  = 6 * 60 * 60 * 1000; // 6 hours between full history re-fetches
 
 const DEFAULT_STOCKS = ['SPY','QQQ','DIA','IWM'];
 const STOCK_NAMES = {
@@ -505,9 +566,16 @@ const STOCK_NAMES = {
   AAPL:'Apple', MSFT:'Microsoft', NVDA:'NVIDIA', TSLA:'Tesla', AMZN:'Amazon',
   GOOGL:'Alphabet (Google)', META:'Meta Platforms', JPM:'JPMorgan Chase',
   BAC:'Bank of America', WFC:'Wells Fargo', GS:'Goldman Sachs',
-  XLE:'Energy Select ETF', XLF:'Financial ETF', XLI:'Industrial ETF',
+  XLE:'Energy Select ETF (Oil & Gas)', XLF:'Financial ETF', XLI:'Industrial ETF',
   XLK:'Technology ETF', XLV:'Health Care ETF', XLU:'Utilities ETF',
-  GLD:'Gold ETF', SLV:'Silver ETF', USO:'Oil ETF',
+  GLD:'Gold ETF', SLV:'Silver ETF', USO:'Crude Oil ETF',
+  // Oil & Gas — Hormuz / geopolitical plays
+  XOM:'ExxonMobil', CVX:'Chevron', OXY:'Occidental Petroleum',
+  COP:'ConocoPhillips', MRO:'Marathon Oil', EOG:'EOG Resources',
+  HAL:'Halliburton (Oilfield Services)', SLB:'SLB / Schlumberger (Oil Services)',
+  BKR:'Baker Hughes (Oil Services)', KMI:'Kinder Morgan (Pipelines)',
+  WMB:'Williams Companies (Natural Gas)', ET:'Energy Transfer (Pipelines)',
+  STNG:'Scorpio Tankers', FRO:'Frontline (Oil Tankers)', DHT:'DHT Holdings (Tankers)',
   AMGN:'Amgen', JNJ:'Johnson & Johnson', PFE:'Pfizer',
   F:'Ford Motor', GM:'General Motors', BA:'Boeing', CAT:'Caterpillar',
   DIS:'Disney', NFLX:'Netflix', UBER:'Uber',
@@ -528,6 +596,8 @@ const STOCK_NAMES = {
   SAP:'SAP (Enterprise Software)', SNOW:'Snowflake (Data Cloud)',
   // Infrastructure & Industrial
   HON:'Honeywell', URI:'United Rentals', PWR:'Quanta Services',
+  NUE:'Nucor (Steel)', MLM:'Martin Marietta (Aggregates)', VMC:'Vulcan Materials',
+  DE:'Deere & Company', FAST:'Fastenal (Industrial Supply)', GWW:'W.W. Grainger',
   // Energy
   XOM:'ExxonMobil', CVX:'Chevron', COP:'ConocoPhillips',
   // AI Infrastructure — picks & shovels
@@ -536,15 +606,28 @@ const STOCK_NAMES = {
   AMAT:'Applied Materials (Chip Equipment)', AVGO:'Broadcom (AI Networking)',
   ARM:'ARM Holdings (Chip Architecture)', SMCI:'Super Micro (AI Servers)',
   // AI Power & Data Centers
-  CEG:'Constellation Energy (Nuclear/AI Power)', VST:'Vistra Energy (Power/AI)',
+  CEG:'Constellation Energy (Nuclear)', VST:'Vistra Energy (Power/AI)',
   ETN:'Eaton (Electrical Infrastructure)', EQIX:'Equinix (Data Center REIT)',
   DLR:'Digital Realty (Data Center REIT)', NRG:'NRG Energy',
+  // Nuclear — SMR & Uranium
+  CCJ:'Cameco (Uranium Mining)', BWXT:'BWX Technologies (Nuclear Components)',
+  OKLO:'Oklo (Sam Altman SMR)', SMR:'NuScale Power (SMR)',
+  NNE:'Nano Nuclear Energy', UEC:'Uranium Energy Corp', LEU:'Centrus (Uranium Enrichment)',
   // Robotics & Automation
+  ROK:'Rockwell Automation', TER:'Teradyne (Universal Robots)',
+  CGNX:'Cognex (Machine Vision)', ABB:'ABB (Industrial Robots)',
+  IRBT:'iRobot', BRKS:'Brooks Automation',
   PATH:'UiPath (Software Automation)', ISRG:'Intuitive Surgical (Medical Robotics)',
-  BRKS:'Brooks Automation', TRMB:'Trimble (Industrial AI)',
+  TRMB:'Trimble (Industrial AI)',
+  AMBA:'Ambarella (Robot Vision Chips)', MP:'MP Materials (Rare Earth Magnets)',
+  SYM:'Symbotic (Warehouse Robots)', HMC:'Hyundai (Boston Dynamics)',
   // Semiconductor / CHIPS Act
   INTC:'Intel (CHIPS Act)', TSM:'TSMC (Chip Manufacturing)', QCOM:'Qualcomm',
   LRCX:'Lam Research (Chip Equipment)', KLAC:'KLA Corp (Chip Equipment)',
+  // Telecom / Fiber
+  LUMN:'Lumen Technologies (Fiber/AI Infrastructure)', T:'AT&T', VZ:'Verizon',
+  // Clean Energy
+  BE:'Bloom Energy (Fuel Cells / Data Center Power)',
 };
 
 // ── Supply Chain Map ──────────────────────────────────────────────────────────
@@ -576,6 +659,24 @@ const SUPPLY_CHAINS = {
   // Energy / infrastructure
   XOM:  { name:'ExxonMobil',           suppliers:['CAT','URI','HON','XLE','HAL','SLB'] },
   CVX:  { name:'Chevron',              suppliers:['CAT','URI','HON','XLE','HAL','SLB'] },
+  // AI Infrastructure Construction — the physical buildout
+  CAT:  { name:'Caterpillar (AI Build)',      suppliers:['VRT','ETN','URI','PWR','NUE','MLM','CEG','VST','XLE','NVDA','EQIX','DLR','TRMB','HON'] },
+  // Nuclear & SMR — the AI power solution
+  CEG:  { name:'Constellation Energy (Nuclear)', suppliers:['CCJ','BWXT','LEU','UEC','ETN','PWR','VST','NRG','OKLO','NNE','VRT'] },
+  OKLO: { name:'Oklo (Small Modular Reactor)',   suppliers:['CCJ','BWXT','LEU','UEC','ETN','HON','TRMB','VRT'] },
+  // Robotics & Humanoid — the next industrial revolution
+  TSLA: { name:'Tesla (Optimus Robot)',          suppliers:['NVDA','CGNX','TER','ROK','ABB','ON','AMAT','TSM','HON','TRMB','AMBA','MP','QCOM'] },
+  NVDA: { name:'NVIDIA (Robot AI Platform)',     suppliers:['TSM','AMAT','LRCX','KLAC','ARM','MU','SMCI','VRT','ONTO','COHR','AMBA','QCOM'] },
+  ROK:  { name:'Rockwell Automation',            suppliers:['HON','CGNX','TER','ABB','NVDA','ANET','EMR','SYM'] },
+  HMC:  { name:'Hyundai (Boston Dynamics Atlas)',suppliers:['NVDA','AMBA','MP','CGNX','TER','ROK','ABB','QCOM','HON'] },
+  // ── Oil & Gas — Strait of Hormuz / geopolitical tension plays ────────────
+  // XLE is Tier-1 trigger: when it moves 3%+ the lag detector flags the downstream plays
+  XLE:  { name:'Oil & Gas ETF (Hormuz trigger)',  suppliers:['OXY','XOM','CVX','COP','MRO','EOG','HAL','SLB','BKR'] },
+  XOM:  { name:'ExxonMobil',                      suppliers:['HAL','SLB','BKR','KMI','WMB','ET','STNG','FRO'] },
+  CVX:  { name:'Chevron',                          suppliers:['HAL','SLB','BKR','OXY','KMI','WMB','ET'] },
+  OXY:  { name:'Occidental Petroleum',             suppliers:['HAL','SLB','BKR','KMI','DVN','FANG'] },
+  // Tankers move fast on Hormuz news — often same-day or ahead of XLE
+  STNG: { name:'Scorpio Tankers (Hormuz direct)',  suppliers:['FRO','DHT','KMI','WMB'] },
 };
 
 // Keywords in news titles → prime contractor ticker
@@ -601,32 +702,69 @@ const PRIME_KEYWORDS = [
   ['intel corp','INTC'],
   ['exxon','XOM'],
   ['chevron','CVX'],
+  ['caterpillar','CAT'],
+  ['data center construction','CAT'], ['ai data center build','CAT'],
+  ['infrastructure construction billion','CAT'],
+  ['constellation energy','CEG'], ['three mile island','CEG'],
+  ['nuclear power plant','CEG'], ['nuclear energy','CEG'],
+  ['small modular reactor','OKLO'], ['smr reactor','OKLO'],
+  ['oklo','OKLO'], ['nuscale','SMR'],
+  ['uranium contract','CCJ'], ['cameco','CCJ'],
+  ['tesla optimus','TSLA'],  ['humanoid robot','TSLA'], ['optimus robot','TSLA'],
+  ['figure ai','TSLA'],      ['robot factory','TSLA'],  ['robotics billion','ROK'],
+  ['nvidia robotics','NVDA'], ['nvidia isaac','NVDA'],  ['jensen huang robot','NVDA'],
+  ['boston dynamics','HMC'], ['atlas robot','HMC'],    ['hyundai robot','HMC'],
+  ['rare earth magnet','MP'], ['mp materials','MP'],   ['robot actuator','MP'],
+  ['ambarella robot','AMBA'], ['symbotic','SYM'],      ['warehouse robot','SYM'],
+  ['agility robotics','TER'], ['digit robot','TER'],   ['qualcomm robot','QCOM'],
+  // Oil & Gas — Strait of Hormuz / geopolitical triggers
+  ['strait of hormuz','XLE'], ['hormuz','XLE'],        ['iran oil','XLE'],
+  ['crude oil','XLE'],        ['oil prices','XLE'],    ['oil price','XLE'],
+  ['opec','XLE'],             ['oil supply','XLE'],    ['oil tanker','STNG'],
+  ['tanker seized','STNG'],   ['tanker attack','STNG'],['shipping lane','STNG'],
+  ['halliburton','HAL'],      ['schlumberger','SLB'],  ['baker hughes','BKR'],
+  ['kinder morgan','KMI'],    ['exxon','XOM'],         ['exxonmobil','XOM'],
+  ['chevron','CVX'],          ['occidental','OXY'],    ['marathon oil','MRO'],
+  ['natural gas price','WMB'],['lng export','WMB'],    ['pipeline','KMI'],
 ];
 
 let stockWatchlist   = load('rm_stocks', DEFAULT_STOCKS);
-let stockData        = {};
+// Load cached stock data; discard if > 12 hours old (stale after overnight)
+let _cachedStockData = load('rm_stockData', {});
+let _cachedStockDataTs = load('rm_stockDataTs', 0);
+let stockData = (Date.now() - _cachedStockDataTs < 12 * 60 * 60 * 1000) ? _cachedStockData : {};
 let stockAlerts      = load('rm_stockAlerts', {});
 let stockTriggered   = {};
+let stockHoldings    = load('rm_stockHoldings', {}); // { SYM: { qty, cost } }
 let stockHistory     = load('rm_stockHistory', {});
 let lastHistoryFetch = load('rm_lastHistFetch', 0);
 
-// One-time migration: add defense/sector stocks to existing watchlists
+/// One-time migration: add defense/sector stocks and fix known bad tickers
 (function migrateStocks() {
-  const add = ['LMT','RTX','PLTR','CAT','XLE'];
   let changed = false;
+  // Fix BRK → BRK.B (bare BRK ticker doesn't exist on exchanges)
+  const brkIdx = stockWatchlist.indexOf('BRK');
+  if (brkIdx !== -1) {
+    stockWatchlist.splice(brkIdx, 1);
+    if (!stockWatchlist.includes('BRK.B')) stockWatchlist.push('BRK.B');
+    changed = true;
+  }
+  // Add core watchlist stocks if missing
+  const add = ['LMT','RTX','PLTR','CAT','XLE','LUMN','BE'];
   add.forEach(s => { if (!stockWatchlist.includes(s)) { stockWatchlist.push(s); changed = true; } });
   if (changed) save('rm_stocks', stockWatchlist);
 })();
 
 // AI stocks are in the registry — add them manually via "Add a stock" to control API credit usage
 
-let newsItems       = [];
-let lastNewsRefresh = 0;
+const _newsCache = load('rm_newsCache', null);
+let newsItems       = (_newsCache?.ts && Date.now() - _newsCache.ts < 30 * 60 * 1000) ? (_newsCache.items || []) : [];
+let lastNewsRefresh = newsItems.length ? (Date.now() - 60000) : 0; // trigger refresh soon if cache is stale
 const NEWS_TTL      = 5 * 60 * 1000; // 5 minutes
 
 let congressTrades    = [];
 let lastCongressFetch = 0;
-const CONGRESS_TTL    = 6 * 60 * 60 * 1000; // 6 hours
+const CONGRESS_TTL    = 12 * 60 * 60 * 1000; // 12 hours — S3 data only updates daily anyway
 let congFilter        = 'all';
 
 let cBuysData      = load('rm_cBuys', []);
@@ -637,8 +775,16 @@ let congAllStars      = load('rm_congAllStars', []);
 let lastCongAllStars  = load('rm_congAllStarsTs', 0);
 let followedMembers   = load('rm_followed', []);
 const CONG_ALLSTARS_TTL = 24 * 60 * 60 * 1000;
-let scAlerts          = []; // supply chain contract alerts
-let macroData         = {}; // BTC, ETH, dominance, fear & greed, total market cap
+let scAlerts          = []; // supply chain contract alerts (live, from current news)
+const SC_PIN_TTL      = 10 * 24 * 3600 * 1000; // 10 days
+let pinnedScAlerts    = load('rm_pinnedSc', []).filter(a => Date.now() - a.pinnedAt < SC_PIN_TTL);
+// Seed macroData from cache so BTC Dominance shows immediately on reload
+const _mc = load('rm_macroCache', null);
+let macroData = (_mc && Date.now() - _mc.ts < 6 * 3600000)
+  ? { btcDominance: _mc.btcDominance, totalMktCap: _mc.totalMktCap, mktCapChange24h: _mc.mktCapChange24h,
+      btcPrice: _mc.btcPrice, btcChange24h: _mc.btcChange24h,
+      ethPrice: _mc.ethPrice, ethChange24h: _mc.ethChange24h }
+  : {};
 let holdings          = load('rm_holdings', {}); // { XRP: {qty:500, cost:0.86}, ... }
 
 // Pre-load Randy's holdings on first visit (only runs if nothing entered yet)
@@ -837,73 +983,65 @@ function renderMacro() {
 
 async function fetchMacro() {
   try {
-    // CoinGecko /global for dominance + total market cap
-    const gRes = await fetch('https://api.coingecko.com/api/v3/global');
-    if (gRes.ok) {
-      const gj = await gRes.json();
-      macroData.btcDominance    = gj.data?.market_cap_percentage?.bitcoin;
-      macroData.totalMktCap     = gj.data?.total_market_cap?.usd;
-      macroData.mktCapChange24h = gj.data?.market_cap_change_percentage_24h_usd;
+    const r = await fetch('/api/macro');
+    if (r.ok) {
+      const d = await r.json();
+      if (d.btcDominance != null) macroData.btcDominance    = d.btcDominance;
+      if (d.totalMktCap  != null) macroData.totalMktCap     = d.totalMktCap;
+      if (d.mktCapChange24h != null) macroData.mktCapChange24h = d.mktCapChange24h;
+      if (d.fearGreed    != null) macroData.fearGreed        = d.fearGreed;
+      if (d.fearGreedLabel)       macroData.fearGreedLabel   = d.fearGreedLabel;
+      const existing = load('rm_macroCache', {});
+      save('rm_macroCache', { ...existing, btcDominance: macroData.btcDominance,
+        totalMktCap: macroData.totalMktCap, mktCapChange24h: macroData.mktCapChange24h,
+        fearGreed: macroData.fearGreed, fearGreedLabel: macroData.fearGreedLabel, ts: Date.now() });
     }
-  } catch(e) { console.warn('CoinGecko global:', e.message); }
-
-  try {
-    // Alternative.me Fear & Greed Index (CORS-friendly, no key needed)
-    const fgRes = await fetch('https://api.alternative.me/fng/');
-    if (fgRes.ok) {
-      const fgj = await fgRes.json();
-      macroData.fearGreed      = parseInt(fgj.data[0].value);
-      macroData.fearGreedLabel = fgj.data[0].value_classification;
-    }
-  } catch(e) { console.warn('Fear & Greed:', e.message); }
-
+  } catch(e) { console.warn('macro:', e.message); }
   renderMacro();
 }
 
-// ── API: Live prices ──────────────────────────────────────────────────────────
+// ── API: Live prices (Vercel proxy → CoinCap, same-domain, no CORS ever) ──────
 async function fetchLive() {
   const portfolioIds = portfolio.map(s => COINS[s]).filter(Boolean);
-  // Always piggyback BTC + ETH for the macro pulse strip
   const allIds = [...new Set([...portfolioIds, 'bitcoin', 'ethereum'])];
   if (!allIds.length) return;
-  const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${encodeURIComponent(allIds.join(','))}&price_change_percentage=24h,7d,1y&per_page=50`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('CoinGecko ' + res.status);
-  const data = await res.json();
-  data.forEach(c => {
-    // BTC/ETH → macroData
-    if (c.id === 'bitcoin') {
-      macroData.btcPrice = c.current_price;
-      macroData.btcChange24h = c.price_change_percentage_24h;
-    }
-    if (c.id === 'ethereum') {
-      macroData.ethPrice = c.current_price;
-      macroData.ethChange24h = c.price_change_percentage_24h;
-    }
-    // Portfolio coins → liveData
+  const res = await fetch(`/api/prices?ids=${encodeURIComponent(allIds.join(','))}`);
+  if (!res.ok) throw new Error('prices ' + res.status);
+  const json = await res.json();
+  (json.data || []).forEach(c => {
+    const price     = parseFloat(c.priceUsd) || 0;
+    const change24h = parseFloat(c.changePercent24Hr) ?? null;
+    if (c.id === 'bitcoin')  { macroData.btcPrice = price; macroData.btcChange24h = change24h; }
+    if (c.id === 'ethereum') { macroData.ethPrice = price; macroData.ethChange24h = change24h; }
     const sym = Object.keys(COINS).find(k => COINS[k] === c.id);
     if (!sym) return;
     liveData[sym] = {
-      price:     c.current_price,
-      change24h: c.price_change_percentage_24h,
-      change7d:  c.price_change_percentage_7d_in_currency,
-      change1y:  c.price_change_percentage_1y_in_currency,
-      marketCap: c.market_cap,
-      vol24h:    c.total_volume,
+      price,
+      change24h,
+      change7d:  liveData[sym]?.change7d  ?? null,
+      change1y:  liveData[sym]?.change1y  ?? null,
+      marketCap: parseFloat(c.marketCapUsd) || null,
+      vol24h:    parseFloat(c.volumeUsd24Hr) || null,
     };
   });
+  save('rm_liveData', { data: liveData, ts: Date.now() });
+  // Cache BTC/ETH prices so the macro strip survives page reloads when live fetch fails
+  const existing = load('rm_macroCache', {});
+  save('rm_macroCache', { ...existing, btcPrice: macroData.btcPrice, btcChange24h: macroData.btcChange24h,
+    ethPrice: macroData.ethPrice, ethChange24h: macroData.ethChange24h, ts: existing.ts || Date.now() });
 }
 
-// ── API: 2-year history ───────────────────────────────────────────────────────
+// ── API: 2-year history (Vercel proxy → CoinCap, same-domain) ────────────────
 async function fetchHistory(sym) {
   const id = COINS[sym];
   if (!id) return;
-  const url = `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=730&interval=daily`;
-  const res = await fetch(url);
+  const now = Date.now();
+  const twoYearsAgo = now - 730 * 24 * 60 * 60 * 1000;
+  const res = await fetch(`/api/history?id=${encodeURIComponent(id)}&start=${twoYearsAgo}&end=${now}`);
   if (!res.ok) throw new Error('history ' + res.status);
-  const data = await res.json();
-  const prices = (data.prices || []).map(p => p[1]);
-  if (!prices.length) return;
+  const json = await res.json();
+  const prices = (json.data || []).map(p => parseFloat(p.priceUsd)).filter(v => !isNaN(v));
+  if (prices.length < 10) return;
   const mid = Math.floor(prices.length / 2);
   const last1y = prices.slice(mid);
   histData[sym] = {
@@ -914,6 +1052,11 @@ async function fetchHistory(sym) {
     high1y:     Math.max(...last1y),
     low1y:      Math.min(...last1y),
   };
+  // Compute 7d change from history and store in liveData
+  const p7 = prices[prices.length - 8];
+  const pNow = prices[prices.length - 1];
+  if (p7 && liveData[sym]) liveData[sym].change7d = ((pNow - p7) / p7) * 100;
+  save('rm_histData', histData);
 }
 
 // ── Status helpers ────────────────────────────────────────────────────────────
@@ -931,11 +1074,19 @@ async function refreshAll() {
     await fetchLive();
     renderGrid();
     renderMacro(); // BTC/ETH now available from fetchLive piggyback
-    fetchMacro();  // dominance + fear & greed run in background (different endpoints)
-    setStatus('loading', 'Loading 2-year history...');
-    for (const sym of portfolio) {
-      try { await fetchHistory(sym); } catch (e) { console.warn('hist error', sym, e); }
-      await new Promise(r => setTimeout(r, 600));
+    setTimeout(() => fetchMacro(), 3000); // delay 3s so fetchMacro doesn't race with fetchLive on CoinGecko rate limits
+    // Fetch 2-yr history at most once per 6 hours (skip coins already cached)
+    const needsHist = portfolio.filter(s => !histData[s]);
+    const forceRefreshHist = Date.now() - lastCryptoHistFetch > CRYPTO_HIST_TTL_MS;
+    const toFetch = forceRefreshHist ? portfolio : needsHist;
+    if (toFetch.length) {
+      setStatus('loading', 'Loading 2-year history...');
+      for (const sym of toFetch) {
+        try { await fetchHistory(sym); } catch (e) { console.warn('hist error', sym, e); }
+        await new Promise(r => setTimeout(r, 600));
+      }
+      lastCryptoHistFetch = Date.now();
+      save('rm_lastCryptoHist', lastCryptoHistFetch);
     }
     renderGrid();
     const now = new Date().toLocaleTimeString();
@@ -945,16 +1096,34 @@ async function refreshAll() {
     if (Date.now() - lastStockFetch >= STOCK_REFRESH_MS) {
       try { await fetchStocks(); renderStockGrid(); checkStockAlerts(); lastStockFetch = Date.now(); } catch(se) { console.warn('Stocks:', se); }
     }
-    fetchStockHistory(); // non-blocking — throttled to once/day
+    setTimeout(() => fetchStockHistory(), 8000); // non-blocking, delayed to avoid racing with fetchStocks v8 calls
     fetchNews();           // throttled — 5 min
-    fetchCongress();       // throttled — 6 hours (now uses real STOCK Act filings)
-    fetchCongressBuys();   // throttled — 4 hours
+    fetchCongress();          // throttled — 6 hours (news-based trade feed)
+    fetchCongressBuys();      // throttled — 4 hours
+    fetchHouseLeaderboard();  // throttled — 7 days (official PTR rankings)
+    fetchEarnings();          // throttled — 24 hours (earnings date warnings)
+    fetchPolicyNews();        // throttled — 15 min (Trump/tariff/policy alerts)
     document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
     setStatus('ok', 'All data loaded — ' + now);
-    arCountdownVal = 60;
+    arCountdownVal = 120;
   } catch (e) {
-    setStatus('error', 'Error: ' + e.message + '. CoinGecko may be rate-limiting. Try again in a minute.');
-    console.error(e);
+    console.error('refreshAll error:', e);
+    const hasCached = Object.keys(liveData).length > 0;
+    if (hasCached) {
+      renderGrid();
+      renderMacro();
+      setStatus('error', '⚠ Live prices unavailable — showing cached data. Will retry.');
+    } else {
+      setStatus('error', 'Error: ' + e.message + '. CoinGecko may be rate-limiting. Try again in a minute.');
+    }
+    // Still run non-CoinGecko fetches
+    fetchNews();
+    fetchCongress();
+    fetchCongressBuys();
+    if (Date.now() - lastStockFetch >= STOCK_REFRESH_MS) {
+      fetchStocks().then(() => { renderStockGrid(); checkStockAlerts(); lastStockFetch = Date.now(); }).catch(() => {});
+    }
+    arCountdownVal = 120;
   }
 }
 
@@ -1429,6 +1598,105 @@ function checkAlerts() {
   }
 }
 
+// ── Policy Watch — Trump Truth Social + tariffs + sanctions ──────────────────
+const POLICY_QUERIES = [
+  'Trump Truth Social tariff trade stocks market 2026',
+  'Trump executive order oil Iran sanctions trade deal 2026',
+  'White House tariff announcement trade company stocks 2026',
+  'Trump statement oil OPEC Iran Hormuz energy 2026',
+];
+
+// keyword in headline → which stocks are impacted
+const POLICY_IMPACTS = [
+  [['tariff china','china trade','trade war','chip export ban'],        ['AAPL','NVDA','TSM','QCOM','AMAT']],
+  [['tariff steel','steel tariff','aluminum tariff'],                   ['NUE','X','STLD','AA']],
+  [['iran','hormuz','oil sanction','crude sanction'],                   ['XLE','OXY','STNG','FRO','HAL']],
+  [['oil price','crude oil','opec','energy sanction'],                  ['XLE','OXY','CVX','XOM','MRO']],
+  [['defense','military budget','pentagon','nato spending'],            ['LMT','RTX','NOC','GD','PLTR']],
+  [['pharmaceutical price','drug price','medicare'],                    ['PFE','LLY','AMGN','MRK']],
+  [['nvidia','ai chip','semiconductor export','chip ban'],              ['NVDA','AMD','TSM','AMAT']],
+  [['tesla','electric vehicle','ev subsidy','ev credit'],               ['TSLA']],
+  [['apple','iphone tariff','china apple'],                             ['AAPL']],
+  [['natural gas','lng','pipeline','gas price'],                        ['XLE','KMI','WMB','ET']],
+  [['bitcoin','crypto','digital asset','stablecoin'],                   ['BTC','ETH']],
+  [['palantir','government contract','doge cut','federal spending'],    ['PLTR','SAIC','LDOS','BAH']],
+  [['lockheed','raytheon','boeing defense','general dynamics'],         ['LMT','RTX','BA','GD']],
+];
+
+let policyNews      = [];
+let lastPolicyFetch = 0;
+const POLICY_TTL    = 15 * 60 * 1000;
+
+async function fetchPolicyNews(force = false) {
+  if (!force && Date.now() - lastPolicyFetch < POLICY_TTL && policyNews.length) {
+    renderPolicyWatch(); return;
+  }
+  const el = document.getElementById('policyList');
+  if (el) el.innerHTML = '<div class="news-empty" style="color:var(--muted);">Scanning Trump Truth Social + policy feeds…</div>';
+
+  const all = [];
+  for (const q of POLICY_QUERIES) {
+    try {
+      const r = await fetch('/api/news?q=' + encodeURIComponent(q), { signal: AbortSignal.timeout(9000) });
+      if (r.ok) { const d = await r.json(); all.push(...(d.items || [])); }
+    } catch(_) {}
+    await new Promise(r => setTimeout(r, 200));
+  }
+
+  // Dedupe by title prefix
+  const seen = new Set();
+  policyNews = all.filter(item => {
+    const key = item.title.slice(0, 60).toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key); return true;
+  }).sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate)).slice(0, 20);
+
+  lastPolicyFetch = Date.now();
+  renderPolicyWatch();
+}
+
+function getPolicyImpact(title) {
+  const t = title.toLowerCase();
+  const tags = new Set();
+  for (const [keywords, stocks] of POLICY_IMPACTS) {
+    if (keywords.some(kw => t.includes(kw))) stocks.forEach(s => tags.add(s));
+  }
+  return [...tags];
+}
+
+function renderPolicyWatch() {
+  const el = document.getElementById('policyList');
+  if (!el) return;
+  if (!policyNews.length) {
+    el.innerHTML = '<div class="news-empty">No policy alerts found — click ↻ Refresh.</div>';
+    return;
+  }
+  const watchSet = new Set(stockWatchlist);
+  el.innerHTML = policyNews.map(item => {
+    const tags  = getPolicyImpact(item.title);
+    const age   = item.pubDate ? timeAgo(item.pubDate) : '';
+    const isTruth = item.title.toLowerCase().includes('truth social') || item.source?.toLowerCase().includes('truth');
+    const tagHtml = tags.map(s => {
+      const inW = watchSet.has(s);
+      return `<span onclick="addToWatchlist('${s}')" style="display:inline-block;padding:2px 7px;border-radius:5px;
+        font-size:10px;font-weight:800;margin:2px 2px 0 0;cursor:pointer;
+        background:${inW?'#0d2d1a':'#0a1a2e'};color:${inW?'var(--good)':'var(--accent)'};
+        border:1px solid ${inW?'var(--good)':'var(--border)'};">${s}${inW?' ★':''}</span>`;
+    }).join('');
+    return `<div class="news-item" onclick="window.open('${item.link}','_blank')" style="border-left:3px solid #f9a825;cursor:pointer;">
+      <div class="news-meta" style="min-width:44px;">
+        <span style="font-size:8px;color:#f9a825;font-weight:800;display:block;">${isTruth?'TRUTH':'POLICY'}</span>
+        <span class="news-time">${age}</span>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:700;line-height:1.3;">${item.title}</div>
+        ${tagHtml ? `<div style="margin-top:4px;">${tagHtml}</div>` : ''}
+        <div style="font-size:10px;color:var(--muted);margin-top:2px;">${item.source || ''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 // ── News Feed ─────────────────────────────────────────────────────────────────
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -1441,43 +1709,22 @@ function timeAgo(dateStr) {
 }
 
 function detectTicker(title) {
+  // Case-sensitive match only — "Cat lounge" must not match CAT ticker
+  // Skip 1-char tickers in auto-detect (too many false positives)
+  const SHORT_SKIP = new Set(['A','F','S','T','X','M','B','C','D','G','K','L','N','O','P','R','W']);
   const allSyms = [...new Set([...stockWatchlist, ...Object.keys(STOCK_NAMES)])];
   for (const s of allSyms) {
-    if (new RegExp(`\\b${s}\\b`,'i').test(title)) return s;
+    if (SHORT_SKIP.has(s)) continue;
+    if (new RegExp(`\\b${s}\\b`).test(title)) return s;
   }
   return null;
 }
 
 async function fetchNewsQuery(query) {
-  const rss = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
-
-  const parseFeed = xmlText => {
-    const xml = new DOMParser().parseFromString(xmlText, 'text/xml');
-    return Array.from(xml.querySelectorAll('item')).slice(0, 8).map(item => {
-      const linkEl = item.querySelector('link');
-      const link = linkEl ? (linkEl.textContent || linkEl.nextSibling?.nodeValue || '') : '';
-      return {
-        title:   item.querySelector('title')?.textContent?.replace(/\s*-\s*[^-]+$/, '') || '',
-        link:    link.trim(),
-        pubDate: item.querySelector('pubDate')?.textContent || '',
-        source:  item.querySelector('source')?.textContent || '',
-      };
-    }).filter(i => i.title);
-  };
-
-  // Try allorigins (wraps XML in JSON)
-  try {
-    const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(rss)}`);
-    if (res.ok) { const j = await res.json(); if (j.contents) return parseFeed(j.contents); }
-  } catch(e) { /* fall through */ }
-
-  // Try corsproxy.io (returns raw XML)
-  try {
-    const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(rss)}`, { cache: 'no-store' });
-    if (res.ok) return parseFeed(await res.text());
-  } catch(e) { /* fall through */ }
-
-  throw new Error('News proxies unavailable');
+  const res = await fetch(`/api/news?q=${encodeURIComponent(query)}`);
+  if (!res.ok) throw new Error('news api ' + res.status);
+  const json = await res.json();
+  return json.items || [];
 }
 
 async function fetchNews(force = false) {
@@ -1504,11 +1751,20 @@ async function fetchNews(force = false) {
     { q: 'AI data center investment billion NVIDIA AMD chip',              tag: 'AI'       },
     { q: 'CHIPS Act semiconductor factory award billion Intel TSMC',       tag: 'AI'       },
     { q: 'artificial intelligence government contract DoD DARPA 2026',     tag: 'AI'       },
+    // AI infrastructure construction — Caterpillar's lane
+    { q: 'data center construction billion Caterpillar Vertiv Eaton 2026', tag: 'CAT'      },
+    { q: 'AI infrastructure build power grid construction spending 2026',   tag: 'CAT'      },
+    // Nuclear & SMR — the power solution
+    { q: 'small modular reactor SMR nuclear approval data center 2026',    tag: 'OKLO'     },
+    { q: 'nuclear power AI electricity demand Constellation Cameco 2026',  tag: 'CEG'      },
+    // Robotics & humanoid robots
+    { q: 'humanoid robot Tesla Optimus Figure AI factory billion 2026',    tag: 'TSLA'     },
+    { q: 'NVIDIA robotics Isaac platform robot AI Cognex Teradyne 2026',   tag: 'NVDA'     },
     // Cybersecurity contracts
     { q: 'cybersecurity government contract award CrowdStrike Palo Alto',  tag: 'CYBER'    },
-    // Watchlist stocks — split into two groups to avoid query length limits
-    { q: stockWatchlist.slice(0, 5).join(' OR '),                         tag: null       },
-    { q: stockWatchlist.slice(5, 10).join(' OR '),                        tag: null       },
+    // Watchlist stocks — use $TICKER format so Google News treats them as stock symbols not words
+    { q: stockWatchlist.slice(0, 5).map(s => '$' + s).join(' OR '),      tag: null       },
+    { q: stockWatchlist.slice(5, 10).map(s => '$' + s).join(' OR '),     tag: null       },
   ].filter(x => x.q.trim());
 
   const all = [];
@@ -1528,11 +1784,14 @@ async function fetchNews(force = false) {
     .slice(0, 25);
 
   lastNewsRefresh = Date.now();
+  save('rm_newsCache', { items: newsItems, ts: lastNewsRefresh });
   renderNews();
   scAlerts = detectContractAlerts(newsItems);
   renderSupplyChain();
   if (btn) btn.textContent = '↺ Refresh News';
 }
+// Pre-populate scAlerts from cached news so supply chain renders immediately on load
+if (newsItems.length) { try { scAlerts = detectContractAlerts(newsItems); } catch(_){} }
 
 function renderNews() {
   const el = document.getElementById('newsList');
@@ -1557,6 +1816,301 @@ function renderNews() {
       </div>
     </div>`;
   }).join('');
+}
+
+// ── Lag Detector ─────────────────────────────────────────────────────────────
+// Finds Tier-1 stocks that moved big today whose supply chain hasn't caught up
+async function runLagDetector() {
+  const listEl = document.getElementById('lagList');
+  const sec    = document.getElementById('lagSection');
+  if (!listEl) return;
+  if (sec) sec.style.display = 'block';
+  listEl.innerHTML = '<div class="news-empty" style="color:var(--muted);">Fetching current prices for supply chain stocks…</div>';
+
+  // Collect all supply chain tickers not already in stockData
+  const scSyms = [...new Set(Object.values(SUPPLY_CHAINS).flatMap(c => c.suppliers || []))];
+  const missing = scSyms.filter(s => !stockData[s]?.price);
+
+  // Fetch missing prices in one batch
+  if (missing.length) {
+    try {
+      const r = await fetch(`/api/prices?syms=${encodeURIComponent(missing.join(','))}`, { signal: AbortSignal.timeout(12000) });
+      if (r.ok) {
+        const d = await r.json();
+        Object.assign(stockData, d.data || {});
+      }
+    } catch(_) {}
+  }
+
+  // Find big movers (>3% today) in our Tier-1 list
+  const BIG_MOVE = 3.0;
+  const opportunities = [];
+
+  for (const [tier1sym, chain] of Object.entries(SUPPLY_CHAINS)) {
+    const d1 = stockData[tier1sym];
+    if (!d1?.price || Math.abs(d1.changePercent || 0) < BIG_MOVE) continue;
+    const isUp = (d1.changePercent || 0) > 0;
+
+    const lagging = [];
+    for (const sup of (chain.suppliers || [])) {
+      const ds = stockData[sup];
+      if (!ds?.price) continue;
+      const supPct = ds.changePercent || 0;
+      // Supply chain should move in same direction — flag if it hasn't moved much
+      if (isUp && supPct < BIG_MOVE * 0.4) lagging.push({ sym: sup, pct: supPct });
+      if (!isUp && supPct > -BIG_MOVE * 0.4) lagging.push({ sym: sup, pct: supPct });
+    }
+    if (lagging.length) {
+      opportunities.push({
+        tier1: tier1sym,
+        tier1name: chain.name || tier1sym,
+        tier1pct: d1.changePercent || 0,
+        isUp,
+        lagging: lagging.sort((a, b) => Math.abs(a.pct) - Math.abs(b.pct)),
+      });
+    }
+  }
+
+  if (!opportunities.length) {
+    listEl.innerHTML = '<div class="news-empty">No lag opportunities right now — no Tier-1 stocks moved >3% today, or all supply chain stocks already moved with them.</div>';
+    return;
+  }
+
+  opportunities.sort((a, b) => Math.abs(b.tier1pct) - Math.abs(a.tier1pct));
+  const watching = new Set(stockWatchlist);
+
+  listEl.innerHTML = opportunities.map(op => {
+    const dir      = op.isUp ? '▲' : '▼';
+    const dirColor = op.isUp ? 'var(--good)' : 'var(--bad)';
+    const chips    = op.lagging.map(l => {
+      const inWatch = watching.has(l.sym);
+      const lag     = op.isUp ? `${l.pct >= 0 ? '+' : ''}${l.pct.toFixed(1)}% (lag)` : `${l.pct >= 0 ? '+' : ''}${l.pct.toFixed(1)}% (lag)`;
+      return `<span onclick="addToWatchlist('${l.sym}')" title="Tap to add ${l.sym} to watchlist"
+        style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;
+          background:${inWatch?'#132613':'var(--input-bg)'};border:1px solid ${inWatch?'var(--good)':'var(--border)'};color:${inWatch?'var(--good)':'var(--accent)'};margin:2px;">
+        ${l.sym} <span style="font-size:10px;color:var(--muted);font-weight:400;">${lag}</span>${inWatch?' ✓':''}
+      </span>`;
+    }).join('');
+    return `<div style="background:var(--card-bg);border:1.5px solid ${dirColor}33;border-left:3px solid ${dirColor};border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+        <span style="font-size:15px;font-weight:800;color:var(--accent);">${op.tier1}</span>
+        <span style="font-size:13px;font-weight:700;color:${dirColor};">${dir}${Math.abs(op.tier1pct).toFixed(1)}% today</span>
+        <span style="font-size:11px;color:var(--muted);">${op.tier1name}</span>
+        <span style="font-size:10px;color:#f0c040;background:#2a2000;padding:2px 8px;border-radius:4px;margin-left:auto;">⏱ ${op.lagging.length} lagging</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Supply chain stocks that haven't followed yet — 24-48hr window:</div>
+      <div style="display:flex;flex-wrap:wrap;gap:2px;">${chips}</div>
+    </div>`;
+  }).join('') + `<div style="font-size:10px;color:var(--muted);padding:6px 0 0;">Lag = Tier-1 moved >${BIG_MOVE}% but supplier moved <${(BIG_MOVE*0.4).toFixed(0)}% in same direction. Tap any chip to add to watchlist.</div>`;
+}
+
+function addToWatchlist(sym) {
+  sym = (TICKER_ALIAS[sym] || sym).toUpperCase();
+  if (stockWatchlist.includes(sym)) return;
+  stockWatchlist.push(sym);
+  save('rm_stocks', stockWatchlist);
+  renderStockGrid();
+  fetchStocks().then(() => renderStockGrid());
+  // Re-render lag detector chips to show ✓
+  runLagDetector();
+}
+
+// ── Swing Trade Screener ──────────────────────────────────────────────────────
+let screenerData = [];
+let screenerTs   = 0;
+
+// ── Earnings Calendar ──────────────────────────────────────────────────────────
+let earningsData     = load('rm_earnings', {});
+let lastEarningsFetch = load('rm_earningsFetch', 0);
+const EARNINGS_TTL   = 24 * 60 * 60 * 1000;
+
+// ── Trade Journal ──────────────────────────────────────────────────────────────
+let tradeJournal = load('rm_journal', []);
+const SCREENER_TTL = 6 * 60 * 60 * 1000;
+
+// ── Earnings Calendar fetch ────────────────────────────────────────────────────
+async function fetchEarnings(force = false) {
+  if (!force && Date.now() - lastEarningsFetch < EARNINGS_TTL && Object.keys(earningsData).length) return;
+  if (!stockWatchlist.length) return;
+  try {
+    const syms = [...new Set(stockWatchlist)].slice(0, 25).join(',');
+    const r = await fetch(`/api/earnings?syms=${syms}`, { signal: AbortSignal.timeout(13000) });
+    if (!r.ok) return;
+    const d = await r.json();
+    earningsData     = d.earnings || {};
+    lastEarningsFetch = Date.now();
+    save('rm_earnings', earningsData);
+    save('rm_earningsFetch', lastEarningsFetch);
+    renderStockGrid();
+  } catch(_) {}
+}
+
+// ── Trade Journal ─────────────────────────────────────────────────────────────
+function toggleClosePanel(sym) {
+  const el = document.getElementById('closePanel_' + sym);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function recordCloseTrade(sym) {
+  const h = stockHoldings[sym];
+  if (!h || !h.qty || !h.cost) return;
+  const exitPrice = parseFloat(document.getElementById('exitPrice_' + sym)?.value);
+  if (!exitPrice || isNaN(exitPrice) || exitPrice <= 0) { alert('Enter a valid exit price.'); return; }
+  const note = document.getElementById('exitNote_' + sym)?.value || '';
+  const pnlDollar = +(( exitPrice - h.cost) * h.qty).toFixed(2);
+  const pnlPct    = +(((exitPrice - h.cost) / h.cost) * 100).toFixed(2);
+  const confirmMsg = `Close ${h.qty} shares of ${sym}?\n\nSold at: $${exitPrice}\nP&L: ${pnlDollar >= 0 ? '+' : ''}$${pnlDollar} (${pnlPct >= 0 ? '+' : ''}${pnlPct}%)\n\nThis will remove the position from your portfolio.`;
+  if (!confirm(confirmMsg)) return;
+  tradeJournal.unshift({
+    id: Date.now(), sym, qty: h.qty,
+    entryPrice: h.cost, entryDate: h.entryDate || null,
+    exitPrice, exitDate: new Date().toISOString().slice(0, 10),
+    pnlDollar, pnlPct, note,
+  });
+  save('rm_journal', tradeJournal);
+  delete stockHoldings[sym];
+  save('rm_stockHoldings', stockHoldings);
+  renderStockGrid();
+  renderStockPortfolioSummary();
+  renderTradeJournal();
+  document.getElementById('sec-journal')?.scrollIntoView({ behavior: 'smooth' });
+}
+
+function renderTradeJournal() {
+  const el = document.getElementById('journalList');
+  if (!el) return;
+  if (!tradeJournal.length) {
+    el.innerHTML = '<div class="news-empty">No closed trades yet — close a position from your stock card to log it here.</div>';
+    return;
+  }
+  const wins     = tradeJournal.filter(t => t.pnlDollar > 0).length;
+  const totalPnl = tradeJournal.reduce((s, t) => s + t.pnlDollar, 0);
+  const winRate  = Math.round(wins / tradeJournal.length * 100);
+  el.innerHTML = `
+    <div style="display:flex;gap:20px;padding:10px 0 14px;border-bottom:1px solid var(--border);margin-bottom:8px;flex-wrap:wrap;">
+      <div style="text-align:center;"><div style="font-size:10px;color:var(--muted);margin-bottom:2px;">TRADES</div><div style="font-size:22px;font-weight:900;">${tradeJournal.length}</div></div>
+      <div style="text-align:center;"><div style="font-size:10px;color:var(--muted);margin-bottom:2px;">WIN RATE</div><div style="font-size:22px;font-weight:900;color:${winRate>=50?'var(--good)':'var(--bad)'};">${winRate}%</div></div>
+      <div style="text-align:center;"><div style="font-size:10px;color:var(--muted);margin-bottom:2px;">TOTAL P&L</div><div style="font-size:22px;font-weight:900;color:${totalPnl>=0?'var(--good)':'var(--bad)'};">${totalPnl>=0?'+':''}$${Math.abs(totalPnl).toFixed(2)}</div></div>
+      <div style="text-align:center;"><div style="font-size:10px;color:var(--muted);margin-bottom:2px;">WINNERS</div><div style="font-size:22px;font-weight:900;color:var(--good);">${wins}</div></div>
+    </div>
+    ${tradeJournal.map(t => {
+      const won = t.pnlDollar > 0;
+      return `<div style="padding:10px 0;border-bottom:1px solid #0f2a45;display:flex;align-items:center;gap:10px;">
+        <div style="min-width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;
+          background:${won?'#0d2d1a':'#2d0d0d'};color:${won?'var(--good)':'var(--bad)'};">${won?'WIN':'LOSS'}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:800;">${t.sym} &nbsp;
+            <span style="color:${won?'var(--good)':'var(--bad)'};">${t.pnlDollar>=0?'+':''}$${t.pnlDollar.toFixed(2)} (${t.pnlPct>=0?'+':''}${t.pnlPct.toFixed(1)}%)</span>
+          </div>
+          <div style="font-size:10px;color:var(--muted);">${t.qty} sh &bull; bought $${t.entryPrice} &rarr; sold $${t.exitPrice} &bull; ${t.exitDate}</div>
+          ${t.note?`<div style="font-size:10px;color:#6aaeff;margin-top:2px;font-style:italic;">"${t.note}"</div>`:''}
+        </div>
+      </div>`;
+    }).join('')}`;
+}
+
+function clearJournal() {
+  if (!confirm('Delete all trade history? This cannot be undone.')) return;
+  tradeJournal = [];
+  save('rm_journal', []);
+  renderTradeJournal();
+}
+
+async function runScreener(force = false) {
+  if (!force && screenerData.length && Date.now() - screenerTs < SCREENER_TTL) {
+    renderScreener();
+    return;
+  }
+  const btn      = document.getElementById('screenerBtn');
+  const statusEl = document.getElementById('screenerStatus');
+  const listEl   = document.getElementById('screenerList');
+  const setS     = msg => { if (statusEl) statusEl.textContent = msg; };
+
+  if (btn) btn.disabled = true;
+  setS('Building stock universe from your watchlist + supply chain stocks…');
+  if (listEl) listEl.innerHTML = '';
+
+  // Universe: watchlist + all supply chain stocks (deduped)
+  const scSyms = [...new Set(Object.values(SUPPLY_CHAINS).flatMap(c => c.suppliers || []))];
+  const universe = [...new Set([...stockWatchlist, ...scSyms])].filter(s => /^[A-Z]{1,5}$/.test(s));
+
+  setS(`Analyzing ${universe.length} stocks (2-year history)… this takes ~15–20 sec, cached 6 hrs.`);
+
+  try {
+    const r = await fetch(`/api/screener?syms=${encodeURIComponent(universe.join(','))}`, {
+      signal: AbortSignal.timeout(44000),
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    screenerData = d.results || [];
+    screenerTs   = Date.now();
+    setS(`Screened ${d.screened} stocks · ${d.total} returned results · cached 6 hrs`);
+    renderScreener();
+  } catch(e) {
+    setS(`Error: ${e.message} — try again in a moment.`);
+  }
+  if (btn) btn.disabled = false;
+}
+
+function renderScreener() {
+  const listEl = document.getElementById('screenerList');
+  if (!listEl || !screenerData.length) return;
+  const watching = new Set(stockWatchlist);
+
+  const gradeLabels = {
+    A: 'Best swing setup — right volatility, in uptrend, not overextended',
+    B: 'Good swing candidate',
+    C: 'Borderline — verify trend before trading',
+    D: 'Poor swing setup — too quiet, too wild, or already overextended',
+  };
+
+  // Show top 25, grouped by grade
+  const byGrade = { A: [], B: [], C: [], D: [] };
+  screenerData.slice(0, 50).forEach(s => { (byGrade[s.grade] || byGrade.D).push(s); });
+
+  let html = '';
+  for (const [grade, stocks] of Object.entries(byGrade)) {
+    if (!stocks.length) continue;
+    const gradeColor = stocks[0]?.gradeColor || '#888';
+    html += `<div style="font-size:11px;font-weight:700;color:${gradeColor};padding:8px 0 4px;border-bottom:1px solid var(--border);margin-bottom:6px;">
+      Grade ${grade} — ${gradeLabels[grade]}
+    </div>`;
+    html += stocks.map(s => {
+      const inWatch  = watching.has(s.sym);
+      const trendCol = s.trend === 'Strong Up' ? 'var(--good)' : s.trend === 'Up' ? '#aeea00' : 'var(--bad)';
+      const retCol   = s.yearReturn >= 0 ? 'var(--good)' : 'var(--bad)';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--border)22;flex-wrap:wrap;">
+        <span style="font-size:22px;font-weight:900;color:${s.gradeColor};min-width:24px;">${grade}</span>
+        <div style="flex:1;min-width:120px;">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span style="font-size:14px;font-weight:800;color:var(--accent);">${s.sym}</span>
+            <span style="font-size:11px;color:${trendCol};">▲ ${s.trend}</span>
+            <span style="font-size:10px;color:var(--muted);">±${s.avgMove}%/wk</span>
+            <span style="font-size:10px;color:${retCol};">${s.yearReturn >= 0 ? '+' : ''}${s.yearReturn}% yr</span>
+            ${s.gainFrom52Low > 150 ? `<span style="font-size:10px;color:var(--bad);">⚠ +${s.gainFrom52Low}% off low</span>` : ''}
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px;">
+            Score ${s.score}/100 · ${s.winRate}% win rate · $${s.current} ·
+            ${s.distFrom52High > 0 ? s.distFrom52High + '% below 52wk high' : 'at 52wk high'}
+          </div>
+        </div>
+        <button onclick="addCongressPick('${s.sym}')"
+          style="padding:4px 10px;font-size:10px;border-radius:5px;border:1px solid ${inWatch?'var(--good)':'var(--border)'};
+            background:${inWatch?'#132613':'var(--input-bg)'};color:${inWatch?'var(--good)':'var(--text)'};cursor:pointer;white-space:nowrap;">
+          ${inWatch ? '✓ Watching' : '+ Watch'}
+        </button>
+      </div>`;
+    }).join('');
+  }
+
+  html += `<div style="font-size:10px;color:var(--muted);padding:10px 0 0;">
+    Score = swing suitability (0–100). Grades A/B = best setups right now.
+    ±%/wk = average absolute weekly move (sweet spot: 2–5%).
+    ⚠ = possibly overextended — higher risk entry.
+    Last run: ${screenerTs ? new Date(screenerTs).toLocaleString() : 'just now'}
+  </div>`;
+
+  listEl.innerHTML = html;
 }
 
 // ── Supply Chain Intelligence ─────────────────────────────────────────────────
@@ -1589,39 +2143,77 @@ function detectContractAlerts(items) {
     });
   });
 
-  // Deduplicate
+  // Deduplicate and assign stable key
   const seen = new Set();
   return results.filter(r => {
     const k = r.prime + '|' + r.title.slice(0, 40);
-    return seen.has(k) ? false : (seen.add(k), true);
+    if (seen.has(k)) return false;
+    seen.add(k);
+    r._key = k;
+    return true;
   });
+}
+
+function pinScAlert(key) {
+  const a = scAlerts.find(x => x._key === key);
+  if (!a || pinnedScAlerts.some(p => p._key === key)) return;
+  pinnedScAlerts.unshift({ ...a, pinnedAt: Date.now() });
+  save('rm_pinnedSc', pinnedScAlerts);
+  renderSupplyChain();
+}
+function unpinScAlert(key) {
+  pinnedScAlerts = pinnedScAlerts.filter(p => p._key !== key);
+  save('rm_pinnedSc', pinnedScAlerts);
+  renderSupplyChain();
 }
 
 function renderSupplyChain() {
   const el = document.getElementById('supplyChainList');
   if (!el) return;
 
-  if (scAlerts.length) {
-    el.innerHTML = scAlerts.map(a => {
-      const watchHtml = a.watchHits.length
-        ? `<div class="sc-watchhits">&#128200; On your watchlist: ${a.watchHits.map(s => `<b>${s}</b>`).join(', ')} — potential revenue uplift</div>`
-        : '';
-      const chainHtml = a.allSuppliers.map(s => {
-        const on = a.watchHits.includes(s);
-        return `<span class="sc-chip${on ? ' on-watch' : ''}">${s}${on ? ' &#9733;' : ''}</span>`;
-      }).join('');
-      const safeLink = a.link ? a.link.replace(/'/g, "\\'") : '';
-      return `<div class="sc-alert${a.watchHits.length ? ' has-hit' : ''}" ${safeLink ? `onclick="window.open('${safeLink}','_blank')"` : ''}>
-        <div class="sc-alert-head">
-          <span class="sc-alert-prime">&#128279; ${a.primeName} (${a.prime})</span>
-          <span class="news-time">${timeAgo(a.pubDate)}</span>
-        </div>
-        <div class="sc-alert-title">${a.title}</div>
-        ${watchHtml}
-        <div class="sc-alert-chain">${chainHtml}</div>
-        ${a.source ? `<div class="news-src">${a.source}</div>` : ''}
-      </div>`;
+  function alertCard(a, isPinned) {
+    const watchHtml = a.watchHits.length
+      ? `<div class="sc-watchhits">&#128200; On your watchlist: ${a.watchHits.map(s => `<b>${s}</b>`).join(', ')} — potential revenue uplift</div>`
+      : '';
+    const chainHtml = a.allSuppliers.map(s => {
+      const on = a.watchHits.includes(s);
+      const name = STOCK_NAMES[s] || s;
+      return `<span class="sc-chip${on ? ' on-watch' : ''}" title="${name} — click for Yahoo Finance" onclick="event.stopPropagation();window.open('https://finance.yahoo.com/quote/${s}','_blank')" style="cursor:pointer;">${s}${on ? ' &#9733;' : ''}</span>`;
     }).join('');
+    const safeLink = a.link ? a.link.replace(/'/g, "\\'") : '';
+    const safeKey  = (a._key || '').replace(/'/g, "\\'");
+    const pinBtn   = isPinned
+      ? `<button class="sc-pin-btn pinned" onclick="event.stopPropagation();unpinScAlert('${safeKey}')">&#128204; Unpin</button>`
+      : `<button class="sc-pin-btn" onclick="event.stopPropagation();pinScAlert('${safeKey}')">&#128204; Pin 10d</button>`;
+    const pinnedLabel = isPinned
+      ? `<span class="sc-pin-label">&#128204; PINNED — ${Math.ceil((SC_PIN_TTL - (Date.now() - a.pinnedAt)) / 86400000)}d left</span>`
+      : '';
+    return `<div class="sc-alert${a.watchHits.length ? ' has-hit' : ''}${isPinned ? ' pinned' : ''}" ${safeLink ? `onclick="window.open('${safeLink}','_blank')"` : ''}>
+      <div class="sc-alert-head">
+        <span class="sc-alert-prime">&#128279; ${a.primeName} (${a.prime})</span>
+        <span style="display:flex;align-items:center;gap:6px;">${pinnedLabel}<span class="news-time">${isPinned ? 'pinned ' + timeAgo(a.pinnedAt) : timeAgo(a.pubDate)}</span>${pinBtn}</span>
+      </div>
+      <div class="sc-alert-title">${a.title}</div>
+      ${watchHtml}
+      <div class="sc-alert-chain">${chainHtml}</div>
+      ${a.source ? `<div class="news-src">${a.source}</div>` : ''}
+    </div>`;
+  }
+
+  // Pinned keys so we don't show them twice in live section
+  const pinnedKeys = new Set(pinnedScAlerts.map(p => p._key));
+  const liveOnly   = scAlerts.filter(a => !pinnedKeys.has(a._key));
+  const parts      = [];
+
+  if (pinnedScAlerts.length) {
+    parts.push(...pinnedScAlerts.map(a => alertCard(a, true)));
+  }
+  if (liveOnly.length) {
+    parts.push(...liveOnly.map(a => alertCard(a, false)));
+  }
+
+  if (parts.length) {
+    el.innerHTML = parts.join('');
   } else {
     // No contract stories yet — show the static map
     const watchSet = new Set(stockWatchlist);
@@ -1632,7 +2224,7 @@ function renderSupplyChain() {
           <span class="sc-arrow">&#8594;</span>
           <span class="sc-chips">${chain.suppliers.map(s => {
             const on = watchSet.has(s);
-            return `<span class="sc-chip${on ? ' on-watch' : ''}" title="${STOCK_NAMES[s]||s}">${s}${on ? ' &#9733;' : ''}</span>`;
+            return `<span class="sc-chip${on ? ' on-watch' : ''}" title="${STOCK_NAMES[s]||s} — click for Yahoo Finance" onclick="window.open('https://finance.yahoo.com/quote/${s}','_blank')" style="cursor:pointer;">${s}${on ? ' &#9733;' : ''}</span>`;
           }).join('')}</span>
         </div>`
       ).join('');
@@ -1669,69 +2261,33 @@ function computeYTD(sym, currentPrice) {
 async function fetchStocks() {
   if (!stockWatchlist.length) return;
   const errEl = document.getElementById('stockErrorMsg');
+  const saveStockCache = () => { save('rm_stockData', stockData); save('rm_stockDataTs', Date.now()); };
 
-  // Try 1: Yahoo Finance v7 batch (fast — all symbols in one call)
-  const yfUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(stockWatchlist.join(','))}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,fiftyTwoWeekHigh,fiftyTwoWeekLow,shortName`;
-  for (const mkProxy of [
-    u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-    u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-  ]) {
-    try {
-      const res = await fetch(mkProxy(yfUrl), { cache: 'no-store' });
-      if (!res.ok) continue;
-      const data = JSON.parse(await res.text());
-      const results = data?.quoteResponse?.result;
-      if (!results?.length) continue;
-      let anyOk = false;
-      results.forEach(q => {
-        if (!q.regularMarketPrice) return;
-        anyOk = true;
-        stockData[q.symbol] = {
-          price:     q.regularMarketPrice,
-          change:    q.regularMarketChange       || 0,
-          changePct: q.regularMarketChangePercent || 0,
-          high52:    q.fiftyTwoWeekHigh || null,
-          low52:     q.fiftyTwoWeekLow  || null,
-          ytdPct:    computeYTD(q.symbol, q.regularMarketPrice),
-          name:      q.shortName || STOCK_NAMES[q.symbol] || q.symbol,
-        };
-      });
-      if (anyOk) { if (errEl) errEl.style.display = 'none'; return; }
-    } catch(e) { console.warn('YF v7:', e.message); }
-  }
-
-  // Try 2: Yahoo Finance v8 chart per-symbol (same API that powers sparklines — very reliable)
+  // Use our Vercel proxy — same-domain, no CORS, Yahoo Finance server-side
   let anyOk = false;
   for (const sym of stockWatchlist) {
-    if (stockData[sym]?.price) continue; // skip if already loaded from v7
+    if (stockData[sym]?.price) continue;
     try {
-      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=5d&interval=1d`;
-      for (const mkProxy of [
-        u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-        u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-      ]) {
-        try {
-          const r = await fetch(mkProxy(url), { cache: 'no-store' });
-          if (!r.ok) continue;
-          const d = await r.json();
-          const meta = d?.chart?.result?.[0]?.meta;
-          if (!meta?.regularMarketPrice) continue;
-          const prevClose = meta.previousClose || meta.chartPreviousClose || meta.regularMarketPrice;
-          stockData[sym] = {
-            price:     meta.regularMarketPrice,
-            change:    meta.regularMarketPrice - prevClose,
-            changePct: meta.regularMarketChangePercent || ((meta.regularMarketPrice - prevClose) / prevClose * 100),
-            high52:    meta.fiftyTwoWeekHigh || null,
-            low52:     meta.fiftyTwoWeekLow  || null,
-            ytdPct:    computeYTD(sym, meta.regularMarketPrice),
-            name:      STOCK_NAMES[sym] || meta.shortName || sym,
-          };
-          anyOk = true;
-          break;
-        } catch(e) { /* try next proxy */ }
-      }
-    } catch(e) { console.warn('YF v8', sym, e.message); }
-    await new Promise(r => setTimeout(r, 120));
+      const r = await fetch(`/api/stock?sym=${encodeURIComponent(sym)}&range=5d&interval=1d`, { cache: 'no-store' });
+      if (!r.ok) continue;
+      const d = await r.json();
+      const meta = d?.chart?.result?.[0]?.meta;
+      if (!meta?.regularMarketPrice) continue;
+      const prevClose = meta.previousClose || meta.chartPreviousClose || meta.regularMarketPrice;
+      stockData[sym] = {
+        price:     meta.regularMarketPrice,
+        change:    meta.regularMarketPrice - prevClose,
+        changePct: meta.regularMarketChangePercent || ((meta.regularMarketPrice - prevClose) / prevClose * 100),
+        high52:    meta.fiftyTwoWeekHigh || null,
+        low52:     meta.fiftyTwoWeekLow  || null,
+        ytdPct:    computeYTD(sym, meta.regularMarketPrice),
+        name:      STOCK_NAMES[sym] || meta.shortName || sym,
+      };
+      anyOk = true;
+      saveStockCache();
+      renderStockGrid();
+    } catch(e) { console.warn('stock:', sym, e.message); }
+    await new Promise(r => setTimeout(r, 100));
   }
   if (anyOk) { if (errEl) errEl.style.display = 'none'; return; }
 
@@ -1759,7 +2315,7 @@ async function fetchStocks() {
         } catch(se) { console.warn('Finnhub', sym, se.message); }
         await new Promise(r => setTimeout(r, 150));
       }
-      if (anyFn) { if (errEl) errEl.style.display = 'none'; return; }
+      if (anyFn) { if (errEl) errEl.style.display = 'none'; saveStockCache(); return; }
     } catch(e) { console.warn('Finnhub:', e.message); }
   }
 
@@ -1786,20 +2342,14 @@ async function fetchStockHistory() {
         if (r.ok) { const d = await r.json(); if (d.s === 'ok' && d.c?.length) closes = d.c; }
       }
       if (!closes) {
-        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=2y&interval=1wk`;
-        for (const mkProxy of [
-          u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-          u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-        ]) {
-          try {
-            const r = await fetch(mkProxy(url), { cache: 'no-store' });
-            if (!r.ok) continue;
+        try {
+          const r = await fetch(`/api/stock?sym=${encodeURIComponent(sym)}&range=2y&interval=1wk`, { cache: 'no-store' });
+          if (r.ok) {
             const d = await r.json();
             const result = d?.chart?.result?.[0];
             const raw = result?.indicators?.quote?.[0]?.close;
             if (raw?.length) {
               closes = raw.filter(v => v != null);
-              // Populate live quote from chart meta if fetchStocks hasn't loaded it yet
               const meta = result?.meta;
               if (meta?.regularMarketPrice && !stockData[sym]?.price) {
                 const prevClose = meta.previousClose || meta.chartPreviousClose || meta.regularMarketPrice;
@@ -1813,10 +2363,9 @@ async function fetchStockHistory() {
                   name:      STOCK_NAMES[sym] || meta.shortName || sym,
                 };
               }
-              break;
             }
-          } catch(e) { /* try next */ }
-        }
+          }
+        } catch(e) { console.warn('stockHist:', sym, e.message); }
       }
       if (closes?.length >= 8) {
         stockHistory[sym] = closes;
@@ -1868,57 +2417,53 @@ async function fetchCongress(force = false) {
   if (errEl) errEl.style.display = 'none';
   if (listEl) listEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:10px 0;">Loading STOCK Act filings from House &amp; Senate databases…</div>';
 
-  const HOUSE_URL  = 'https://house-stock-watcher-data.s3-us-east-2.amazonaws.com/data/all_transactions.json';
-  const SENATE_URL = 'https://senate-stock-watcher-data.s3-us-east-2.amazonaws.com/aggregate/all_transactions.json';
-  let allTrades = [];
-
-  for (const [dataUrl, chamber] of [[HOUSE_URL, 'House'], [SENATE_URL, 'Senate']]) {
-    for (const mkP of [
-      u => u,
-      u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-      u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-    ]) {
-      try {
-        const res = await fetch(mkP(dataUrl), { signal: AbortSignal.timeout(30000) });
-        if (!res.ok) continue;
-        const raw = await res.json();
-        const rows = Array.isArray(raw) ? raw : (raw.data || raw.transactions || []);
-        rows.forEach(t => { t._chamber = chamber; });
-        allTrades = allTrades.concat(rows);
-        break;
-      } catch(e) {}
+  let trades = [];
+  let dataSources = [];
+  try {
+    const r = await fetch('/api/congress', { signal: AbortSignal.timeout(50000) });
+    if (r.ok) {
+      const d = await r.json();
+      trades = d.trades || [];
+      dataSources = d.sources || [];
     }
-  }
+  } catch(e) {}
 
-  if (!allTrades.length) {
-    if (errEl) { errEl.style.display='block'; errEl.textContent='⚠ Could not load STOCK Act data — try ↻ Refresh.'; }
-    if (listEl) listEl.innerHTML = '';
+  if (!trades.length) {
+    if (congressTrades.length) {
+      if (errEl) { errEl.style.display='block'; errEl.textContent='⚠ STOCK Act servers busy — showing last cached data.'; }
+      renderCongressList();
+      renderCongressMembers();
+    } else {
+      if (errEl) { errEl.style.display='block'; errEl.textContent='⚠ Individual filing data unavailable — government servers too slow. Congress Buys leaderboard below still works.'; }
+      if (listEl) listEl.innerHTML = '';
+    }
     return;
   }
 
-  // Filter to last 90 days, valid tickers, normalize
-  const cutoff90 = Date.now() - 90 * 24 * 60 * 60 * 1000;
-  const SKIP = new Set(['N/A','--','NA','NONE','ETF']);
-  const filtered = allTrades.filter(t => {
-    const dateStr = t.transaction_date || t.transactionDate || t.date || '';
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime()) || d.getTime() < cutoff90) return false;
-    const sym = (t.ticker || t.symbol || '').replace(/[$\s]/g,'').toUpperCase();
-    if (!sym || SKIP.has(sym) || sym.length > 5) return false;
-    t._sym  = normalizeTicker(sym);
-    t._date = dateStr;
-    t._ts   = d.getTime();
-    t._name = (t.representative || t.senator || t.name || '').trim();
-    t._type = (t.type || t.transaction_type || '').toLowerCase();
-    t._desc = t.asset_description || '';
-    t._amt  = t.amount || '';
-    return !!t._name;
-  });
+  // Map server fields to internal underscore-prefixed fields
+  congressTrades = trades.map(t => ({
+    ...t,
+    _sym:    t.sym,
+    _date:   t.date,
+    _ts:     t.ts,
+    _name:   t.name,
+    _chamber:t.chamber,
+    _type:   t.type,
+    _link:   t.link || '',
+    _desc:   t.desc,
+    _amt:    t.amt,
+  }));
 
-  filtered.sort((a, b) => b._ts - a._ts);
-  congressTrades = filtered.slice(0, 60);
   lastCongressFetch = Date.now();
+  if (errEl && dataSources.length && dataSources.length < 2) {
+    errEl.style.display = 'block';
+    errEl.style.color = 'var(--muted)';
+    errEl.textContent = `ℹ Loaded ${dataSources.join(' only')} data — House filing server slow. Who's Buying shows ${dataSources.join('')} members.`;
+  } else if (errEl) {
+    errEl.style.display = 'none';
+  }
   renderCongressList();
+  renderCongressMembers();
 }
 
 function setCongFilter(f) {
@@ -1928,6 +2473,7 @@ function setCongFilter(f) {
   const btn = document.getElementById(map[f]);
   if (btn) btn.classList.add('active');
   renderCongressList();
+  renderCongressMembers();
 }
 
 function renderCongressList() {
@@ -1938,7 +2484,9 @@ function renderCongressList() {
     return;
   }
   const watchSet = new Set([...stockWatchlist, ...portfolio]);
+  const CRYPTO_SKIP = new Set(['XRP','BTC','ETH','DOGE','SOL','ADA','AVAX','MATIC','DOT','LTC']);
   const filtered = congressTrades.filter(t => {
+    if (t._sym === '?' || CRYPTO_SKIP.has(t._sym)) return false;
     if (congFilter === 'purchase') return t._type.includes('purchase') || t._type.includes('buy');
     if (congFilter === 'sale')     return t._type.includes('sale') || t._type.includes('sell');
     if (congFilter === 'watchlist') return watchSet.has(t._sym);
@@ -1956,7 +2504,9 @@ function renderCongressList() {
     const isWatch  = watchSet.has(t._sym);
     const price    = stockData[t._sym]?.price;
     const priceStr = price ? ` · Now $${price.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '';
-    return `<div class="news-item${isWatch?' watchlist-match':''}" style="${isWatch?'border-left:3px solid var(--accent);':''}">
+    const safeLink = (t._link||'').replace(/'/g,"\\'");
+    const clickH   = safeLink ? ` onclick="window.open('${safeLink}','_blank')" style="cursor:pointer;${isWatch?'border-left:3px solid var(--accent);':''}"` : `style="${isWatch?'border-left:3px solid var(--accent);':''}"`;
+    return `<div class="news-item${isWatch?' watchlist-match':''}"${clickH}>
       <div style="flex:1;min-width:0;">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <span style="font-size:15px;font-weight:800;color:var(--accent);">${t._sym}</span>
@@ -2022,6 +2572,12 @@ async function fetchCongressBuys(force = false) {
     }
   });
 
+  // Normalize known bad tickers → correct ones
+  const TICKER_REMAP = { 'BRK': 'BRK.B', 'GOOGL': 'GOOGL', 'GOOG': 'GOOGL' };
+  Object.entries(TICKER_REMAP).forEach(([bad, good]) => {
+    if (counts[bad]) { counts[good] = (counts[good] || 0) + counts[bad]; delete counts[bad]; }
+  });
+
   cBuysData = Object.entries(counts)
     .filter(([s]) => s.length >= 2 && !BAD.has(s))
     .sort((a, b) => b[1] - a[1])
@@ -2062,8 +2618,106 @@ function renderCongressBuys() {
   }</div><div style="font-size:10px;color:var(--muted);padding:6px 0;">Based on STOCK Act purchase disclosures and congressional trade news. ×N = times mentioned in recent filings.</div>`;
 }
 
+function renderCongressMembers() {
+  const el = document.getElementById('congMembersList');
+  if (!el) return;
+  if (!congressTrades.length) {
+    el.innerHTML = '<div class="news-empty">Load Congress Trades above (↻ Refresh) to see who\'s buying what.</div>';
+    return;
+  }
+  // Group purchases by member name
+  const members = {};
+  const CM_CRYPTO_SKIP = new Set(['XRP','BTC','ETH','DOGE','SOL','ADA','AVAX','MATIC','DOT','LTC']);
+  congressTrades.forEach(t => {
+    const isBuy = t._type.includes('purchase') || t._type.includes('buy');
+    if (!isBuy || !t._name || t._sym === '?' || CM_CRYPTO_SKIP.has(t._sym)) return;
+    if (!members[t._name]) members[t._name] = { name: t._name, chamber: t._chamber, buys: [] };
+    members[t._name].buys.push(t);
+  });
+  const ranked = Object.values(members).sort((a, b) => b.buys.length - a.buys.length).slice(0, 15);
+  if (!ranked.length) {
+    el.innerHTML = '<div class="news-empty">No purchase data found — try ↻ Refresh on Congress Trades.</div>';
+    return;
+  }
+  const watching = new Set(stockWatchlist);
+  const followedSet = new Set(followedMembers);
+  const rankColors = ['#ffd700','#c0c0c0','#cd7f32'];
+  el.innerHTML = ranked.map((m, i) => {
+    const stockMap = {};
+    m.buys.forEach(t => {
+      if (!stockMap[t._sym]) stockMap[t._sym] = { sym: t._sym, count: 0, amt: t._amt };
+      stockMap[t._sym].count++;
+    });
+    const stocks = Object.values(stockMap).sort((a, b) => b.count - a.count);
+    const chips = stocks.map(s => {
+      const inWatch = watching.has(s.sym);
+      return `<span onclick="addCongressPick('${s.sym}')" title="Tap to add ${s.sym} to watchlist" style="cursor:pointer;display:inline-block;padding:3px 9px;border-radius:5px;font-size:11px;font-weight:700;background:${inWatch?'#132613':'var(--input-bg)'};border:1px solid ${inWatch?'var(--good)':'var(--border)'};color:${inWatch?'var(--good)':'var(--accent)'};margin:2px;">${s.sym}${s.count>1?` ×${s.count}`:''}${inWatch?' ★':''}</span>`;
+    }).join('');
+    const isFollowed = followedSet.has(m.name);
+    const safeName = m.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    // Look up official PTR data
+    const officialData = HOUSE_TOP_TRADERS.find(t =>
+      m.name.toLowerCase().includes(t.last.toLowerCase()) ||
+      t.name.toLowerCase().includes(m.name.split(' ').slice(-1)[0].toLowerCase())
+    );
+    const officialRankStr = officialData ? `<span style="font-size:10px;color:#f0c040;background:#2a2000;padding:2px 7px;border-radius:4px;" title="Official 2025+2026 PTR filing rank from disclosures.house.gov">&#128196; ${officialData.ptrs} official filings</span>` : '';
+    const latestDoc = officialData?.docs2026?.slice(-1)[0];
+    const pdfLink = latestDoc ? `<a href="https://disclosures.house.gov/public_disc/ptr-pdfs/2026/${latestDoc}.pdf" target="_blank" style="font-size:10px;color:#6aaeff;text-decoration:none;padding:2px 7px;border:1px solid #1e4060;border-radius:4px;background:#0a1a2a;">&#128196; Official PDF</a>` : '';
+    return `<div style="background:var(--card-bg);border:1.5px solid ${isFollowed?'#f0c040':'var(--border)'};border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;flex-wrap:wrap;">
+        <span style="font-size:14px;font-weight:900;color:${rankColors[i]||'var(--muted)'};">#${i+1}</span>
+        <span style="font-size:13px;font-weight:700;color:var(--text);">${m.name}</span>
+        <span style="font-size:10px;color:var(--muted);background:var(--input-bg);padding:2px 7px;border-radius:4px;">${m.chamber}</span>
+        <span style="font-size:10px;color:#6aaeff;background:#1e4060;padding:2px 7px;border-radius:4px;">&#128722; ${m.buys.length} news buy${m.buys.length>1?'s':''}</span>
+        ${officialRankStr}
+        ${pdfLink}
+        <button onclick="${isFollowed?`unfollowMember('${safeName}')`:`followMember('${safeName}')`}"
+          style="margin-left:auto;padding:4px 12px;font-size:11px;border-radius:6px;border:1px solid ${isFollowed?'#f0c040':'var(--border)'};background:${isFollowed?'#2a2000':'var(--input-bg)'};color:${isFollowed?'#f0c040':'var(--text)'};cursor:pointer;font-weight:600;">
+          ${isFollowed?'★ Unfollow':'☆ Follow'}
+        </button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:2px;">${chips}</div>
+    </div>`;
+  }).join('');
+  renderFollowedPicks();
+}
+
 // Tickers that need normalizing (common mis-tickers from news/RSS)
 const TICKER_ALIAS = { 'BRK': 'BRK.B', 'GOOG': 'GOOGL', 'FB': 'META' };
+
+// Official PTR DocIDs from 2025+2026 disclosures.house.gov index
+// PTR = Periodic Transaction Report (45-day STOCK Act trade disclosure)
+// Link: https://disclosures.house.gov/public_disc/ptr-pdfs/{year}/{docId}.pdf
+const HOUSE_TOP_TRADERS = [
+  { name:'Marjorie Taylor Greene', last:'Greene',   state:'GA-14', ptrs:25, docs2026:[] },
+  { name:'Kelly Morrison',         last:'Morrison', state:'MN-03', ptrs:25, docs2026:['20033830','20033928','20033989','20034056','20034082','20034102','20034123','20034156','20034213','20034300','20034520'] },
+  { name:'Suzan DelBene',          last:'DelBene',  state:'WA-01', ptrs:22, docs2026:['20033766','20033835','20034155','20034400','20034466','20034615','20034727'] },
+  { name:'David Taylor',           last:'Taylor',   state:'OH-02', ptrs:21, docs2026:['20033845','20033916','20033918','20034036','20034138','20034207','20034280','20034489','20034650','20034780'] },
+  { name:'Rob Bresnahan',          last:'Bresnahan',state:'PA-08', ptrs:20, docs2026:['20034044','20034202'] },
+  { name:'Tim Moore',              last:'Moore',    state:'NC-14', ptrs:19, docs2026:['20033746','20033856','20034034','20034217','20034424','20034587','20034721'] },
+  { name:'Josh Gottheimer',        last:'Gottheimer',state:'NJ-05',ptrs:18, docs2026:['20033756','20033930','20034130','20034305','20034585','20034693'] },
+  { name:'Thomas Kean',            last:'Kean',     state:'NJ-07', ptrs:18, docs2026:['20033821','20034025','20034190','20034327','20034616','20034783'] },
+  { name:'Richard Allen',          last:'Allen',    state:'GA-12', ptrs:17, docs2026:['20033751','20033945','20034133','20034315','20034473','20034740'] },
+  { name:'Gilbert Cisneros',       last:'Cisneros', state:'CA-31', ptrs:17, docs2026:['20033762','20033983','20034144','20034285','20034500','20034713'] },
+  { name:'Cleo Fields',            last:'Fields',   state:'LA-06', ptrs:17, docs2026:['20033732','20033858','20034018','20034179','20034295','20034357','20034591'] },
+  { name:'Ro Khanna',              last:'Khanna',   state:'CA-17', ptrs:17, docs2026:['8221322','8221358','9115726','9115822','9116142'] },
+  { name:'Michael McCaul',         last:'McCaul',   state:'TX-10', ptrs:17, docs2026:['8221326','8221359','9115728','9115820','9116141'] },
+  { name:'Scott Peters',           last:'Peters',   state:'CA-50', ptrs:17, docs2026:['20033815','20034010','20034178','20034342','20034579'] },
+  { name:'Hal Rogers',             last:'Rogers',   state:'KY-05', ptrs:17, docs2026:['8221332','9115711','9115762','9115808','9116146'] },
+  { name:'April Delaney',          last:'Delaney',  state:'MD-06', ptrs:16, docs2026:['20033737','20033921','20034159','20034299','20034487','20034718'] },
+  { name:'Jonathan Jackson',       last:'Jackson',  state:'IL-01', ptrs:16, docs2026:['20033739','20033929','20034113','20034301','20034519','20034688'] },
+  { name:'Steve Cohen',            last:'Cohen',    state:'TN-09', ptrs:14, docs2026:['20033754','20033813','20033889','20034119','20034167','20034368','20034452','20034589','20034796'] },
+  { name:'Byron Donalds',          last:'Donalds',  state:'FL-19', ptrs:13, docs2026:['20033747','20033780','20033981','20034134','20034297','20034478'] },
+  { name:'Julie Johnson',          last:'Johnson',  state:'TX-32', ptrs:13, docs2026:['20033789','20034706'] },
+  { name:'Mike Kelly',             last:'Kelly',    state:'PA-16', ptrs:13, docs2026:['20033763','20033991','20034168','20034302','20034607','20034767'] },
+  { name:'Max Miller',             last:'Miller',   state:'OH-07', ptrs:13, docs2026:['20033881','20034247','20034419','20034651'] },
+  { name:'Lloyd Doggett',          last:'Doggett',  state:'TX-37', ptrs:12, docs2026:['20033713','20034132','20034292','20034486','20034712'] },
+  { name:'Virginia Foxx',          last:'Foxx',     state:'NC-05', ptrs:12, docs2026:['20033734','20033947','20034095','20034670'] },
+  { name:'Kevin Hern',             last:'Hern',     state:'OK-01', ptrs:12, docs2026:['20033829','20034012','20034128','20034262','20034461','20034695'] },
+  { name:'Jefferson Shreve',       last:'Shreve',   state:'IN-06', ptrs:12, docs2026:['20033705','20033709','20034084','20034653'] },
+  { name:'Nancy Pelosi',           last:'Pelosi',   state:'CA-11', ptrs:4,  docs2026:['20033725'] },
+  { name:'David Rouzer',           last:'Rouzer',   state:'NC-07', ptrs:2,  docs2026:['20033758','20033759'] },
+];
 
 function normalizeTicker(sym) {
   return TICKER_ALIAS[sym] || sym;
@@ -2079,12 +2733,106 @@ function addCongressPick(sym) {
   fetchStocks().then(() => renderStockGrid());
 }
 
-// ── Congress All-Stars: rank members by actual STOCK Act purchase returns ──────
-async function fetchCongressAllStars(force = false) {
-  if (!force && congAllStars.length && Date.now() - lastCongAllStars < CONG_ALLSTARS_TTL) {
-    renderCongressAllStars();
+// ── Congress Leaderboard — live from disclosures.house.gov via /api/house-traders ──
+let houseLeaderData = [];
+let houseLeaderTs   = 0;
+const LEADER_TTL    = 7 * 24 * 60 * 60 * 1000;
+
+async function fetchHouseLeaderboard(force = false) {
+  // Always show hardcoded data immediately — never a blank leaderboard
+  if (!houseLeaderData.length) {
+    houseLeaderData = HOUSE_TOP_TRADERS.map((t, i) => ({ ...t, rank: i + 1, totalPtrs: t.ptrs }));
+    renderHouseLeaderboard();
+  }
+
+  // Serve from cache if fresh enough and not forced
+  if (!force && houseLeaderTs && Date.now() - houseLeaderTs < LEADER_TTL) return;
+
+  const statusEl = document.getElementById('houseLeaderStatus');
+  const setS = msg => { if (statusEl) statusEl.textContent = msg; };
+  setS('Checking for updated official PTR filings…');
+
+  try {
+    const r = await fetch('/api/house-traders', { signal: AbortSignal.timeout(28000) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    if (d.traders && d.traders.length) {
+      houseLeaderData = d.traders;
+      houseLeaderTs   = Date.now();
+      renderHouseLeaderboard();
+    }
+    setS('');
+  } catch(e) {
+    setS('Using built-in rankings (government site unreachable).');
+    // Keep existing hardcoded data — already rendered above
+  }
+}
+
+function renderHouseLeaderboard() {
+  const listEl = document.getElementById('houseLeaderList');
+  if (!listEl) return;
+  if (!houseLeaderData.length) {
+    listEl.innerHTML = '<div class="news-empty">No data — click ↻ Refresh.</div>';
     return;
   }
+  const followedSet = new Set(followedMembers);
+  const medals = ['🥇','🥈','🥉'];
+
+  const PERF = {
+    'Tim Moore':              { ret: '+52%', note: '#1 return in Congress 2025' },
+    'Marjorie Taylor Greene': { ret: '+30%', note: '74.5% win rate · 476% gain since 2021' },
+    'Suzan DelBene':          { ret: null,   note: '$142M net worth · +$1.4M in May 2026' },
+    'Josh Gottheimer':        { ret: null,   note: '$185M STOCK Act volume' },
+    'David Taylor':           { ret: null,   note: 'AVGO, LLY, V · 132 trades in 14 months' },
+    'Rob Bresnahan':          { ret: null,   note: '⚠ Sold Medicaid stocks before Medicaid cuts vote' },
+    'Kelly Morrison':         { ret: null,   note: '⚠ $2.9M filed late · STOCK Act violation' },
+  };
+
+  listEl.innerHTML = houseLeaderData.slice(0, 20).map((m, i) => {
+    const isFollowed = followedSet.has(m.name);
+    const safeName   = m.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const rank       = medals[i] || `#${i + 1}`;
+    const perf       = PERF[m.name] || {};
+    const latestDoc  = m.latestDoc || (m.docs2026 || []).slice(-1)[0];
+    const pdfHref    = latestDoc ? `https://disclosures.house.gov/public_disc/ptr-pdfs/2026/${latestDoc}.pdf` : '';
+    const retBadge   = perf.ret ? `<span style="font-size:11px;font-weight:800;color:var(--good);">${perf.ret}</span>` : '';
+
+    return `<div style="background:var(--card-bg);border:1.5px solid ${isFollowed?'#f0c040':'var(--border)'};border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+      <span style="font-size:16px;min-width:28px;">${rank}</span>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:13px;font-weight:700;color:var(--text);">${m.name}</span>
+          <span style="font-size:10px;color:var(--muted);">${m.state || ''}</span>
+          ${retBadge}
+          ${isFollowed ? '<span style="font-size:10px;color:#f0c040;">★ Following</span>' : ''}
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">
+          <span style="color:#6aaeff;font-weight:700;">${m.totalPtrs || m.ptrs || 0} STOCK Act filings</span>
+          ${m.ptrs2026 ? ` · ${m.ptrs2026} in ${m.year || 2026}` : ''}
+          ${perf.note ? ` · <span style="color:${perf.note.includes('⚠')?'var(--bad)':'var(--muted)'};">${perf.note}</span>` : ''}
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+        ${pdfHref ? `<a href="${pdfHref}" target="_blank" style="font-size:10px;color:#6aaeff;text-decoration:none;padding:3px 8px;border:1px solid #1e4060;border-radius:4px;background:#0a1a2a;">📄 Latest Filing</a>` : ''}
+        <button onclick="${isFollowed?`unfollowMember('${safeName}')`:`followMember('${safeName}')`}"
+          style="padding:4px 12px;font-size:11px;border-radius:6px;border:1px solid ${isFollowed?'#f0c040':'var(--border)'};background:${isFollowed?'#2a2000':'var(--input-bg)'};color:${isFollowed?'#f0c040':'var(--text)'};cursor:pointer;font-weight:600;">
+          ${isFollowed?'★ Unfollow':'☆ Follow'}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+
+  const ts = houseLeaderTs ? `Updated ${new Date(houseLeaderTs).toLocaleDateString()}` : 'Cached data';
+  listEl.insertAdjacentHTML('beforeend', `<div style="font-size:10px;color:var(--muted);padding:4px 0;">${ts} · Source: disclosures.house.gov · Ranked by total STOCK Act PTR filings 2025+2026</div>`);
+}
+
+// ── (dead code kept for reference — replaced by fetchHouseLeaderboard) ──────────
+async function fetchCongressAllStars(force = false) {
+  fetchHouseLeaderboard(force);
+}
+function renderCongressAllStars() { renderHouseLeaderboard(); }
+
+async function _OLD_fetchCongressAllStars(force = false) {
   const statusEl = document.getElementById('congAllStarsStatus');
   const listEl   = document.getElementById('congAllStarsList');
   const setS = msg => { if (statusEl) statusEl.textContent = msg; };
@@ -2183,25 +2931,20 @@ async function fetchCongressAllStars(force = false) {
   let histDone = 0;
 
   for (const sym of uniqueTickers) {
-    const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?period1=${p1}&period2=${p2}&interval=1wk`;
-    for (const mkP of [
-      u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-      u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-    ]) {
-      try {
-        const res = await fetch(mkP(chartUrl), { signal: AbortSignal.timeout(8000) });
-        if (!res.ok) continue;
+    try {
+      const res = await fetch(`/api/stock?sym=${encodeURIComponent(sym)}&range=1y&interval=1wk`, { signal: AbortSignal.timeout(8000) });
+      if (res.ok) {
         const data = await res.json();
         const result = data?.chart?.result?.[0];
-        if (!result) continue;
-        const tss    = result.timestamp || [];
-        const closes = result.indicators?.quote?.[0]?.close || [];
-        priceHistory[sym] = tss
-          .map((ts, i) => ({ ts: ts * 1000, close: closes[i] }))
-          .filter(p => p.close != null && p.close > 0);
-        break;
-      } catch(e) {}
-    }
+        if (result) {
+          const tss    = result.timestamp || [];
+          const closes = result.indicators?.quote?.[0]?.close || [];
+          priceHistory[sym] = tss
+            .map((ts, i) => ({ ts: ts * 1000, close: closes[i] }))
+            .filter(p => p.close != null && p.close > 0);
+        }
+      }
+    } catch(e) {}
     histDone++;
     if (histDone % 5 === 0 || histDone === uniqueTickers.length) {
       setS(`Fetching price history... (${histDone} / ${uniqueTickers.length} stocks)`);
@@ -2284,29 +3027,34 @@ function renderFollowedPicks() {
   const el = document.getElementById('followedPicksList');
   if (!el) return;
   if (!followedMembers.length) {
-    el.innerHTML = '<div class="news-empty">Follow members above to track their purchases here.</div>';
+    el.innerHTML = '<div class="news-empty">Tap ☆ Follow on a member above to track their purchases here.</div>';
     return;
   }
-  const followedData = congAllStars.filter(m => followedMembers.includes(m.name));
-  const allPicks = [];
-  followedData.forEach(m => (m.recentPicks || []).forEach(p => allPicks.push({ member: m.name, ...p })));
-  allPicks.sort((a, b) => b.dateTs - a.dateTs);
-  if (!allPicks.length) { el.innerHTML = '<div class="news-empty">No purchase data loaded yet. Click "Load Rankings" first.</div>'; return; }
+  // Use news-based congressTrades — filter to followed members
+  const followedSet = new Set(followedMembers);
+  const picks = congressTrades.filter(t =>
+    t._name && followedSet.has(t._name) &&
+    (t._type.includes('purchase') || t._type.includes('buy')) &&
+    t._sym && t._sym !== '?'
+  ).sort((a, b) => b._ts - a._ts);
 
-  el.innerHTML = allPicks.slice(0, 20).map(p => {
-    const retColor = p.returnPct != null ? (p.returnPct >= 0 ? 'var(--good)' : 'var(--bad)') : 'var(--muted)';
-    const retStr   = p.returnPct != null ? `${p.returnPct >= 0 ? '+' : ''}${p.returnPct.toFixed(1)}%` : '--';
-    const inWatch  = stockWatchlist.includes(p.sym);
-    const lastName = p.member.split(' ').slice(-1)[0];
-    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border);flex-wrap:wrap;">
+  if (!picks.length) {
+    el.innerHTML = '<div class="news-empty">No recent purchases found for followed members. Try refreshing Congress Trades.</div>';
+    return;
+  }
+
+  el.innerHTML = picks.slice(0, 30).map(p => {
+    const inWatch  = stockWatchlist.includes(p._sym);
+    const lastName = p._name.split(' ').slice(-1)[0];
+    const dateStr  = p._date ? new Date(p._date).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--border);flex-wrap:wrap;">
       <span style="font-size:11px;color:#f0c040;font-weight:700;min-width:80px;">${lastName}</span>
-      <span style="font-size:15px;font-weight:800;color:var(--accent);min-width:55px;">${p.sym}</span>
-      <span style="font-size:11px;color:var(--muted);flex:1;">${p.date}</span>
-      <span style="font-size:13px;font-weight:700;color:${retColor};min-width:55px;text-align:right;">${retStr}</span>
-      ${p.currentPrice ? `<span style="font-size:11px;color:var(--muted);">$${p.currentPrice.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>` : ''}
-      <button onclick="addCongressPick('${p.sym}')"
-        style="padding:4px 10px;font-size:10px;border-radius:5px;border:1px solid ${inWatch ? 'var(--good)' : 'var(--border)'};background:${inWatch ? '#132613' : 'var(--input-bg)'};color:${inWatch ? 'var(--good)' : 'var(--text)'};cursor:pointer;">
-        ${inWatch ? '✓ Watching' : '+ Watch'}
+      <span style="font-size:15px;font-weight:800;color:var(--accent);min-width:55px;">${p._sym}</span>
+      <span style="font-size:11px;color:var(--muted);flex:1;">${dateStr}</span>
+      ${p._desc ? `<span style="font-size:10px;color:var(--muted);width:100%;margin-top:2px;line-height:1.3;">${p._desc.length>90?p._desc.slice(0,87)+'…':p._desc}</span>` : ''}
+      <button onclick="addCongressPick('${p._sym}')"
+        style="padding:4px 10px;font-size:10px;border-radius:5px;border:1px solid ${inWatch?'var(--good)':'var(--border)'};background:${inWatch?'#132613':'var(--input-bg)'};color:${inWatch?'var(--good)':'var(--text)'};cursor:pointer;">
+        ${inWatch?'✓ Watching':'+ Watch'}
       </button>
     </div>`;
   }).join('');
@@ -2316,14 +3064,14 @@ function followMember(name) {
   if (!followedMembers.includes(name)) {
     followedMembers.push(name);
     save('rm_followed', followedMembers);
-    renderCongressAllStars();
+    renderCongressMembers();
   }
 }
 
 function unfollowMember(name) {
   followedMembers = followedMembers.filter(n => n !== name);
   save('rm_followed', followedMembers);
-  renderCongressAllStars();
+  renderCongressMembers();
 }
 
 function renderStockGrid() {
@@ -2332,20 +3080,58 @@ function renderStockGrid() {
   if (!grid) return;
   if (!stockWatchlist.length) {
     grid.innerHTML = '<div style="color:var(--muted);font-size:14px;">No stocks yet — add a ticker below.</div>';
+    renderStockPortfolioSummary();
     return;
   }
   grid.innerHTML = stockWatchlist.map(sym => {
     const d = stockData[sym] || {};
     const loading = !d.price;
     const name = d.name || STOCK_NAMES[sym] || sym;
-    const alertTarget = stockAlerts[sym];
-    const hitTarget = alertTarget && d.price && d.price >= parseFloat(alertTarget);
+    const alertObj = stockAlerts[sym];
+    const alertA = alertObj && typeof alertObj === 'object' ? alertObj : {};
+    const dipTgt  = alertA.dip  ? parseFloat(alertA.dip)  : null;
+    const riseTgt = alertA.rise ? parseFloat(alertA.rise) : null;
+    const hitTarget = (dipTgt !== null && d.price && d.price <= dipTgt) || (riseTgt !== null && d.price && d.price >= riseTgt);
     const fromHigh = d.price && d.high52 ? ((d.price - d.high52) / d.high52) * 100 : null;
+
+    // ── Earnings badge ───────────────────────────────────────────────────────
+    const earn = earningsData[sym];
+    let earningsBadge = '';
+    if (earn?.earningsTs) {
+      const days = Math.ceil((earn.earningsTs - Date.now()) / 86400000);
+      if (days >= 0 && days <= 21) {
+        const urgent = days <= 7;
+        earningsBadge = `<div style="font-size:10px;padding:3px 8px;border-radius:6px;margin-bottom:6px;font-weight:700;
+          background:${urgent?'#3d0a0a':'#2a1a00'};color:${urgent?'#ff5252':'#f9a825'};border:1px solid ${urgent?'#ff5252':'#f9a825'};">
+          ${urgent?'⚠️ EARNINGS':'📅 Earnings'} in ${days} day${days===1?'':'s'} · ${urgent?'HIGH RISK — consider closing':'size down before report'}
+        </div>`;
+      }
+    }
+
+    // ── Buy Zone badge (from screener data if available) ─────────────────────
+    const sr = screenerData.find ? screenerData.find(s => s.sym === sym) : null;
+    let zoneBadge = '';
+    if (sr) {
+      const { trend, distFromMa } = sr;
+      if (trend === 'Strong Up' || trend === 'Up') {
+        if (distFromMa >= -3 && distFromMa <= 10) {
+          zoneBadge = `<span style="font-size:10px;padding:2px 8px;border-radius:6px;background:#0a2a0a;color:#00e676;border:1px solid #00e676;font-weight:700;">🟢 Buy Zone</span> `;
+        } else if (distFromMa > 18) {
+          zoneBadge = `<span style="font-size:10px;padding:2px 8px;border-radius:6px;background:#2a1500;color:#f9a825;border:1px solid #f9a825;font-weight:700;">🔥 Extended — wait for pullback</span> `;
+        } else {
+          zoneBadge = `<span style="font-size:10px;padding:2px 8px;border-radius:6px;background:#0a1a2a;color:#6aaeff;border:1px solid #6aaeff;font-weight:700;">📈 Uptrend</span> `;
+        }
+      } else {
+        zoneBadge = `<span style="font-size:10px;padding:2px 8px;border-radius:6px;background:#2a0a0a;color:#ff5252;border:1px solid #ff5252;font-weight:700;">📉 Below MA — avoid</span> `;
+      }
+    }
 
     return `<div class="coin-card stock-card${loading ? ' loading' : ''}${hitTarget ? ' alert-hit' : ''}">
       <button class="remove-btn" onclick="removeStock('${sym}')" title="Remove">&#x2715;</button>
       <div class="ticker">${sym}</div>
       <div class="cname">${name}</div>
+      ${earningsBadge}
+      ${zoneBadge ? `<div style="margin-bottom:6px;">${zoneBadge}</div>` : ''}
       <div class="price">${fmtPrice(d.price)}</div>
       ${renderSparkline(sym)}
       <div class="row"><span class="label">Day</span><span class="val ${cls(d.changePct)}">${d.changePct != null ? fmtPct(d.changePct) : '--'}</span></div>
@@ -2354,15 +3140,66 @@ function renderStockGrid() {
       <div class="row"><span class="label">52W High</span><span class="val">${fmtPrice(d.high52)}</span></div>
       <div class="row"><span class="label">52W Low</span><span class="val">${fmtPrice(d.low52)}</span></div>
       <div class="row"><span class="label">From High</span><span class="val ${cls(fromHigh)}">${fromHigh != null ? fmtPct(fromHigh) : '--'}</span></div>
+      ${(()=>{
+        const h = stockHoldings[sym] || {};
+        const hasPos = h.qty && h.cost;
+        const pnlDollar = hasPos && d.price ? (d.price - h.cost) * h.qty : null;
+        const pnlPct    = hasPos && d.price ? ((d.price - h.cost) / h.cost) * 100 : null;
+        const pnlColor  = pnlDollar == null ? '' : pnlDollar >= 0 ? 'var(--good)' : 'var(--bad)';
+        const curPrice  = d.price ? d.price.toFixed(2) : (h.cost || '');
+        return `
+      <div class="alert-row" style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px;">
+        <span class="alert-label">Shares:</span>
+        <input class="alert-input${h.qty ? ' active' : ''}" type="number" step="any" min="0"
+          value="${h.qty || ''}" placeholder="0"
+          onchange="setStockHolding('${sym}','qty',this.value)"
+          onclick="event.stopPropagation()" />
+      </div>
       <div class="alert-row">
-        <span class="alert-label">&#128276; Alert at:</span>
-        <input class="alert-input${alertTarget ? ' active' : ''}" type="number" step="any" min="0"
-          value="${alertTarget || ''}" placeholder="$ target"
-          onchange="setStockAlert('${sym}', this.value)"
+        <span class="alert-label">Paid each:</span>
+        <input class="alert-input${h.cost ? ' active' : ''}" type="number" step="any" min="0"
+          value="${h.cost || ''}" placeholder="$0.00"
+          onchange="setStockHolding('${sym}','cost',this.value)"
+          onclick="event.stopPropagation()" />
+      </div>
+      ${hasPos && pnlDollar != null ? `<div class="row" style="margin-top:4px;"><span class="label">My P&amp;L</span><span class="val" style="color:${pnlColor};font-weight:800;">${pnlDollar >= 0 ? '+' : ''}${fmtPrice(pnlDollar)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)</span></div>` : ''}
+      ${hasPos ? `
+      <button onclick="toggleClosePanel('${sym}')" style="width:100%;margin-top:8px;padding:6px;font-size:11px;font-weight:700;
+        border-radius:7px;border:1px solid #4a2a8e;background:#1a1a3e;color:#d4b4ff;cursor:pointer;">
+        📓 Close / Sell Trade
+      </button>
+      <div id="closePanel_${sym}" style="display:none;margin-top:8px;padding:10px;background:#08080f;border-radius:8px;border:1px solid #2a2a5e;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Exit price per share:</div>
+        <input id="exitPrice_${sym}" type="number" step="any" value="${curPrice}"
+          style="width:100%;box-sizing:border-box;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);font-size:14px;margin-bottom:8px;"
+          onclick="event.stopPropagation()" />
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Note (optional — why did you sell?):</div>
+        <input id="exitNote_${sym}" type="text" placeholder="e.g. hit target, news, stop loss..."
+          style="width:100%;box-sizing:border-box;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);font-size:11px;margin-bottom:8px;"
+          onclick="event.stopPropagation()" />
+        <button onclick="recordCloseTrade('${sym}')"
+          style="width:100%;padding:8px;font-size:13px;font-weight:800;border-radius:7px;border:none;background:#00c853;color:#001a08;cursor:pointer;">
+          ✓ Record Sale &amp; Log to Journal
+        </button>
+      </div>` : ''}`;
+      })()}
+      <div class="alert-row">
+        <span class="alert-label">&#128276; Dip alert ↓</span>
+        <input class="alert-input${dipTgt ? ' active' : ''}" type="number" step="any" min="0"
+          value="${alertA.dip || ''}" placeholder="$ low target"
+          onchange="setStockAlert('${sym}','dip',this.value)"
+          onclick="event.stopPropagation()" />
+      </div>
+      <div class="alert-row">
+        <span class="alert-label">&#128276; Rise alert ↑</span>
+        <input class="alert-input${riseTgt ? ' active' : ''}" type="number" step="any" min="0"
+          value="${alertA.rise || ''}" placeholder="$ high target"
+          onchange="setStockAlert('${sym}','rise',this.value)"
           onclick="event.stopPropagation()" />
       </div>
     </div>`;
   }).join('');
+  renderStockPortfolioSummary();
 }
 
 function addStock() {
@@ -2393,29 +3230,121 @@ function removeStock(sym) {
   renderStockGrid();
 }
 
-function setStockAlert(sym, val) {
+function setStockAlert(sym, type, val) {
   const v = String(val).trim();
+  if (!stockAlerts[sym] || typeof stockAlerts[sym] !== 'object') stockAlerts[sym] = {};
   if (v === '' || isNaN(parseFloat(v))) {
-    delete stockAlerts[sym];
-    delete stockTriggered[sym];
+    delete stockAlerts[sym][type];
   } else {
-    stockAlerts[sym] = v;
-    delete stockTriggered[sym];
+    stockAlerts[sym][type] = v;
+    delete stockTriggered[sym + '_' + type];
   }
+  if (!stockAlerts[sym].dip && !stockAlerts[sym].rise) delete stockAlerts[sym];
   save('rm_stockAlerts', stockAlerts);
   renderStockGrid();
+}
+
+function setStockHolding(sym, field, val) {
+  const v = parseFloat(String(val).trim());
+  if (!stockHoldings[sym]) stockHoldings[sym] = {};
+  if (!val || isNaN(v) || v <= 0) delete stockHoldings[sym][field];
+  else stockHoldings[sym][field] = v;
+  // Record entry date the first time shares are set
+  if (field === 'qty' && v > 0 && !stockHoldings[sym].entryDate) {
+    stockHoldings[sym].entryDate = new Date().toISOString().slice(0, 10);
+  }
+  if (!stockHoldings[sym].qty && !stockHoldings[sym].cost) delete stockHoldings[sym];
+  save('rm_stockHoldings', stockHoldings);
+  renderStockGrid();
+  renderStockPortfolioSummary();
+}
+
+function renderStockPortfolioSummary() {
+  const el = document.getElementById('stockPortfolioSummary');
+  if (!el) return;
+  let totalCost = 0, totalValue = 0, rows = [];
+  stockWatchlist.forEach(sym => {
+    const h = stockHoldings[sym];
+    if (!h?.qty || !h?.cost) return;
+    const price = stockData[sym]?.price;
+    const cost  = h.qty * h.cost;
+    const value = price ? h.qty * price : null;
+    const gain  = value != null ? value - cost : null;
+    const gainPct = gain != null ? (gain / cost) * 100 : null;
+    totalCost  += cost;
+    if (value != null) totalValue += value;
+    rows.push({ sym, qty: h.qty, cost: h.cost, totalCost: cost, value, gain, gainPct });
+  });
+  if (!rows.length) { el.innerHTML = ''; return; }
+  const totalGain = totalValue - totalCost;
+  const totalGainPct = totalCost ? (totalGain / totalCost) * 100 : 0;
+  const cls = v => v == null ? '' : v >= 0 ? 'good' : 'bad';
+  el.innerHTML = `
+    <div class="section-label" style="margin-top:18px;">&#128200; My Stock Portfolio</div>
+    <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:8px;">
+      <div style="display:flex;gap:24px;padding:12px 16px;flex-wrap:wrap;border-bottom:1px solid var(--border);">
+        <div><div style="font-size:10px;color:var(--muted);">INVESTED</div><div style="font-size:18px;font-weight:800;">${fmtPrice(totalCost)}</div></div>
+        <div><div style="font-size:10px;color:var(--muted);">CURRENT VALUE</div><div style="font-size:18px;font-weight:800;">${totalValue ? fmtPrice(totalValue) : '--'}</div></div>
+        <div><div style="font-size:10px;color:var(--muted);">TOTAL P&amp;L</div><div style="font-size:18px;font-weight:800;color:var(--${cls(totalGain)})">${totalValue ? (totalGain >= 0 ? '+' : '') + fmtPrice(totalGain) + ' (' + (totalGainPct >= 0 ? '+' : '') + totalGainPct.toFixed(2) + '%)' : '--'}</div></div>
+        <div style="margin-left:auto;align-self:center;">
+          <button class="btn btn-sm" onclick="downloadStockCSV()" style="background:#1e4060;color:var(--text);border:1px solid var(--border);">&#11015; Download CSV</button>
+        </div>
+      </div>
+      ${rows.map(r => `
+        <div style="display:flex;align-items:center;gap:12px;padding:8px 16px;border-bottom:1px solid #0f2a45;flex-wrap:wrap;">
+          <span style="font-weight:800;font-size:13px;min-width:48px;">${r.sym}</span>
+          <span style="font-size:12px;color:var(--muted);">${r.qty} sh @ ${fmtPrice(r.cost)}</span>
+          <span style="font-size:12px;color:var(--muted);">cost ${fmtPrice(r.totalCost)}</span>
+          <span style="font-size:13px;font-weight:700;color:var(--${cls(r.gain)});margin-left:auto;">
+            ${r.gain != null ? (r.gain >= 0 ? '+' : '') + fmtPrice(r.gain) + ' (' + (r.gainPct >= 0 ? '+' : '') + r.gainPct.toFixed(2) + '%)' : 'price loading...'}
+          </span>
+        </div>`).join('')}
+    </div>`;
+}
+
+function downloadStockCSV() {
+  const rows = [['Ticker','Shares','Cost/Share','Total Cost','Current Price','Current Value','P&L $','P&L %','Date Exported']];
+  const today = new Date().toLocaleDateString('en-US');
+  stockWatchlist.forEach(sym => {
+    const h = stockHoldings[sym];
+    if (!h?.qty || !h?.cost) return;
+    const price = stockData[sym]?.price;
+    const totalCost  = (h.qty * h.cost).toFixed(2);
+    const totalValue = price ? (h.qty * price).toFixed(2) : '';
+    const gain       = price ? (h.qty * price - h.qty * h.cost).toFixed(2) : '';
+    const gainPct    = price ? (((h.qty * price - h.qty * h.cost) / (h.qty * h.cost)) * 100).toFixed(2) + '%' : '';
+    rows.push([sym, h.qty, h.cost.toFixed(2), totalCost, price ? price.toFixed(2) : '', totalValue, gain, gainPct, today]);
+  });
+  if (rows.length < 2) { alert('Add shares and cost to your stock cards first.'); return; }
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = `randys-portfolio-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
 }
 
 function checkStockAlerts() {
   const hits = [];
   stockWatchlist.forEach(sym => {
-    const target = stockAlerts[sym];
-    if (!target) return;
+    const alert = stockAlerts[sym];
+    if (!alert) return;
     const d = stockData[sym];
     if (!d?.price) return;
-    if (d.price >= parseFloat(target) && !stockTriggered[sym]) {
-      stockTriggered[sym] = true;
-      hits.push(`<b>${sym}</b> hit ${fmtPrice(d.price)} — target: ${fmtPrice(parseFloat(target))}`);
+    // Support both old string format and new {dip, rise} object format
+    const a = typeof alert === 'object' ? alert : { dip: parseFloat(alert) < d.price ? String(alert) : undefined, rise: parseFloat(alert) >= d.price ? String(alert) : undefined };
+    if (a.dip) {
+      const tgt = parseFloat(a.dip);
+      if (!stockTriggered[sym + '_dip'] && d.price <= tgt) {
+        stockTriggered[sym + '_dip'] = true;
+        hits.push(`<b>${sym}</b> dipped to ${fmtPrice(d.price)} — your dip alert: ${fmtPrice(tgt)}`);
+      }
+    }
+    if (a.rise) {
+      const tgt = parseFloat(a.rise);
+      if (!stockTriggered[sym + '_rise'] && d.price >= tgt) {
+        stockTriggered[sym + '_rise'] = true;
+        hits.push(`<b>${sym}</b> rose to ${fmtPrice(d.price)} — your rise alert: ${fmtPrice(tgt)}`);
+      }
     }
   });
   if (!hits.length) return;
@@ -2435,42 +3364,39 @@ function copyReport() {
 }
 
 // ── Market Scanner ────────────────────────────────────────────────────────────
-let marketRows = [];
+const _cachedScan = load('rm_marketScan', null);
+let marketRows   = (_cachedScan?.ts && Date.now() - _cachedScan.ts < 30 * 60 * 1000) ? _cachedScan.rows : [];
 let marketFilter = 'all';
-let marketSort = { col: 'rank', dir: 1 };
+let marketSort   = { col: 'rank', dir: 1 };
 
 async function scanMarket() {
   document.getElementById('scannerSection').style.display = 'block';
-  document.getElementById('marketBody').innerHTML = '<tr><td colspan="8" style="color:var(--muted);padding:20px 10px;">Loading top 100 coins...</td></tr>';
+  if (marketRows.length) renderMarket(); // show cached instantly
+  document.getElementById('marketBody').innerHTML = '<tr><td colspan="8" style="color:var(--muted);padding:20px 10px;">Loading top 100 coins…</td></tr>';
   setStatus('loading', 'Scanning market...');
   try {
-    const cgBase = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&price_change_percentage=24h,7d,1y';
-    const mkProxyCG = u => `https://corsproxy.io/?${encodeURIComponent(u)}`;
-    let d1, d2;
-    try {
-      const [r1, r2] = await Promise.all([fetch(cgBase+'&page=1'), fetch(cgBase+'&page=2')]);
-      [d1, d2] = await Promise.all([r1.json(), r2.json()]);
-    } catch {
-      const [r1, r2] = await Promise.all([fetch(mkProxyCG(cgBase+'&page=1')), fetch(mkProxyCG(cgBase+'&page=2'))]);
-      [d1, d2] = await Promise.all([r1.json(), r2.json()]);
-    }
-    const all = [...(Array.isArray(d1)?d1:[]), ...(Array.isArray(d2)?d2:[])];
-    marketRows = all.map((c, i) => ({
+    const r = await fetch('/api/scan');
+    if (!r.ok) throw new Error('CoinCap ' + r.status);
+    const json = await r.json();
+    const coins = json.data;
+    if (!Array.isArray(coins) || !coins.length) throw new Error('no data');
+    marketRows = coins.map((c, i) => ({
       rank:      i + 1,
       id:        c.id,
       symbol:    c.symbol.toUpperCase(),
       name:      c.name,
-      price:     c.current_price,
-      change24h: c.price_change_percentage_24h,
-      change7d:  c.price_change_percentage_7d_in_currency,
-      change1y:  c.price_change_percentage_1y_in_currency,
-      marketCap: c.market_cap,
+      price:     parseFloat(c.priceUsd) || 0,
+      change24h: parseFloat(c.changePercent24Hr) || null,
+      change7d:  null, // CoinCap free tier doesn't include 7d in assets list
+      change1y:  null,
+      marketCap: parseFloat(c.marketCapUsd) || 0,
     }));
+    save('rm_marketScan', { rows: marketRows, ts: Date.now() });
     renderMarket();
     setStatus('ok', 'Market scan complete — ' + new Date().toLocaleTimeString());
   } catch(e) {
-    document.getElementById('marketBody').innerHTML = '<tr><td colspan="8" style="color:var(--bad);padding:16px 10px;">Error loading market data. Try again in a moment.</td></tr>';
-    setStatus('error', 'Market scan failed: ' + e.message);
+    if (marketRows.length) { renderMarket(); setStatus('ok', 'Showing cached scan data'); }
+    else { document.getElementById('marketBody').innerHTML = `<tr><td colspan="8" style="color:var(--bad);padding:16px 10px;">Scan failed: ${e.message}. Try again.</td></tr>`; setStatus('error', 'Scan failed'); }
   }
 }
 
@@ -2489,8 +3415,8 @@ function sortMarket(col) {
 
 function renderMarket() {
   let rows = marketRows.slice();
-  if (marketFilter === 'gainers') rows = rows.filter(r => r.change1y > 0);
-  if (marketFilter === 'losers')  rows = rows.filter(r => r.change1y < 0);
+  if (marketFilter === 'gainers') rows = rows.filter(r => r.change24h > 0);
+  if (marketFilter === 'losers')  rows = rows.filter(r => r.change24h < 0);
 
   const col = marketSort.col, dir = marketSort.dir;
   rows.sort((a, b) => {
@@ -2511,16 +3437,14 @@ function renderMarket() {
       <td><span class="sym-cell">${r.symbol}</span><br><span class="name-cell">${r.name}</span></td>
       <td class="num">${fmtPrice(r.price)}</td>
       <td class="num ${cls(r.change24h)}">${fmtPct(r.change24h)}</td>
-      <td class="num ${cls(r.change7d)}">${fmtPct(r.change7d)}</td>
-      <td class="num ${cls(r.change1y)}" style="font-size:14px;">${fmtPct(r.change1y)}</td>
       <td class="num">${fmtBig(r.marketCap)}</td>
       <td><button class="add-to-port${inPort ? ' in-port' : ''}" onclick="addFromMarket('${r.symbol}','${r.id}')">${inPort ? '&#10003; Added' : '+ Portfolio'}</button></td>
     </tr>`;
   }).join('');
 }
 
-function addFromMarket(sym, cgId) {
-  if (!COINS[sym]) COINS[sym] = cgId;
+function addFromMarket(sym, ccId) {
+  if (!COINS[sym]) COINS[sym] = ccId;
   if (!NAMES[sym]) NAMES[sym] = sym;
   if (!portfolio.includes(sym)) {
     portfolio.push(sym);
@@ -2556,7 +3480,7 @@ setInterval(() => {
   if (!arEnabled) return;
   arCountdownVal = Math.max(0, arCountdownVal - 1);
   updateArDisplay();
-  if (arCountdownVal === 0) { arCountdownVal = 60; refreshAll(); }
+  if (arCountdownVal === 0) { arCountdownVal = 120; refreshAll(); }
 }, 1000);
 
 // ── Init ──────────────────────────────────────────────────────────────────────
@@ -2570,9 +3494,13 @@ renderStockGrid();
 renderSupplyChain();
 renderCongressBuys();
 renderCongressAllStars();
+renderTradeJournal();
+renderPolicyWatch();
 refreshAll();
 // Dedicated news refresh every 5 minutes
 setInterval(() => fetchNews(), NEWS_TTL);
+// Policy Watch refresh every 15 minutes
+setInterval(() => fetchPolicyNews(), POLICY_TTL);
 </script>
 
 <!-- ── Bottom Navigation Bar ─────────────────────────────────────────────── -->
@@ -2591,6 +3519,9 @@ setInterval(() => fetchNews(), NEWS_TTL);
   </button>
   <button onclick="document.getElementById('sec-supply').scrollIntoView({behavior:'smooth'})">
     🔗<span>Supply</span>
+  </button>
+  <button onclick="document.getElementById('sec-trade').scrollIntoView({behavior:'smooth'})">
+    🎯<span>Trade</span>
   </button>
   <button onclick="document.getElementById('reportBox').scrollIntoView({behavior:'smooth'})">
     📋<span>Report</span>
