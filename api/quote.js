@@ -2,7 +2,7 @@ module.exports = async function handler(req, res) {
   const { syms } = req.query;
   if (!syms) return res.status(400).json({ error: 'syms required' });
 
-  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(syms)}&fields=regularMarketPrice,fiftyTwoWeekHigh,fiftyTwoWeekLow,regularMarketChangePercent,regularMarketChange,shortName,regularMarketPreviousClose`;
+  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${syms}&fields=regularMarketPrice,fiftyTwoWeekHigh,fiftyTwoWeekLow,regularMarketChangePercent,regularMarketChange,shortName,regularMarketPreviousClose`;
 
   try {
     const r = await fetch(url, {
