@@ -1610,7 +1610,14 @@ function checkAlerts() {
   }
 }
 
-// ── Trump Direct — live Truth Social posts ────────────────────────────────────
+// ── Trump Direct — Truth Social via news (Cloudflare blocks direct API) ───────
+const TRUMP_QUERIES = [
+  'Trump "Truth Social" post says statement today 2026',
+  'Trump posts Truth Social tariff trade market announcement 2026',
+  '"Trump wrote" OR "Trump posted" Truth Social stocks economy 2026',
+  'Trump Truth Social statement oil energy Iran sanctions 2026',
+];
+
 let trumpPosts      = [];
 let lastTrumpFetch  = 0;
 const TRUMP_TTL     = 5 * 60 * 1000;
@@ -1620,35 +1627,38 @@ async function fetchTrumpPosts(force = false) {
     renderTrumpPosts(); return;
   }
   const el = document.getElementById('trumpPostList');
-  if (el) el.innerHTML = '<div class="news-empty" style="color:var(--muted);">Fetching Trump\'s Truth Social posts…</div>';
+  if (el) el.innerHTML = '<div class="news-empty" style="color:var(--muted);">Scanning for Trump\'s latest Truth Social posts…</div>';
 
-  try {
-    const r = await fetch('/api/truthsocial', { signal: AbortSignal.timeout(12000) });
-    if (r.status === 501) {
-      if (el) el.innerHTML = '<div class="news-empty" style="color:var(--muted);">Trump Direct not configured — credentials not set in Vercel environment.</div>';
-      return;
-    }
-    if (!r.ok) throw new Error('status ' + r.status);
-    const d = await r.json();
-    trumpPosts = d.posts || [];
-    lastTrumpFetch = Date.now();
-    renderTrumpPosts();
-  } catch(e) {
-    if (el) el.innerHTML = '<div class="news-empty" style="color:var(--bad);">Could not reach Truth Social — ' + e.message + '. Click ↻ Refresh to retry.</div>';
+  const all = [];
+  for (const q of TRUMP_QUERIES) {
+    try {
+      const r = await fetch('/api/news?q=' + encodeURIComponent(q), { signal: AbortSignal.timeout(9000) });
+      if (r.ok) { const d = await r.json(); all.push(...(d.items || [])); }
+    } catch(_) {}
+    await new Promise(r => setTimeout(r, 150));
   }
+
+  const seen = new Set();
+  trumpPosts = all.filter(item => {
+    const key = item.title.slice(0, 60).toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key); return true;
+  }).sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate)).slice(0, 15);
+
+  lastTrumpFetch = Date.now();
+  renderTrumpPosts();
 }
 
 function renderTrumpPosts() {
   const el = document.getElementById('trumpPostList');
   if (!el) return;
   if (!trumpPosts.length) {
-    el.innerHTML = '<div class="news-empty">No posts found — click ↻ Refresh.</div>'; return;
+    el.innerHTML = '<div class="news-empty">No Trump posts found — click ↻ Refresh.</div>'; return;
   }
   const watchSet = new Set(stockWatchlist);
-  el.innerHTML = trumpPosts.map(post => {
-    const text   = post.content || (post.reblog ? '🔁 ' + post.reblog.content : '');
-    const tags   = getPolicyImpact(text);
-    const age    = post.created_at ? timeAgo(post.created_at) : '';
+  el.innerHTML = trumpPosts.map(item => {
+    const tags   = getPolicyImpact(item.title);
+    const age    = item.pubDate ? timeAgo(item.pubDate) : '';
     const tagHtml = tags.map(s => {
       const inW = watchSet.has(s);
       return `<span onclick="addToWatchlist('${s}')" style="display:inline-block;padding:2px 7px;border-radius:5px;
@@ -1656,15 +1666,15 @@ function renderTrumpPosts() {
         background:${inW?'#0d2d1a':'#1a0000'};color:${inW?'var(--good)':'#ff6b6b'};
         border:1px solid ${inW?'var(--good)':'#ff4444'};">${s}${inW?' ★':''}</span>`;
     }).join('');
-    const preview = text.length > 280 ? text.slice(0, 280) + '…' : text;
-    return `<div class="news-item" onclick="window.open('${post.url}','_blank')" style="border-left:3px solid #ff4444;cursor:pointer;">
+    return `<div class="news-item" onclick="window.open('${item.link}','_blank')" style="border-left:3px solid #ff4444;cursor:pointer;">
       <div class="news-meta" style="min-width:44px;">
         <span style="font-size:8px;color:#ff6b6b;font-weight:800;display:block;">TRUMP</span>
         <span class="news-time">${age}</span>
       </div>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:13px;line-height:1.4;white-space:pre-wrap;">${preview}</div>
+        <div style="font-size:13px;font-weight:700;line-height:1.3;">${item.title}</div>
         ${tagHtml ? `<div style="margin-top:4px;">${tagHtml}</div>` : ''}
+        <div style="font-size:10px;color:var(--muted);margin-top:2px;">${item.source || ''}</div>
       </div>
     </div>`;
   }).join('');
