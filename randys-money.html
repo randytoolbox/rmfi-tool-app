@@ -371,6 +371,17 @@
     <div class="news-empty">News loads on first refresh — click &#8635; Refresh Data or wait for auto-refresh.</div>
   </div>
 
+  <!-- TRUMP DIRECT — live Truth Social posts -->
+  <div id="sec-trump" style="margin-top:24px; margin-bottom:28px;">
+    <div class="section-label" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+      <span>&#127482;&#127480; Trump Direct <span style="font-size:10px;color:var(--muted);font-weight:400;">— Truth Social posts &bull; real-time &bull; auto-updates 5 min</span></span>
+      <button class="btn btn-sm" onclick="fetchTrumpPosts(true)" style="background:#1a0000;color:#ff6b6b;border:1px solid #ff4444;">&#8635; Refresh</button>
+    </div>
+    <div class="news-wrap" style="margin-top:8px;">
+      <div id="trumpPostList"><div class="news-empty">Loading Trump&#39;s Truth Social posts&hellip;</div></div>
+    </div>
+  </div>
+
   <!-- POLICY WATCH — Trump Truth Social + tariffs + trade deals + sanctions -->
   <div id="sec-policy" style="margin-top:24px; margin-bottom:28px;">
     <div class="section-label" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
@@ -1102,6 +1113,7 @@ async function refreshAll() {
     fetchCongressBuys();      // throttled — 4 hours
     fetchHouseLeaderboard();  // throttled — 7 days (official PTR rankings)
     fetchEarnings();          // throttled — 24 hours (earnings date warnings)
+    fetchTrumpPosts();        // throttled — 5 min (Trump Truth Social direct)
     fetchPolicyNews();        // throttled — 15 min (Trump/tariff/policy alerts)
     document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
     setStatus('ok', 'All data loaded — ' + now);
@@ -1596,6 +1608,66 @@ function checkAlerts() {
       body: h.replace(/<[^>]+>/g, ''),
     }));
   }
+}
+
+// ── Trump Direct — live Truth Social posts ────────────────────────────────────
+let trumpPosts      = [];
+let lastTrumpFetch  = 0;
+const TRUMP_TTL     = 5 * 60 * 1000;
+
+async function fetchTrumpPosts(force = false) {
+  if (!force && Date.now() - lastTrumpFetch < TRUMP_TTL && trumpPosts.length) {
+    renderTrumpPosts(); return;
+  }
+  const el = document.getElementById('trumpPostList');
+  if (el) el.innerHTML = '<div class="news-empty" style="color:var(--muted);">Fetching Trump\'s Truth Social posts…</div>';
+
+  try {
+    const r = await fetch('/api/truthsocial', { signal: AbortSignal.timeout(12000) });
+    if (r.status === 501) {
+      if (el) el.innerHTML = '<div class="news-empty" style="color:var(--muted);">Trump Direct not configured — credentials not set in Vercel environment.</div>';
+      return;
+    }
+    if (!r.ok) throw new Error('status ' + r.status);
+    const d = await r.json();
+    trumpPosts = d.posts || [];
+    lastTrumpFetch = Date.now();
+    renderTrumpPosts();
+  } catch(e) {
+    if (el) el.innerHTML = '<div class="news-empty" style="color:var(--bad);">Could not reach Truth Social — ' + e.message + '. Click ↻ Refresh to retry.</div>';
+  }
+}
+
+function renderTrumpPosts() {
+  const el = document.getElementById('trumpPostList');
+  if (!el) return;
+  if (!trumpPosts.length) {
+    el.innerHTML = '<div class="news-empty">No posts found — click ↻ Refresh.</div>'; return;
+  }
+  const watchSet = new Set(stockWatchlist);
+  el.innerHTML = trumpPosts.map(post => {
+    const text   = post.content || (post.reblog ? '🔁 ' + post.reblog.content : '');
+    const tags   = getPolicyImpact(text);
+    const age    = post.created_at ? timeAgo(post.created_at) : '';
+    const tagHtml = tags.map(s => {
+      const inW = watchSet.has(s);
+      return `<span onclick="addToWatchlist('${s}')" style="display:inline-block;padding:2px 7px;border-radius:5px;
+        font-size:10px;font-weight:800;margin:2px 2px 0 0;cursor:pointer;
+        background:${inW?'#0d2d1a':'#1a0000'};color:${inW?'var(--good)':'#ff6b6b'};
+        border:1px solid ${inW?'var(--good)':'#ff4444'};">${s}${inW?' ★':''}</span>`;
+    }).join('');
+    const preview = text.length > 280 ? text.slice(0, 280) + '…' : text;
+    return `<div class="news-item" onclick="window.open('${post.url}','_blank')" style="border-left:3px solid #ff4444;cursor:pointer;">
+      <div class="news-meta" style="min-width:44px;">
+        <span style="font-size:8px;color:#ff6b6b;font-weight:800;display:block;">TRUMP</span>
+        <span class="news-time">${age}</span>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;line-height:1.4;white-space:pre-wrap;">${preview}</div>
+        ${tagHtml ? `<div style="margin-top:4px;">${tagHtml}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ── Policy Watch — Trump Truth Social + tariffs + sanctions ──────────────────
@@ -3495,10 +3567,13 @@ renderSupplyChain();
 renderCongressBuys();
 renderCongressAllStars();
 renderTradeJournal();
+renderTrumpPosts();
 renderPolicyWatch();
 refreshAll();
 // Dedicated news refresh every 5 minutes
 setInterval(() => fetchNews(), NEWS_TTL);
+// Trump Direct refresh every 5 minutes
+setInterval(() => fetchTrumpPosts(), TRUMP_TTL);
 // Policy Watch refresh every 15 minutes
 setInterval(() => fetchPolicyNews(), POLICY_TTL);
 </script>
@@ -3513,6 +3588,9 @@ setInterval(() => fetchPolicyNews(), POLICY_TTL);
   </button>
   <button onclick="document.getElementById('sec-news').scrollIntoView({behavior:'smooth'})">
     📰<span>News</span>
+  </button>
+  <button onclick="document.getElementById('sec-trump').scrollIntoView({behavior:'smooth'})">
+    🇺🇸<span>Trump</span>
   </button>
   <button onclick="document.getElementById('sec-congress').scrollIntoView({behavior:'smooth'})">
     🏛<span>Congress</span>
