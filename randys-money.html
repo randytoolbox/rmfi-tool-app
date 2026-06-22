@@ -322,6 +322,17 @@
 
 <div class="main">
 
+  <!-- TODAY'S TOP PICKS -->
+  <div id="sec-picks" style="margin-bottom:20px;">
+    <div class="section-label" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+      <span>⭐ Today's Top Picks <span style="font-size:10px;color:var(--muted);font-weight:400;">— auto-scored from screener · 52W position · news · congress buys</span></span>
+      <button class="btn btn-sm" onclick="renderDailyPicks()" style="background:#1a2a1a;color:#7fff7f;border:1px solid #3a8a3a;">↻ Refresh</button>
+    </div>
+    <div id="picksList" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap:12px; margin-top:8px;">
+      <div style="color:var(--muted);font-size:12px;padding:12px 0;">Loading picks…</div>
+    </div>
+  </div>
+
   <div id="sec-crypto" class="section-label" style="margin-top:4px;">Your Portfolio</div>
   <div id="portfolioSummary">
     <div class="ps-row">
@@ -1109,6 +1120,7 @@ async function refreshAll() {
     }
     setTimeout(() => fetchStockHistory(), 8000); // non-blocking, delayed to avoid racing with fetchStocks v8 calls
     setTimeout(() => fetchStock52W(), 3000);     // non-blocking, fills in 52W high/low from Yahoo v7 quote API
+    setTimeout(() => renderDailyPicks(), 1500);  // picks render after initial stock data lands
     fetchNews();           // throttled — 5 min
     fetchCongress();          // throttled — 6 hours (news-based trade feed)
     fetchCongressBuys();      // throttled — 4 hours
@@ -2411,6 +2423,119 @@ async function fetchStocks() {
   }
 }
 
+// ── Daily Picks ───────────────────────────────────────────────────────────────
+function scorePickStock(sym) {
+  const d = stockData[sym] || {};
+  if (!d.price) return -1;
+  let score = 0;
+
+  // Screener grade (if screener has been run)
+  const s = screenerData.find(x => x.symbol === sym);
+  if (s) {
+    if (s.grade === 'A') score += 40;
+    else if (s.grade === 'B') score += 25;
+    else if (s.grade === 'C') score += 10;
+    if (s.winRate >= 60) score += 10;
+  }
+
+  // Distance below 52W high = room to recover
+  const fromHigh = d.high52 && d.price ? (d.price - d.high52) / d.high52 * 100 : null;
+  if (fromHigh !== null) {
+    if (fromHigh < -30) score += 20;
+    else if (fromHigh < -20) score += 15;
+    else if (fromHigh < -10) score += 8;
+    else if (fromHigh < -5)  score += 3;
+    if (fromHigh > -2) score -= 10; // overextended
+  }
+
+  // Positive momentum (not chasing big gaps)
+  if (d.changePct != null) {
+    if (d.changePct >= 0.5 && d.changePct <= 4) score += 10;
+    else if (d.changePct > 4) score += 4;
+    else if (d.changePct < -4) score -= 5;
+  }
+
+  // Congress members buying (smart money signal)
+  const cbuy = cBuysData.find(([s]) => s === sym);
+  if (cbuy) score += Math.min(cbuy[1] * 4, 20);
+
+  // In today's policy/news radar
+  if (policyNews.some(n => getPolicyImpact(n.title).includes(sym))) score += 15;
+
+  // Recent congress trade purchase
+  if (congressTrades.some(t => t._sym === sym && (t.type || '').toLowerCase().includes('purchase'))) score += 8;
+
+  return score;
+}
+
+function pickReason(sym) {
+  const d = stockData[sym] || {};
+  const s = screenerData.find(x => x.symbol === sym);
+  const parts = [];
+
+  if (s?.grade === 'A') parts.push('screener grade A');
+  else if (s?.grade === 'B') parts.push('screener grade B');
+  if (s?.winRate >= 60) parts.push(`${s.winRate}% hist. win rate`);
+
+  const fromHigh = d.high52 && d.price ? (d.price - d.high52) / d.high52 * 100 : null;
+  if (fromHigh !== null && fromHigh < -8) parts.push(`${Math.abs(fromHigh).toFixed(0)}% below 52W high`);
+
+  if (d.changePct != null && Math.abs(d.changePct) >= 0.5) {
+    parts.push(d.changePct > 0 ? `+${d.changePct.toFixed(1)}% today` : `dip ${Math.abs(d.changePct).toFixed(1)}% — entry?`);
+  }
+
+  const cbuy = cBuysData.find(([s]) => s === sym);
+  if (cbuy && cbuy[1] >= 2) parts.push(`${cbuy[1]} congress buys`);
+
+  if (policyNews.some(n => getPolicyImpact(n.title).includes(sym))) parts.push('in today\'s news');
+  if (congressTrades.some(t => t._sym === sym && (t.type || '').toLowerCase().includes('purchase'))) parts.push('recent congress buy');
+
+  return parts.length ? parts.join(' · ') : 'top watchlist position';
+}
+
+function renderDailyPicks() {
+  const el = document.getElementById('picksList');
+  if (!el) return;
+
+  const eligible = stockWatchlist.filter(sym => stockData[sym]?.price);
+  if (eligible.length < 1) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:12px 0;">Loading picks — waiting for stock data…</div>';
+    return;
+  }
+
+  const top3 = eligible
+    .map(sym => ({ sym, score: scorePickStock(sym) }))
+    .filter(x => x.score >= 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+
+  const medals = ['🥇', '🥈', '🥉'];
+  const gradeColor = { A: '#7fff7f', B: '#90caf9', C: '#ffe082', D: '#ff8a65' };
+
+  el.innerHTML = top3.map(({ sym }, i) => {
+    const d = stockData[sym] || {};
+    const s = screenerData.find(x => x.symbol === sym);
+    const upClr = '#7fff7f', dnClr = '#ff6b6b';
+    const chgClr = (d.changePct ?? 0) >= 0 ? upClr : dnClr;
+    const fromHigh = d.high52 && d.price ? (d.price - d.high52) / d.high52 * 100 : null;
+    return `
+      <div style="background:var(--card-bg);border:1px solid ${i===0?'#4a7a3a':'var(--border)'};border-radius:12px;padding:16px;position:relative;">
+        <span style="position:absolute;top:10px;right:12px;font-size:20px;">${medals[i]}</span>
+        <div style="display:flex;align-items:baseline;gap:8px;padding-right:30px;">
+          <span style="font-size:20px;font-weight:800;color:var(--accent);">${sym}</span>
+          ${s?.grade ? `<span style="font-size:10px;background:#0d1f0d;color:${gradeColor[s.grade]||'#aaa'};padding:1px 7px;border-radius:8px;font-weight:700;">${s.grade}</span>` : ''}
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:1px;">${d.name || STOCK_NAMES[sym] || sym}</div>
+        <div style="font-size:22px;font-weight:700;margin-top:10px;">${fmtPrice(d.price)}</div>
+        <div style="font-size:12px;margin-top:3px;">
+          <span style="color:${chgClr}">${d.changePct != null ? (d.changePct>=0?'+':'')+d.changePct.toFixed(2)+'%' : '--'} today</span>
+          ${fromHigh != null ? `<span style="color:var(--muted);margin-left:10px;">${fromHigh.toFixed(1)}% from high</span>` : ''}
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5;border-top:1px solid var(--border);padding-top:8px;">${pickReason(sym)}</div>
+      </div>`;
+  }).join('');
+}
+
 async function fetchStock52W() {
   if (!stockWatchlist.length) return;
   const BATCH = 20;
@@ -3613,6 +3738,9 @@ setInterval(() => fetchPolicyNews(), POLICY_TTL);
 
 <!-- ── Bottom Navigation Bar ─────────────────────────────────────────────── -->
 <nav id="bottomNav">
+  <button onclick="document.getElementById('sec-picks').scrollIntoView({behavior:'smooth'})">
+    ⭐<span>Picks</span>
+  </button>
   <button onclick="document.getElementById('sec-crypto').scrollIntoView({behavior:'smooth'})">
     ₿<span>Crypto</span>
   </button>
