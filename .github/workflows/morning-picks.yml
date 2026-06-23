@@ -9,6 +9,11 @@ jobs:
   send-picks:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
       - name: Send morning picks email
-        run: |
-          curl -sf https://rmfi-tool-app.vercel.app/api/morning-picks
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: node scripts/morning-picks.js
