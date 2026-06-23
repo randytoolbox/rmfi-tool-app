@@ -9,7 +9,6 @@
     "api/macro.js":          { "maxDuration": 15 },
     "api/history.js":        { "maxDuration": 20 },
     "api/prices.js":         { "maxDuration": 15 },
-    "api/earnings.js":       { "maxDuration": 15 },
-    "api/morning-picks.js":  { "maxDuration": 55 }
+    "api/earnings.js":       { "maxDuration": 15 }
   }
 }
