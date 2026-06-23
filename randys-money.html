@@ -1115,12 +1115,16 @@ async function refreshAll() {
     document.getElementById('lastUpdated').textContent = 'Updated ' + now;
     setStatus('ok', 'Crypto loaded — fetching stocks...');
     checkAlerts();
+    renderDailyPicks(); // render from cache immediately (shows picks if cache is fresh)
     if (Date.now() - lastStockFetch >= STOCK_REFRESH_MS) {
-      try { await fetchStocks(); renderStockGrid(); checkStockAlerts(); lastStockFetch = Date.now(); } catch(se) { console.warn('Stocks:', se); }
+      try {
+        await fetchStocks();
+        renderStockGrid(); checkStockAlerts(); lastStockFetch = Date.now();
+        renderDailyPicks(); // re-render now that fresh stock prices are in
+      } catch(se) { console.warn('Stocks:', se); }
     }
     setTimeout(() => fetchStockHistory(), 8000); // non-blocking, delayed to avoid racing with fetchStocks v8 calls
-    setTimeout(() => fetchStock52W(), 3000);     // non-blocking, fills in 52W high/low from Yahoo v7 quote API
-    setTimeout(() => renderDailyPicks(), 1500);  // picks render after initial stock data lands
+    setTimeout(() => fetchStock52W(), 3000);     // non-blocking, fills in 52W high/low
     fetchNews();           // throttled — 5 min
     fetchCongress();          // throttled — 6 hours (news-based trade feed)
     fetchCongressBuys();      // throttled — 4 hours
@@ -2493,19 +2497,26 @@ function pickReason(sym) {
   return parts.length ? parts.join(' · ') : 'top watchlist position';
 }
 
+let _picksRetry = 0;
 function renderDailyPicks() {
   const el = document.getElementById('picksList');
   if (!el) return;
 
   const eligible = stockWatchlist.filter(sym => stockData[sym]?.price);
   if (eligible.length < 1) {
-    el.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:12px 0;">Loading picks — waiting for stock data…</div>';
+    if (_picksRetry < 6) {
+      _picksRetry++;
+      el.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:12px 0;">Loading picks… (${stockWatchlist.length} stocks tracked, waiting for prices)</div>`;
+      setTimeout(renderDailyPicks, 2000);
+    } else {
+      el.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:12px 0;">No stock prices loaded yet — hit ↻ Refresh Data above.</div>`;
+    }
     return;
   }
+  _picksRetry = 0;
 
   const top3 = eligible
     .map(sym => ({ sym, score: scorePickStock(sym) }))
-    .filter(x => x.score >= 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, 3);
 
@@ -2555,7 +2566,7 @@ async function fetchStock52W() {
       }
     } catch(e) { console.warn('52W fetch batch:', e.message); }
   }));
-  if (updated) { save('rm_stockData', stockData); renderStockGrid(); }
+  if (updated) { save('rm_stockData', stockData); renderStockGrid(); renderDailyPicks(); }
 }
 
 async function fetchStockHistory() {
