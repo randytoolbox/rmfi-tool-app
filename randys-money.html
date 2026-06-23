@@ -2497,19 +2497,26 @@ function pickReason(sym) {
   return parts.length ? parts.join(' · ') : 'top watchlist position';
 }
 
+let _picksRetry = 0;
 function renderDailyPicks() {
   const el = document.getElementById('picksList');
   if (!el) return;
 
   const eligible = stockWatchlist.filter(sym => stockData[sym]?.price);
   if (eligible.length < 1) {
-    el.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:12px 0;">Loading picks — waiting for stock data…</div>';
+    if (_picksRetry < 6) {
+      _picksRetry++;
+      el.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:12px 0;">Loading picks… (${stockWatchlist.length} stocks tracked, waiting for prices)</div>`;
+      setTimeout(renderDailyPicks, 2000);
+    } else {
+      el.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:12px 0;">No stock prices loaded yet — hit ↻ Refresh Data above.</div>`;
+    }
     return;
   }
+  _picksRetry = 0;
 
   const top3 = eligible
     .map(sym => ({ sym, score: scorePickStock(sym) }))
-    .filter(x => x.score >= 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, 3);
 
