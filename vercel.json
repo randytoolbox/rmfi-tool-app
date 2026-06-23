@@ -12,10 +12,7 @@
     "api/earnings.js":       { "maxDuration": 15 },
     "api/morning-picks.js":  { "maxDuration": 55 }
   },
-  "crons": [
-    {
-      "path": "/api/morning-picks",
-      "schedule": "45 11 * * 1-5"
-    }
+  "headers": [
+    { "source": "/api/(.*)", "headers": [{ "key": "Access-Control-Allow-Origin", "value": "*" }] }
   ]
 }

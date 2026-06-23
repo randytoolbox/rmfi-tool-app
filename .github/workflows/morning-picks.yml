@@ -1,0 +1,14 @@
+name: Morning Picks Email
+
+on:
+  schedule:
+    - cron: '45 11 * * 1-5'   # 7:45am ET (11:45 UTC) Mon–Fri
+  workflow_dispatch:            # also allows manual trigger from GitHub Actions tab
+
+jobs:
+  send-picks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send morning picks email
+        run: |
+          curl -sf https://rmfi-tool-app.vercel.app/api/morning-picks
