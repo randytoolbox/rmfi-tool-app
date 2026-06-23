@@ -809,15 +809,6 @@ let macroData = (_mc && Date.now() - _mc.ts < 6 * 3600000)
   : {};
 let holdings          = load('rm_holdings', {}); // { XRP: {qty:500, cost:0.86}, ... }
 
-// Pre-load Randy's holdings on first visit (only runs if nothing entered yet)
-(function seedHoldings() {
-  if (!holdings.XRP && !holdings.ALGO) {
-    holdings.XRP  = { qty: 32.707145, cost: 1.223 };
-    holdings.ALGO = { qty: 339.709665, cost: 0.1030 };
-    save('rm_holdings', holdings);
-  }
-})();
-
 // ── Formatting ─────────────────────────────────────────────────────────────────
 function fmtPrice(n) {
   if (n == null || isNaN(n)) return '--';
