@@ -2,7 +2,7 @@
 // Runs via GitHub Actions at 7:45am ET (11:45 UTC) Mon-Fri.
 // Fetches stock data, scores top 3, sends email via Resend.
 
-const TO_EMAIL   = 'r22862550@gmail.com';
+const TO_EMAIL   = 'randybarclay1@gmail.com';
 const FROM_EMAIL = 'onboarding@resend.dev';
 
 const WATCHLIST = [
