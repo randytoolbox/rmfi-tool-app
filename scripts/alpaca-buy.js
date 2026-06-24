@@ -10,7 +10,7 @@ const WATCHLIST = [
   'SPY','QQQ','DIA','IWM',
   'LMT','RTX','PLTR','CAT','XLE','BE','LUMN',
   'NVDA','MSFT','AAPL','TSLA','AMZN','META','GOOGL',
-  'AMD','AVGO','IBM','DELL','CRWD',
+  'AMD','AVGO','IBM','DELL','CRWD','FLEX','MTSI',
   'OXY','CVX','HAL','MRO','WMB',
   'GLD','SLV','TLT','PYPL','BRK.B',
 ];
