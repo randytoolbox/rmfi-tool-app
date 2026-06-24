@@ -1,0 +1,20 @@
+name: Alpaca Crypto Buy
+
+on:
+  schedule:
+    - cron: '40 13 * * 1-5'   # 9:40am ET (13:40 UTC) Mon–Fri — 5 min after stock buy
+  workflow_dispatch:
+
+jobs:
+  buy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Place morning crypto trades
+        env:
+          ALPACA_KEY_ID:     ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+        run: node scripts/crypto-buy.js
