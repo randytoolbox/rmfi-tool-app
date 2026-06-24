@@ -33,7 +33,7 @@ async function alpaca(path, options = {}) {
 }
 
 function tradingDaysSince(dateStr) {
-  const start = new Date(dateStr + 'T00:00:00-04:00');
+  const start = new Date(dateStr + 'T00:00:00-04:00'); // ET
   const now   = new Date();
   let count   = 0;
   const cur   = new Date(start);
@@ -174,8 +174,8 @@ async function main() {
       : 0;
 
     let reason = null;
-    if (plpc >= takeProfit)      reason = `Take profit at ${(plpc*100).toFixed(2)}% ✅`;
-    else if (plpc <= stopLoss)   reason = `Stop loss at ${(plpc*100).toFixed(2)}% 🛑`;
+    if (plpc >= takeProfit)       reason = `Take profit at ${(plpc*100).toFixed(2)}% ✅`;
+    else if (plpc <= stopLoss)    reason = `Stop loss at ${(plpc*100).toFixed(2)}% 🛑`;
     else if (daysHeld >= maxDays) reason = `${daysHeld} ${crypto?'calendar':'trading'} days — time's up ⏱`;
 
     if (reason) {
@@ -191,9 +191,9 @@ async function main() {
     }
   }
 
-  const remaining     = await alpaca('/v2/positions');
-  const stockPos      = remaining.filter(p => !isCrypto(p));
-  const cryptoPos     = remaining.filter(p => isCrypto(p));
+  const remaining  = await alpaca('/v2/positions');
+  const stockPos   = remaining.filter(p => !isCrypto(p));
+  const cryptoPos  = remaining.filter(p => isCrypto(p));
 
   const dateStr = new Date().toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/New_York'
