@@ -167,13 +167,25 @@ async function main() {
   }
   console.log('═══════════════════════════════════════════════════════\n');
 
-  // Machine-readable output for alpaca-buy.js integration
-  const output = {};
+  // Save signals file for alpaca-buy.js to read next morning
+  const output = { generatedAt: endDate, signals: {} };
   for (const sym of symsWithSignals) {
-    const isDirect  = signals[sym].some(a => a.via === 'direct');
-    output[sym] = { boost: isDirect ? 15 : 8, signals: signals[sym] };
+    const isDirect = signals[sym].some(a => a.via === 'direct');
+    const topAward = signals[sym].find(a => a.via === 'direct') || signals[sym][0];
+    output.signals[sym] = {
+      boost:  isDirect ? 15 : 8,
+      via:    isDirect ? 'direct' : signals[sym][0].via,
+      agency: topAward.agency || '',
+      amount: topAward.amount || 0,
+    };
   }
-  process.stdout.write('\nJSON_SIGNALS:' + JSON.stringify(output) + '\n');
+
+  const { mkdirSync, writeFileSync } = await import('fs');
+  const { join, dirname }            = await import('path');
+  const outPath = join(process.cwd(), 'data', 'contract-signals.json');
+  mkdirSync(dirname(outPath), { recursive: true });
+  writeFileSync(outPath, JSON.stringify(output, null, 2));
+  console.log(`Signals saved → data/contract-signals.json (${symsWithSignals.length} symbols)\n`);
 }
 
 main().catch(e => { console.error(e); process.exit(1); });

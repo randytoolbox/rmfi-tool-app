@@ -1,0 +1,28 @@
+name: Contract Radar
+
+on:
+  schedule:
+    - cron: '5 21 * * 1-5'   # 5:05pm EDT (21:05 UTC) Mon–Fri, after DoD publishes daily awards
+  workflow_dispatch:
+
+jobs:
+  radar:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Scan federal contracts (USASpending.gov)
+        run: node scripts/contract-radar.js
+
+      - name: Commit signals file
+        run: |
+          git config user.name  "Contract Radar Bot"
+          git config user.email "noreply@github.com"
+          git add data/contract-signals.json
+          git diff --cached --quiet && echo "No new signals" || git commit -m "chore: contract signals $(date -u +%Y-%m-%d) [skip ci]"
+          git push

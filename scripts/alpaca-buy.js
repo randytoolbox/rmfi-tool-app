@@ -5,6 +5,7 @@
 const ALPACA_BASE    = 'https://paper-api.alpaca.markets';
 const MAX_POSITIONS  = 3;
 const BUDGET_PER     = 333; // ~$333 per position
+const SIGNALS_PATH   = `${process.cwd()}/data/contract-signals.json`;
 
 const WATCHLIST = [
   'SPY','QQQ','DIA','IWM',
@@ -16,6 +17,21 @@ const WATCHLIST = [
 ];
 
 const UA = 'Mozilla/5.0 (compatible; randy-money/1.0)';
+
+// Load contract signals saved by contract-radar.js last evening (if fresh)
+function loadContractSignals() {
+  try {
+    const fs   = require('fs');
+    const raw  = fs.readFileSync(SIGNALS_PATH, 'utf8');
+    const data = JSON.parse(raw);
+    const today     = new Date().toISOString().slice(0, 10);
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    if (data.generatedAt === today || data.generatedAt === yesterday) {
+      return data.signals || {};
+    }
+  } catch { /* no signals file or stale — skip */ }
+  return {};
+}
 
 async function alpaca(path, options = {}) {
   const r = await fetch(`${ALPACA_BASE}${path}`, {
@@ -50,7 +66,7 @@ async function fetchStock(sym) {
   } catch { return null; }
 }
 
-function score(d) {
+function score(d, contractSignals) {
   if (!d?.price) return -1;
   let s = 0;
   const fromHigh = d.high52 ? (d.price - d.high52) / d.high52 * 100 : null;
@@ -66,6 +82,9 @@ function score(d) {
     else if (d.changePct > 4) s += 4;
     else if (d.changePct < -4) s -= 5;
   }
+  // Government contract catalyst boost
+  const signal = contractSignals?.[d.symbol];
+  if (signal) s += signal.boost;
   return s;
 }
 
@@ -85,12 +104,18 @@ async function main() {
     console.log('Portfolio full:', [...heldSymbols].join(', ')); return;
   }
 
+  const contractSignals = loadContractSignals();
+  const signalCount     = Object.keys(contractSignals).length;
+  if (signalCount) {
+    console.log(`Contract signals active: ${Object.keys(contractSignals).join(', ')}`);
+  }
+
   console.log(`Open slots: ${slots} — fetching stock data...`);
   const allData = (await Promise.all(WATCHLIST.map(fetchStock))).filter(Boolean);
   console.log(`Got data for ${allData.length}/${WATCHLIST.length} symbols`);
 
   const picks = allData
-    .map(d => ({ ...d, _score: score(d) }))
+    .map(d => ({ ...d, _score: score(d, contractSignals) }))
     .filter(d => d._score >= 0 && !heldSymbols.has(d.symbol))
     .sort((a, b) => b._score - a._score)
     .slice(0, slots);
