@@ -5,8 +5,8 @@
 
 const ALPACA_DATA  = 'https://data.alpaca.markets';
 const USASPENDING  = 'https://api.usaspending.gov/api/v2';
-const START_DATE   = '2025-03-25'; // 90 days
-const END_DATE     = '2025-06-23';
+const START_DATE   = '2025-12-29'; // 180 days — most recent 6 months
+const END_DATE     = '2026-06-24';
 const INITIAL_CASH = 1000;
 const MAX_POS      = 3;
 const BUDGET_PER   = 333;
@@ -140,7 +140,7 @@ function getTradingDays(bars) {
   return [...days].sort();
 }
 
-function scoreStock(sym, dayIndex, allBars, dateStr, contractSignals, tradingDays) {
+function scoreStock(sym, dayIndex, allBars, dateStr, contractSignals, tradingDays, spyTrend60) {
   const symBars = allBars[sym];
   if (!symBars || dayIndex < 5) return -999;
 
@@ -172,12 +172,12 @@ function scoreStock(sym, dayIndex, allBars, dateStr, contractSignals, tradingDay
   const fiveDaysAgo   = symBars[dayIndex - 5];
   const fiveDayChange = fiveDaysAgo ? (price - fiveDaysAgo.c) / fiveDaysAgo.c * 100 : 0;
 
-  // 30-day trend: detect sustained downtrends
-  const thirtyDaysAgo   = symBars[Math.max(0, dayIndex - 30)];
-  const thirtyDayChange = thirtyDaysAgo ? (price - thirtyDaysAgo.c) / thirtyDaysAgo.c * 100 : 0;
+  // 60-day trend: require sustained uptrend (matches SA's 75-day sustained signal requirement)
+  const sixtyDaysAgo   = symBars[Math.max(0, dayIndex - 60)];
+  const sixtyDayChange = sixtyDaysAgo ? (price - sixtyDaysAgo.c) / sixtyDaysAgo.c * 100 : 0;
 
-  // Hard filter 2: must be in positive 30-day trend (not a falling knife)
-  if (thirtyDayChange <= 0) return -999;
+  // Hard filter 2: must be in positive 60-day trend
+  if (sixtyDayChange <= 0) return -999;
 
   // Hard filter 3: 5-day trend must also be positive (no brief bounces in downtrends)
   if (fiveDayChange <= 0) return -999;
@@ -217,12 +217,31 @@ function scoreStock(sym, dayIndex, allBars, dateStr, contractSignals, tradingDay
   else if (fiveDayChange < -8)  s -= 8;
   else if (fiveDayChange < -3)  s -= 4;
 
-  // 30-day trend (sustained downtrend = avoid)
-  if (thirtyDayChange > 10)       s += 6;
-  else if (thirtyDayChange > 0)   s += 3;
-  else if (thirtyDayChange < -20) s -= 15;
-  else if (thirtyDayChange < -10) s -= 8;
-  else if (thirtyDayChange < -5)  s -= 4;
+  // 60-day trend (sustained downtrend = avoid)
+  if (sixtyDayChange > 10)       s += 6;
+  else if (sixtyDayChange > 0)   s += 3;
+  else if (sixtyDayChange < -20) s -= 15;
+  else if (sixtyDayChange < -10) s -= 8;
+  else if (sixtyDayChange < -5)  s -= 4;
+
+  // Volume surge bonus (CANSLIM S — institutional supply/demand confirmation)
+  // A price move backed by heavy volume = real buying, not noise
+  const volBars = symBars.slice(Math.max(0, dayIndex - 22), dayIndex);
+  if (volBars.length >= 10) {
+    const avgVol    = volBars.slice(0, -2).reduce((s, b) => s + b.v, 0) / Math.max(1, volBars.length - 2);
+    const recentVol = (today.v + (prev?.v || 0)) / 2;
+    const surge     = avgVol > 0 ? recentVol / avgVol : 1;
+    if (surge > 2.0) s += 10;
+    else if (surge > 1.5) s += 6;
+  }
+
+  // Relative strength vs SPY (CANSLIM L — leader not laggard)
+  // Stocks beating the market attract institutional money
+  if (spyTrend60 !== null && spyTrend60 > 0 && sixtyDaysAgo) {
+    const stockTrend60 = sixtyDayChange / 100;
+    if (stockTrend60 > spyTrend60 * 1.5) s += 12; // crushing the market
+    else if (stockTrend60 > spyTrend60)  s += 6;  // outperforming market
+  }
 
   // Up-day ratio: fewer than 40% green days = chronic loser
   if (upDayRatio >= 0.55)      s += 6;
@@ -251,7 +270,7 @@ async function main() {
   }
 
   console.log(`Fetching historical bars for ${WATCHLIST.length} symbols...`);
-  const histStart = '2023-12-01';
+  const histStart = '2024-09-01'; // enough history for 52W high/low + 60-day trend warmup
   const allBars   = await fetchAllBars(WATCHLIST, histStart, END_DATE);
   console.log(`Got data for ${Object.keys(allBars).length} symbols`);
 
@@ -303,14 +322,16 @@ async function main() {
       }
     }
 
-    // Market regime filter: don't buy when SPY is in a 30-day downtrend
-    const spyIdx  = symDayIndex['SPY']?.[dateStr];
-    const spyBars = allBars['SPY'];
-    let spyTrend  = 1;
-    if (spyIdx != null && spyIdx >= 30) {
+    // Market regime filter: don't buy when SPY is in a 60-day downtrend
+    const spyIdx   = symDayIndex['SPY']?.[dateStr];
+    const spyBars  = allBars['SPY'];
+    let spyTrend   = 1;
+    let spyTrend60 = null;
+    if (spyIdx != null && spyIdx >= 60) {
       const spyNow = spyBars[spyIdx].c;
-      const spy30  = spyBars[spyIdx - 30].c;
-      spyTrend = (spyNow - spy30) / spy30;
+      const spy60  = spyBars[spyIdx - 60].c;
+      spyTrend   = (spyNow - spy60) / spy60;
+      spyTrend60 = spyTrend;
     }
 
     // Buy new positions
@@ -322,7 +343,7 @@ async function main() {
           const idx = symDayIndex[sym]?.[dateStr];
           return {
             sym,
-            score: idx != null ? scoreStock(sym, idx, allBars, dateStr, contractSignals, tradingDays) : -999,
+            score: idx != null ? scoreStock(sym, idx, allBars, dateStr, contractSignals, tradingDays, spyTrend60) : -999,
           };
         })
         .filter(x => x.score >= 8)
@@ -363,7 +384,7 @@ async function main() {
   const avgLoss     = losers.length  ? losers.reduce((s,t)  => s + t.plpc, 0) / losers.length  * 100 : 0;
 
   console.log('═══════════════════════════════════════');
-  console.log('  BACKTEST RESULTS — 90 Day Simulation');
+  console.log('  BACKTEST RESULTS — 180 Day Simulation (v7)');
   console.log('═══════════════════════════════════════');
   console.log(`  Period:        ${START_DATE} → ${END_DATE}`);
   console.log(`  Starting cash: $${INITIAL_CASH.toFixed(2)}`);
