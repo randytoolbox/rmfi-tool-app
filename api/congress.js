@@ -59,6 +59,28 @@ const TICKER_RE = /\$([A-Z]{1,5})\b|\(([A-Z]{2,5})\)|([A-Z]{2,5})\s+(?:stock|sha
 const BUY_RE    = /\b(bought|purchased|buy|buys|buying|invested|investment|acquired|long)\b/i;
 const SELL_RE   = /\b(sold|sale|selling|sells|short)\b/i;
 
+// Company name → ticker for articles that say "Apple" instead of "AAPL"
+const COMPANY_MAP = {
+  'apple':        'AAPL', 'microsoft':   'MSFT', 'nvidia':     'NVDA',
+  'amazon':       'AMZN', 'alphabet':    'GOOGL', 'google':    'GOOGL',
+  'meta ':        'META', 'facebook':    'META',  'tesla':     'TSLA',
+  'paypal':       'PYPL', 'broadcom':    'AVGO',  'intel':     'INTC',
+  'crowdstrike':  'CRWD', 'palantir':    'PLTR',  'lockheed':  'LMT',
+  'raytheon':     'RTX',  'caterpillar': 'CAT',   'chevron':   'CVX',
+  'exxon':        'XOM',  'occidental':  'OXY',   'halliburton':'HAL',
+  'ibm ':         'IBM',  'dell ':       'DELL',  'amd ':      'AMD',
+  'palo alto':    'PANW', 'salesforce':  'CRM',   'oracle':    'ORCL',
+  'berkshire':    'BRK.B','jpmorgan':    'JPM',   'bank of america':'BAC',
+  'pfizer':       'PFE',  'unitedhealth':'UNH',   'visa ':     'V',
+  'mastercard':   'MA',   'Abbott':      'ABT',   'abbvie':    'ABBV',
+  'walmart':      'WMT',  'home depot':  'HD',    'costco':    'COST',
+  'qualcomm':     'QCOM', 'applied materials':'AMAT', 'agilent':'A',
+  'booking':      'BKNG', 'marriott':    'MAR',   'hilton':    'HLT',
+  'coinbase':     'COIN', 'robinhood':   'HOOD',  'schwab':    'SCHW',
+  'flex ltd':     'FLEX', 'flex ':       'FLEX',  'macom':     'MTSI',
+  'be aerospace': 'BE',   'bloom energy':'BE',
+};
+
 function extractTickers(text) {
   const tickers = new Set();
   let m;
@@ -68,6 +90,11 @@ function extractTickers(text) {
     if (raw && raw.length >= 2 && raw.length <= 5) {
       tickers.add(ALIAS[raw] || raw);
     }
+  }
+  // Also match company names written out in full (articles often say "Apple" not "AAPL")
+  const lower = text.toLowerCase();
+  for (const [name, ticker] of Object.entries(COMPANY_MAP)) {
+    if (ticker && lower.includes(name)) tickers.add(ticker);
   }
   return [...tickers];
 }
