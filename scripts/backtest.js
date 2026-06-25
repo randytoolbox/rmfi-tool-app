@@ -99,6 +99,9 @@ function scoreStock(sym, dayIndex, allBars) {
   // Hard filter 2: must be in positive 30-day trend (not a falling knife)
   if (thirtyDayChange <= 0) return -999;
 
+  // Hard filter 3: 5-day trend must also be positive (no brief bounces in downtrends)
+  if (fiveDayChange <= 0) return -999;
+
   // Up-day ratio: count green days in last 20 sessions
   const last20 = symBars.slice(Math.max(0, dayIndex - 20), dayIndex);
   let upDays = 0;
@@ -204,9 +207,19 @@ async function main() {
       }
     }
 
+    // Market regime filter: don't buy when SPY is in a 30-day downtrend
+    const spyIdx  = symDayIndex['SPY']?.[dateStr];
+    const spyBars = allBars['SPY'];
+    let spyTrend  = 1;
+    if (spyIdx != null && spyIdx >= 30) {
+      const spyNow = spyBars[spyIdx].c;
+      const spy30  = spyBars[spyIdx - 30].c;
+      spyTrend = (spyNow - spy30) / spy30;
+    }
+
     // Buy new positions
     const slots = MAX_POS - Object.keys(positions).length;
-    if (slots > 0) {
+    if (slots > 0 && spyTrend > 0) {
       const scored = WATCHLIST
         .filter(sym => !positions[sym])
         .map(sym => {
