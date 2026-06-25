@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-// Backtests the alpaca-buy.js scoring algorithm against 6 months of historical data.
+// Backtests the alpaca-buy.js scoring algorithm against historical data.
 // Uses Alpaca Basic plan free historical bars (IEX feed).
 // Run: ALPACA_KEY_ID=xxx ALPACA_SECRET_KEY=xxx node scripts/backtest.js
 
 const ALPACA_DATA  = 'https://data.alpaca.markets';
+const USASPENDING  = 'https://api.usaspending.gov/api/v2';
 const START_DATE   = '2025-03-25'; // 90 days
 const END_DATE     = '2025-06-23';
 const INITIAL_CASH = 1000;
@@ -12,6 +13,7 @@ const BUDGET_PER   = 333;
 const TAKE_PROFIT  = 0.08;
 const STOP_LOSS    = -0.07;
 const MAX_DAYS     = 7;
+const MIN_AWARD    = 10_000_000; // $10M contract minimum
 
 const WATCHLIST = [
   'SPY','QQQ','DIA','IWM',
@@ -21,6 +23,36 @@ const WATCHLIST = [
   'OXY','CVX','HAL','MRO','WMB',
   'GLD','SLV','TLT','PYPL',
 ];
+
+// Maps ticker → recipient name fragments as they appear in USASpending
+const RECIPIENT_MAP = {
+  'IBM':   ['INTERNATIONAL BUSINESS MACHINES'],
+  'MSFT':  ['MICROSOFT CORPORATION'],
+  'AMZN':  ['AMAZON.COM SERVICES', 'AMAZON WEB SERVICES'],
+  'GOOGL': ['GOOGLE LLC'],
+  'NVDA':  ['NVIDIA CORPORATION'],
+  'DELL':  ['DELL FEDERAL SYSTEMS', 'DELL MARKETING'],
+  'CRWD':  ['CROWDSTRIKE'],
+  'PLTR':  ['PALANTIR TECHNOLOGIES'],
+  'LMT':   ['LOCKHEED MARTIN'],
+  'RTX':   ['RTX CORPORATION', 'RAYTHEON'],
+  'CAT':   ['CATERPILLAR'],
+  'FLEX':  ['FLEXTRONICS'],
+  'MTSI':  ['MACOM TECHNOLOGY'],
+  'HAL':   ['HALLIBURTON'],
+  'CVX':   ['CHEVRON'],
+};
+
+// Maps prime contractor → downstream supplier tickers that benefit
+const DOWNSTREAM_MAP = {
+  'IBM':   ['DELL', 'NVDA', 'CRWD'],
+  'MSFT':  ['NVDA', 'DELL', 'AVGO'],
+  'AMZN':  ['NVDA', 'DELL', 'AVGO'],
+  'GOOGL': ['NVDA', 'DELL'],
+  'LMT':   ['RTX', 'CAT', 'AVGO', 'MTSI'],
+  'RTX':   ['LMT', 'AVGO', 'MTSI', 'FLEX'],
+  'PLTR':  ['IBM', 'DELL', 'CRWD'],
+};
 
 async function alpacaData(path) {
   const r = await fetch(`${ALPACA_DATA}${path}`, {
@@ -52,6 +84,54 @@ async function fetchAllBars(symbols, start, end) {
   return bars;
 }
 
+// Fetch federal contract awards from USASpending.gov for the sim period.
+// Returns { 'YYYY-MM-DD': Set(['SYM1','SYM2',...]), ... }
+async function fetchContractSignals(start, end) {
+  const signals = {}; // date → Set of tickers
+
+  const addSignal = (date, sym) => {
+    if (!date) return;
+    const d = date.slice(0, 10);
+    if (!signals[d]) signals[d] = new Set();
+    signals[d].add(sym);
+  };
+
+  for (const [sym, names] of Object.entries(RECIPIENT_MAP)) {
+    for (const name of names) {
+      try {
+        const body = {
+          filters: {
+            award_type_codes: ['A', 'B', 'C', 'D'],
+            time_period: [{ start_date: start, end_date: end }],
+            recipient_search_text: [name],
+            award_amounts: { lower_bound: MIN_AWARD },
+          },
+          fields: ['Action Date', 'Award Amount'],
+          sort: 'Award Amount',
+          order: 'desc',
+          limit: 50,
+          page: 1,
+        };
+        const r = await fetch(`${USASPENDING}/search/spending_by_award/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!r.ok) continue;
+        const data = await r.json();
+        for (const award of (data.results || [])) {
+          const date = award['Action Date'];
+          addSignal(date, sym);
+          for (const ds of (DOWNSTREAM_MAP[sym] || [])) addSignal(date, ds);
+        }
+      } catch { /* skip on network error */ }
+      await new Promise(r => setTimeout(r, 150));
+    }
+  }
+
+  return signals; // { date: Set<sym> }
+}
+
 function getTradingDays(bars) {
   const days = new Set();
   for (const symBars of Object.values(bars)) {
@@ -60,7 +140,7 @@ function getTradingDays(bars) {
   return [...days].sort();
 }
 
-function scoreStock(sym, dayIndex, allBars) {
+function scoreStock(sym, dayIndex, allBars, dateStr, contractSignals, tradingDays) {
   const symBars = allBars[sym];
   if (!symBars || dayIndex < 5) return -999;
 
@@ -99,6 +179,9 @@ function scoreStock(sym, dayIndex, allBars) {
   // Hard filter 2: must be in positive 30-day trend (not a falling knife)
   if (thirtyDayChange <= 0) return -999;
 
+  // Hard filter 3: 5-day trend must also be positive (no brief bounces in downtrends)
+  if (fiveDayChange <= 0) return -999;
+
   // Up-day ratio: count green days in last 20 sessions
   const last20 = symBars.slice(Math.max(0, dayIndex - 20), dayIndex);
   let upDays = 0;
@@ -135,8 +218,8 @@ function scoreStock(sym, dayIndex, allBars) {
   else if (fiveDayChange < -3)  s -= 4;
 
   // 30-day trend (sustained downtrend = avoid)
-  if (thirtyDayChange > 10)      s += 6;
-  else if (thirtyDayChange > 0)  s += 3;
+  if (thirtyDayChange > 10)       s += 6;
+  else if (thirtyDayChange > 0)   s += 3;
   else if (thirtyDayChange < -20) s -= 15;
   else if (thirtyDayChange < -10) s -= 8;
   else if (thirtyDayChange < -5)  s -= 4;
@@ -147,6 +230,18 @@ function scoreStock(sym, dayIndex, allBars) {
   else if (upDayRatio < 0.35)  s -= 12;
   else if (upDayRatio < 0.40)  s -= 6;
 
+  // Government contract catalyst: check last 5 trading days for a signal
+  if (contractSignals && tradingDays) {
+    const todayIdx = tradingDays.indexOf(dateStr);
+    for (let d = 1; d <= 5 && todayIdx - d >= 0; d++) {
+      const checkDate = tradingDays[todayIdx - d];
+      if (contractSignals[checkDate]?.has(sym)) {
+        s += 12; // direct or downstream contract signal
+        break;
+      }
+    }
+  }
+
   return s;
 }
 
@@ -156,10 +251,15 @@ async function main() {
   }
 
   console.log(`Fetching historical bars for ${WATCHLIST.length} symbols...`);
-  // Pull extra history for 52W scoring
   const histStart = '2023-12-01';
   const allBars   = await fetchAllBars(WATCHLIST, histStart, END_DATE);
   console.log(`Got data for ${Object.keys(allBars).length} symbols`);
+
+  console.log('Fetching government contract signals from USASpending.gov...');
+  const contractSignals = await fetchContractSignals(START_DATE, END_DATE);
+  const contractDays    = Object.keys(contractSignals).length;
+  const contractSyms    = new Set(Object.values(contractSignals).flatMap(s => [...s]));
+  console.log(`Got contract signals on ${contractDays} dates for ${contractSyms.size} symbols`);
 
   const tradingDays = getTradingDays(allBars);
   const startIdx    = tradingDays.findIndex(d => d >= START_DATE);
@@ -167,17 +267,16 @@ async function main() {
 
   console.log(`Simulating ${simDays.length} trading days from ${simDays[0]} to ${simDays[simDays.length-1]}\n`);
 
-  // Build per-symbol day index maps
   const symDayIndex = {};
   for (const [sym, bars] of Object.entries(allBars)) {
     symDayIndex[sym] = {};
     bars.forEach((b, i) => { symDayIndex[sym][b.t.slice(0, 10)] = i; });
   }
 
-  let cash      = INITIAL_CASH;
-  const positions = {}; // sym -> { shares, entryPrice, entryDay, dayIndex }
+  let cash        = INITIAL_CASH;
+  const positions = {};
   const trades    = [];
-  let day = 0;
+  let day         = 0;
 
   for (const dateStr of simDays) {
     day++;
@@ -186,8 +285,8 @@ async function main() {
     for (const [sym, pos] of Object.entries(positions)) {
       const idx   = symDayIndex[sym]?.[dateStr];
       if (idx == null) continue;
-      const price = allBars[sym][idx].c;
-      const plpc  = (price - pos.entryPrice) / pos.entryPrice;
+      const price    = allBars[sym][idx].c;
+      const plpc     = (price - pos.entryPrice) / pos.entryPrice;
       const daysHeld = day - pos.entryDay;
 
       let reason = null;
@@ -204,21 +303,34 @@ async function main() {
       }
     }
 
+    // Market regime filter: don't buy when SPY is in a 30-day downtrend
+    const spyIdx  = symDayIndex['SPY']?.[dateStr];
+    const spyBars = allBars['SPY'];
+    let spyTrend  = 1;
+    if (spyIdx != null && spyIdx >= 30) {
+      const spyNow = spyBars[spyIdx].c;
+      const spy30  = spyBars[spyIdx - 30].c;
+      spyTrend = (spyNow - spy30) / spy30;
+    }
+
     // Buy new positions
     const slots = MAX_POS - Object.keys(positions).length;
-    if (slots > 0) {
+    if (slots > 0 && spyTrend > 0) {
       const scored = WATCHLIST
         .filter(sym => !positions[sym])
         .map(sym => {
           const idx = symDayIndex[sym]?.[dateStr];
-          return { sym, score: idx != null ? scoreStock(sym, idx, allBars) : -999 };
+          return {
+            sym,
+            score: idx != null ? scoreStock(sym, idx, allBars, dateStr, contractSignals, tradingDays) : -999,
+          };
         })
         .filter(x => x.score >= 8)
         .sort((a, b) => b.score - a.score)
         .slice(0, slots);
 
       for (const { sym } of scored) {
-        const idx   = symDayIndex[sym]?.[dateStr];
+        const idx    = symDayIndex[sym]?.[dateStr];
         if (idx == null) continue;
         const price  = allBars[sym][idx].c;
         const budget = Math.min(BUDGET_PER, cash);
@@ -242,7 +354,6 @@ async function main() {
     trades.push({ sym, entryDate: pos.entryDate, exitDate: lastDay, pl, plpc: pl / pos.cost, reason: 'End of test' });
   }
 
-  // Results
   const finalValue  = cash;
   const totalReturn = (finalValue - INITIAL_CASH) / INITIAL_CASH * 100;
   const winners     = trades.filter(t => t.pl > 0);
@@ -252,7 +363,7 @@ async function main() {
   const avgLoss     = losers.length  ? losers.reduce((s,t)  => s + t.plpc, 0) / losers.length  * 100 : 0;
 
   console.log('═══════════════════════════════════════');
-  console.log('  BACKTEST RESULTS — 6 Month Simulation');
+  console.log('  BACKTEST RESULTS — 90 Day Simulation');
   console.log('═══════════════════════════════════════');
   console.log(`  Period:        ${START_DATE} → ${END_DATE}`);
   console.log(`  Starting cash: $${INITIAL_CASH.toFixed(2)}`);
@@ -278,7 +389,7 @@ async function main() {
   trades.forEach(t => { freq[t.sym] = (freq[t.sym]||0) + 1; });
   Object.entries(freq).sort((a,b) => b[1]-a[1]).slice(0,5).forEach(([sym,n]) => {
     const symTrades = trades.filter(t => t.sym === sym);
-    const symPL = symTrades.reduce((s,t) => s + t.pl, 0);
+    const symPL     = symTrades.reduce((s,t) => s + t.pl, 0);
     console.log(`    ${sym.padEnd(6)} ${n} trades  total P&L: ${symPL >= 0 ? '+' : ''}$${symPL.toFixed(2)}`);
   });
   console.log('═══════════════════════════════════════');
