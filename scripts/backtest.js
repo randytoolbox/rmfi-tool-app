@@ -4,7 +4,7 @@
 // Run: ALPACA_KEY_ID=xxx ALPACA_SECRET_KEY=xxx node scripts/backtest.js
 
 const ALPACA_DATA  = 'https://data.alpaca.markets';
-const START_DATE   = '2024-12-01'; // 6 months back
+const START_DATE   = '2025-03-25'; // 90 days
 const END_DATE     = '2025-06-23';
 const INITIAL_CASH = 1000;
 const MAX_POS      = 3;
@@ -71,6 +71,9 @@ function scoreStock(sym, dayIndex, allBars) {
   const price     = today.c;
   const changePct = (today.c - prev.c) / prev.c * 100;
 
+  // Hard filter 1: no cheap/volatile stocks under $15
+  if (price < 15) return -999;
+
   // Volume filter: skip low-conviction days (< 50% of 20-day avg volume)
   const recentBars = symBars.slice(Math.max(0, dayIndex - 20), dayIndex);
   if (recentBars.length >= 5) {
@@ -92,6 +95,9 @@ function scoreStock(sym, dayIndex, allBars) {
   // 30-day trend: detect sustained downtrends
   const thirtyDaysAgo   = symBars[Math.max(0, dayIndex - 30)];
   const thirtyDayChange = thirtyDaysAgo ? (price - thirtyDaysAgo.c) / thirtyDaysAgo.c * 100 : 0;
+
+  // Hard filter 2: must be in positive 30-day trend (not a falling knife)
+  if (thirtyDayChange <= 0) return -999;
 
   // Up-day ratio: count green days in last 20 sessions
   const last20 = symBars.slice(Math.max(0, dayIndex - 20), dayIndex);
