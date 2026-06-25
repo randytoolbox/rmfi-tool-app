@@ -1,38 +1,52 @@
 module.exports = async function handler(req, res) {
-  const { sym, range = '5d', interval = '1d' } = req.query;
+  const { sym } = req.query;
   if (!sym) return res.status(400).json({ error: 'sym required' });
 
-  const headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-    'Accept': 'application/json, text/plain, */*',
-    'Accept-Language': 'en-US,en;q=0.9',
-    'Referer': 'https://finance.yahoo.com/',
-    'Origin': 'https://finance.yahoo.com',
-  };
+  const keyId     = process.env.ALPACA_KEY_ID;
+  const secretKey = process.env.ALPACA_SECRET_KEY;
 
-  // Try v8 chart endpoint first
+  if (!keyId || !secretKey) {
+    return res.status(500).json({ error: 'Alpaca credentials not configured' });
+  }
+
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=${range}&interval=${interval}`;
-    const r = await fetch(url, { headers });
-    if (r.ok) {
-      const data = await r.json();
-      res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      return res.json(data);
-    }
-  } catch (e) { /* fall through */ }
+    // Fetch snapshot (current price + 52W high/low) from Alpaca data API
+    const r = await fetch(`https://data.alpaca.markets/v2/stocks/snapshots?symbols=${encodeURIComponent(sym)}&feed=iex`, {
+      headers: {
+        'APCA-API-KEY-ID':     keyId,
+        'APCA-API-SECRET-KEY': secretKey,
+      },
+    });
 
-  // Fallback: v7 quote endpoint, reshape to match v8 structure
-  try {
-    const url2 = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=${range}&interval=${interval}`;
-    const r2 = await fetch(url2, { headers });
-    if (r2.ok) {
-      const data = await r2.json();
-      res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      return res.json(data);
-    }
-  } catch (e) { /* fall through */ }
+    if (!r.ok) throw new Error(`Alpaca ${r.status}`);
+    const data = await r.json();
+    const snap = data[sym];
+    if (!snap) return res.status(404).json({ error: 'Symbol not found' });
 
-  res.status(502).json({ error: 'Yahoo Finance unavailable' });
+    const price     = snap.latestTrade?.p || snap.minuteBar?.c || null;
+    const prevClose = snap.prevDailyBar?.c || price;
+    const changePct = price && prevClose ? (price - prevClose) / prevClose * 100 : null;
+
+    // Return in the same shape the app expects from Yahoo Finance v8
+    const result = {
+      chart: {
+        result: [{
+          meta: {
+            regularMarketPrice:          price,
+            previousClose:               prevClose,
+            regularMarketChangePercent:  changePct,
+            fiftyTwoWeekHigh:            null,
+            fiftyTwoWeekLow:             null,
+            shortName:                   sym,
+          }
+        }]
+      }
+    };
+
+    res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    return res.json(result);
+  } catch (e) {
+    return res.status(502).json({ error: e.message });
+  }
 };
