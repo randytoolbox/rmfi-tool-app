@@ -62,20 +62,30 @@ function getTradingDays(bars) {
 
 function scoreStock(sym, dayIndex, allBars) {
   const symBars = allBars[sym];
-  if (!symBars || dayIndex < 1) return -999;
+  if (!symBars || dayIndex < 5) return -999;
 
-  const today    = symBars[dayIndex];
-  const prev     = symBars[dayIndex - 1];
+  const today = symBars[dayIndex];
+  const prev  = symBars[dayIndex - 1];
   if (!today || !prev) return -999;
 
   const price     = today.c;
   const changePct = (today.c - prev.c) / prev.c * 100;
 
+  // Volume filter: skip low-conviction days (< 50% of 20-day avg volume)
+  const recentBars = symBars.slice(Math.max(0, dayIndex - 20), dayIndex);
+  if (recentBars.length >= 5) {
+    const avgVol = recentBars.reduce((s, b) => s + b.v, 0) / recentBars.length;
+    if (today.v < avgVol * 0.5) return -999;
+  }
+
   // 52W high from available history up to this point
   const lookback = symBars.slice(Math.max(0, dayIndex - 252), dayIndex + 1);
   const high52   = Math.max(...lookback.map(b => b.h));
-  const low52    = Math.min(...lookback.map(b => b.l));
   const fromHigh = (price - high52) / high52 * 100;
+
+  // 5-day trend: catch falling knives vs real bounces
+  const fiveDaysAgo   = symBars[dayIndex - 5];
+  const fiveDayChange = fiveDaysAgo ? (price - fiveDaysAgo.c) / fiveDaysAgo.c * 100 : 0;
 
   let s = 0;
 
@@ -86,11 +96,19 @@ function scoreStock(sym, dayIndex, allBars) {
   else if (fromHigh < -10) s += 5;
   if (fromHigh > -5)       s -= 10;
 
-  // Momentum
-  if (changePct >= 1 && changePct <= 6)        s += 12;
-  else if (changePct > 0 && changePct < 1)     s += 6;
-  else if (changePct > 6 && changePct <= 12)   s += 4;
-  else if (changePct < -8)                     s -= 8;
+  // Today's momentum
+  if (changePct >= 1 && changePct <= 5)      s += 12;
+  else if (changePct > 5 && changePct <= 10) s += 8;
+  else if (changePct > 0 && changePct < 1)   s += 3;
+  else if (changePct < -5)                   s -= 10;
+  else if (changePct < 0)                    s -= 4;
+
+  // 5-day trend (falling knife filter)
+  if (fiveDayChange > 5)        s += 8;
+  else if (fiveDayChange > 0)   s += 4;
+  else if (fiveDayChange < -15) s -= 15;
+  else if (fiveDayChange < -8)  s -= 8;
+  else if (fiveDayChange < -3)  s -= 4;
 
   return s;
 }
@@ -158,7 +176,7 @@ async function main() {
           const idx = symDayIndex[sym]?.[dateStr];
           return { sym, score: idx != null ? scoreStock(sym, idx, allBars) : -999 };
         })
-        .filter(x => x.score >= 0)
+        .filter(x => x.score >= 8)
         .sort((a, b) => b.score - a.score)
         .slice(0, slots);
 
