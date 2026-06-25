@@ -1,46 +1,52 @@
 module.exports = async function handler(req, res) {
-  const { sym, range = '5d', interval = '1d' } = req.query;
+  const { sym } = req.query;
   if (!sym) return res.status(400).json({ error: 'sym required' });
 
-  const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
+  const keyId     = process.env.ALPACA_KEY_ID;
+  const secretKey = process.env.ALPACA_SECRET_KEY;
+
+  if (!keyId || !secretKey) {
+    return res.status(500).json({ error: 'Alpaca credentials not configured' });
+  }
 
   try {
-    // Yahoo Finance now requires session cookie + crumb
-    const sessionRes = await fetch('https://finance.yahoo.com', {
-      headers: { 'User-Agent': UA, 'Accept': 'text/html,application/xhtml+xml' },
-      redirect: 'follow',
-    });
-    const rawCookie = (sessionRes.headers.get('set-cookie') || '').split(';')[0];
-
-    const crumbRes = await fetch('https://query1.finance.yahoo.com/v1/test/getcrumb', {
-      headers: { 'User-Agent': UA, 'Cookie': rawCookie },
-    });
-    const crumb = crumbRes.ok ? await crumbRes.text() : '';
-
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=${range}&interval=${interval}${crumb ? '&crumb=' + encodeURIComponent(crumb) : ''}`;
-    const r = await fetch(url, {
-      headers: { 'User-Agent': UA, 'Cookie': rawCookie, 'Accept': 'application/json' },
+    // Fetch snapshot (current price + 52W high/low) from Alpaca data API
+    const r = await fetch(`https://data.alpaca.markets/v2/stocks/snapshots?symbols=${encodeURIComponent(sym)}&feed=iex`, {
+      headers: {
+        'APCA-API-KEY-ID':     keyId,
+        'APCA-API-SECRET-KEY': secretKey,
+      },
     });
 
-    if (r.ok) {
-      const data = await r.json();
-      res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      return res.json(data);
-    }
+    if (!r.ok) throw new Error(`Alpaca ${r.status}`);
+    const data = await r.json();
+    const snap = data[sym];
+    if (!snap) return res.status(404).json({ error: 'Symbol not found' });
 
-    // Fallback: query2
-    const r2 = await fetch(
-      `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=${range}&interval=${interval}${crumb ? '&crumb=' + encodeURIComponent(crumb) : ''}`,
-      { headers: { 'User-Agent': UA, 'Cookie': rawCookie, 'Accept': 'application/json' } }
-    );
-    if (r2.ok) {
-      const data = await r2.json();
-      res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      return res.json(data);
-    }
-  } catch (e) { /* fall through */ }
+    const price     = snap.latestTrade?.p || snap.minuteBar?.c || null;
+    const prevClose = snap.prevDailyBar?.c || price;
+    const changePct = price && prevClose ? (price - prevClose) / prevClose * 100 : null;
 
-  res.status(502).json({ error: 'Yahoo Finance unavailable' });
+    // Return in the same shape the app expects from Yahoo Finance v8
+    const result = {
+      chart: {
+        result: [{
+          meta: {
+            regularMarketPrice:          price,
+            previousClose:               prevClose,
+            regularMarketChangePercent:  changePct,
+            fiftyTwoWeekHigh:            null,
+            fiftyTwoWeekLow:             null,
+            shortName:                   sym,
+          }
+        }]
+      }
+    };
+
+    res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    return res.json(result);
+  } catch (e) {
+    return res.status(502).json({ error: e.message });
+  }
 };
