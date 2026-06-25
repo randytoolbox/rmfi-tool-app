@@ -3,9 +3,11 @@
 // Scores watchlist, fills open portfolio slots (up to 3) with paper buy orders.
 
 const ALPACA_BASE    = 'https://paper-api.alpaca.markets';
+const ALPACA_DATA    = 'https://data.alpaca.markets';
 const MAX_POSITIONS  = 3;
 const BUDGET_PER     = 333; // ~$333 per position
 const SIGNALS_PATH   = `${process.cwd()}/data/contract-signals.json`;
+const MIN_PRICE      = 15;  // hard floor — filters falling knives / penny stocks
 
 const WATCHLIST = [
   'SPY','QQQ','DIA','IWM',
@@ -49,6 +51,32 @@ async function alpaca(path, options = {}) {
   return data;
 }
 
+// Fetch last N daily bars for multiple symbols in one request
+async function fetchAllBars(symbols, limit = 35) {
+  try {
+    const syms = symbols.join(',');
+    const r = await fetch(
+      `${ALPACA_DATA}/v2/stocks/bars?symbols=${syms}&timeframe=1Day&limit=${limit}&feed=iex&sort=asc`,
+      {
+        headers: {
+          'APCA-API-KEY-ID':     process.env.ALPACA_KEY_ID,
+          'APCA-API-SECRET-KEY': process.env.ALPACA_SECRET_KEY,
+        },
+      }
+    );
+    if (!r.ok) return {};
+    const data = await r.json();
+    return data?.bars || {};
+  } catch { return {}; }
+}
+
+// Positive = uptrend, negative = downtrend, null = insufficient data
+function calcTrend(bars, days) {
+  if (!bars || bars.length < days) return null;
+  const slice = bars.slice(-days);
+  return (slice[slice.length - 1].c - slice[0].c) / slice[0].c;
+}
+
 async function fetchStock(sym) {
   try {
     const r = await fetch(
@@ -66,8 +94,18 @@ async function fetchStock(sym) {
   } catch { return null; }
 }
 
-function score(d, contractSignals) {
+function score(d, contractSignals, barsMap) {
   if (!d?.price) return -1;
+
+  // Hard filters (same as backtest v5+)
+  if (d.price < MIN_PRICE) return -1;
+
+  const bars    = barsMap[d.symbol] || [];
+  const trend30 = calcTrend(bars, 30);
+  const trend5  = calcTrend(bars, 5);
+  if (trend30 !== null && trend30 <= 0) return -1;  // must be in 30-day uptrend
+  if (trend5  !== null && trend5  <= 0) return -1;  // must be in 5-day uptrend
+
   let s = 0;
   const fromHigh = d.high52 ? (d.price - d.high52) / d.high52 * 100 : null;
   if (fromHigh !== null) {
@@ -104,6 +142,19 @@ async function main() {
     console.log('Portfolio full:', [...heldSymbols].join(', ')); return;
   }
 
+  // Fetch recent daily bars for all symbols + SPY in one API call
+  const allSymbols = [...new Set(['SPY', ...WATCHLIST])];
+  console.log('Fetching recent bars for trend/regime analysis...');
+  const barsMap = await fetchAllBars(allSymbols, 35);
+
+  // SPY regime filter — pause all buys when broad market is in 30-day downtrend
+  const spyTrend = calcTrend(barsMap['SPY'], 30);
+  if (spyTrend !== null && spyTrend <= 0) {
+    console.log(`SPY 30-day trend: ${(spyTrend * 100).toFixed(1)}% — market in downtrend, pausing all buys`);
+    return;
+  }
+  console.log(`SPY 30-day trend: ${spyTrend !== null ? (spyTrend * 100).toFixed(1) + '% ✓' : 'unknown (proceeding)'}`);
+
   const contractSignals = loadContractSignals();
   const signalCount     = Object.keys(contractSignals).length;
   if (signalCount) {
@@ -114,15 +165,27 @@ async function main() {
   const allData = (await Promise.all(WATCHLIST.map(fetchStock))).filter(Boolean);
   console.log(`Got data for ${allData.length}/${WATCHLIST.length} symbols`);
 
-  const picks = allData
-    .map(d => ({ ...d, _score: score(d, contractSignals) }))
+  const scored = allData
+    .map(d => ({ ...d, _score: score(d, contractSignals, barsMap) }))
     .filter(d => d._score >= 0 && !heldSymbols.has(d.symbol))
-    .sort((a, b) => b._score - a._score)
-    .slice(0, slots);
+    .sort((a, b) => b._score - a._score);
 
-  if (!picks.length) { console.log('No eligible picks'); return; }
+  console.log('\nTop candidates after filters:');
+  for (const d of scored.slice(0, 8)) {
+    const t30 = calcTrend(barsMap[d.symbol], 30);
+    const t5  = calcTrend(barsMap[d.symbol], 5);
+    const fh  = d.high52 ? ((d.price - d.high52) / d.high52 * 100).toFixed(1) : 'n/a';
+    console.log(
+      `  ${d.symbol.padEnd(6)} score:${String(d._score).padStart(3)}  $${d.price.toFixed(2).padStart(8)}` +
+      `  fromHigh:${fh}%  t30:${t30 !== null ? (t30*100).toFixed(1)+'%' : 'n/a'}  t5:${t5 !== null ? (t5*100).toFixed(1)+'%' : 'n/a'}`
+    );
+  }
+
+  const picks = scored.slice(0, slots);
+  if (!picks.length) { console.log('\nNo eligible picks'); return; }
 
   const today = new Date().toISOString().slice(0, 10);
+  console.log('');
 
   for (const pick of picks) {
     const qty = Math.max(1, Math.floor(BUDGET_PER / pick.price));
