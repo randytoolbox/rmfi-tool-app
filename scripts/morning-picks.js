@@ -61,9 +61,14 @@ function score(d, contractSignals) {
   // Hard filter 1: price floor
   if (d.price < MIN_PRICE) return -1;
 
-  // Hard filter 2: profitability — only when EPS data is available
-  // ETFs (SPY, GLD, TLT, etc.) have null EPS and pass through
+  // Hard filter 2: profitability — ETFs (SPY, GLD, TLT) have null EPS and pass through
   if (d.epsTrailing !== null && d.epsTrailing <= 0) return -1;
+
+  // Hard filter 3: earnings must be GROWING (consensus: SA + CANSLIM + Motley Fool + Magic Formula)
+  // If analysts expect >5% earnings decline, company is deteriorating — skip it
+  if (d.epsForward !== null && d.epsTrailing !== null && d.epsTrailing > 0) {
+    if (d.epsForward < d.epsTrailing * 0.95) return -1;
+  }
 
   let s = 0;
 
