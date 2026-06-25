@@ -98,6 +98,15 @@ function calcTrend(bars, days) {
   return (slice[slice.length - 1].c - slice[0].c) / slice[0].c;
 }
 
+// Volume surge: recent 2-day avg vs 20-day avg — >1.5 = above-average institutional interest
+function calcVolumeSurge(bars) {
+  if (!bars || bars.length < 22) return null;
+  const avgVol    = bars.slice(-22, -2).reduce((s, b) => s + b.v, 0) / 20;
+  if (!avgVol) return null;
+  const recentVol = (bars[bars.length - 1].v + (bars[bars.length - 2]?.v || 0)) / 2;
+  return recentVol / avgVol;
+}
+
 async function fetchStock(sym) {
   try {
     const r = await fetch(
@@ -115,20 +124,28 @@ async function fetchStock(sym) {
   } catch { return null; }
 }
 
-function score(d, contractSignals, barsMap, fundamentals) {
+function score(d, contractSignals, barsMap, fundamentals, spyTrend) {
   if (!d?.price) return -1;
 
   // Hard filter 1: price floor
   if (d.price < MIN_PRICE) return -1;
 
-  // Hard filter 2: profitability — ETFs have null EPS and pass through
   const eps = fundamentals?.[d.symbol];
+
+  // Hard filter 2: profitability — ETFs have null EPS and pass through
   if (eps?.epsTrailing !== null && eps?.epsTrailing !== undefined && eps.epsTrailing <= 0) return -1;
 
-  // Hard filter 3: trend — must be in sustained uptrend on both timeframes
-  const bars       = barsMap[d.symbol] || [];
-  const trendLong  = calcTrend(bars, TREND_DAYS);
-  const trend5     = calcTrend(bars, 5);
+  // Hard filter 3: earnings must be GROWING (consensus: SA + CANSLIM + Fool + Magic Formula)
+  // If analysts expect >5% earnings decline, skip — declining earnings = losing company
+  if (eps?.epsForward !== null && eps?.epsForward !== undefined &&
+      eps?.epsTrailing !== null && eps?.epsTrailing !== undefined && eps.epsTrailing > 0) {
+    if (eps.epsForward < eps.epsTrailing * 0.95) return -1;
+  }
+
+  // Hard filter 4: trend — must be in sustained uptrend on both timeframes
+  const bars      = barsMap[d.symbol] || [];
+  const trendLong = calcTrend(bars, TREND_DAYS);
+  const trend5    = calcTrend(bars, 5);
   if (trendLong !== null && trendLong <= 0) return -1;
   if (trend5    !== null && trend5    <= 0) return -1;
 
@@ -157,10 +174,24 @@ function score(d, contractSignals, barsMap, fundamentals) {
     const revision = (eps.epsForward - eps.epsTrailing) / eps.epsTrailing;
     if (revision > 0.15) s += 12;       // analysts expect 15%+ EPS growth
     else if (revision > 0.05) s += 6;   // analysts expect 5%+ EPS growth
-    else if (revision < -0.05) s -= 5;  // analysts cutting estimates
   }
 
-  // Factor 4: Government contract catalyst
+  // Factor 4: Relative strength vs market (CANSLIM L + SA momentum — leader not laggard)
+  // Stocks outperforming SPY over same window are institutional favorites
+  if (trendLong !== null && spyTrend !== null && spyTrend > 0) {
+    if (trendLong > spyTrend * 1.5) s += 12;  // crushing the market
+    else if (trendLong > spyTrend) s += 6;     // outperforming market
+  }
+
+  // Factor 5: Volume surge (CANSLIM S — institutional supply/demand confirmation)
+  // A price move on heavy volume = real buying, not noise
+  const volSurge = calcVolumeSurge(bars);
+  if (volSurge !== null) {
+    if (volSurge > 2.0) s += 10;   // volume doubled — strong institutional accumulation
+    else if (volSurge > 1.5) s += 6;
+  }
+
+  // Factor 6: Government contract catalyst
   const signal = contractSignals?.[d.symbol];
   if (signal) s += signal.boost;
 
@@ -210,7 +241,7 @@ async function main() {
   console.log(`Got data for ${allData.length}/${WATCHLIST.length} symbols`);
 
   const scored = allData
-    .map(d => ({ ...d, _score: score(d, contractSignals, barsMap, fundamentals) }))
+    .map(d => ({ ...d, _score: score(d, contractSignals, barsMap, fundamentals, spyTrend) }))
     .filter(d => d._score >= 0 && !heldSymbols.has(d.symbol))
     .sort((a, b) => b._score - a._score);
 
@@ -219,11 +250,13 @@ async function main() {
     const tLong = calcTrend(barsMap[d.symbol], TREND_DAYS);
     const t5    = calcTrend(barsMap[d.symbol], 5);
     const fh    = d.high52 ? ((d.price - d.high52) / d.high52 * 100).toFixed(1) : 'n/a';
-    const eps   = fundamentals?.[d.symbol];
+    const eps    = fundamentals?.[d.symbol];
     const epsStr = eps?.epsTrailing != null ? `  eps:$${eps.epsTrailing.toFixed(2)}→$${(eps.epsForward ?? eps.epsTrailing).toFixed(2)}` : '';
+    const vol    = calcVolumeSurge(barsMap[d.symbol]);
+    const volStr = vol !== null ? `  vol:${vol.toFixed(1)}x` : '';
     console.log(
       `  ${d.symbol.padEnd(6)} score:${String(d._score).padStart(3)}  $${d.price.toFixed(2).padStart(8)}` +
-      `  fromHigh:${fh}%  t${TREND_DAYS}:${tLong !== null ? (tLong*100).toFixed(1)+'%' : 'n/a'}  t5:${t5 !== null ? (t5*100).toFixed(1)+'%' : 'n/a'}${epsStr}`
+      `  fromHigh:${fh}%  t${TREND_DAYS}:${tLong !== null ? (tLong*100).toFixed(1)+'%' : 'n/a'}  t5:${t5 !== null ? (t5*100).toFixed(1)+'%' : 'n/a'}${epsStr}${volStr}`
     );
   }
 
