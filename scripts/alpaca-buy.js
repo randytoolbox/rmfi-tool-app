@@ -8,6 +8,7 @@ const MAX_POSITIONS  = 3;
 const BUDGET_PER     = 333; // ~$333 per position
 const SIGNALS_PATH   = `${process.cwd()}/data/contract-signals.json`;
 const MIN_PRICE      = 15;  // hard floor — filters falling knives / penny stocks
+const TREND_DAYS     = 60;  // require 60-day uptrend (mirrors SA's 75-day sustained signal)
 
 const WATCHLIST = [
   'SPY','QQQ','DIA','IWM',
@@ -51,8 +52,28 @@ async function alpaca(path, options = {}) {
   return data;
 }
 
+// Batch fetch price + 52W range + EPS in a single call
+async function fetchAllFundamentals(symbols) {
+  try {
+    const r = await fetch(
+      `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols.join(',')}`,
+      { headers: { 'User-Agent': UA } }
+    );
+    if (!r.ok) return {};
+    const data = await r.json();
+    const out = {};
+    for (const q of (data?.quoteResponse?.result || [])) {
+      out[q.symbol] = {
+        epsTrailing: q.epsTrailingTwelveMonths ?? null,
+        epsForward:  q.epsForward ?? null,
+      };
+    }
+    return out;
+  } catch { return {}; }
+}
+
 // Fetch last N daily bars for multiple symbols in one request
-async function fetchAllBars(symbols, limit = 35) {
+async function fetchAllBars(symbols, limit = 70) {
   try {
     const syms = symbols.join(',');
     const r = await fetch(
@@ -94,19 +115,26 @@ async function fetchStock(sym) {
   } catch { return null; }
 }
 
-function score(d, contractSignals, barsMap) {
+function score(d, contractSignals, barsMap, fundamentals) {
   if (!d?.price) return -1;
 
-  // Hard filters (same as backtest v5+)
+  // Hard filter 1: price floor
   if (d.price < MIN_PRICE) return -1;
 
-  const bars    = barsMap[d.symbol] || [];
-  const trend30 = calcTrend(bars, 30);
-  const trend5  = calcTrend(bars, 5);
-  if (trend30 !== null && trend30 <= 0) return -1;  // must be in 30-day uptrend
-  if (trend5  !== null && trend5  <= 0) return -1;  // must be in 5-day uptrend
+  // Hard filter 2: profitability — ETFs have null EPS and pass through
+  const eps = fundamentals?.[d.symbol];
+  if (eps?.epsTrailing !== null && eps?.epsTrailing !== undefined && eps.epsTrailing <= 0) return -1;
+
+  // Hard filter 3: trend — must be in sustained uptrend on both timeframes
+  const bars       = barsMap[d.symbol] || [];
+  const trendLong  = calcTrend(bars, TREND_DAYS);
+  const trend5     = calcTrend(bars, 5);
+  if (trendLong !== null && trendLong <= 0) return -1;
+  if (trend5    !== null && trend5    <= 0) return -1;
 
   let s = 0;
+
+  // Factor 1: Value — discount from 52W high
   const fromHigh = d.high52 ? (d.price - d.high52) / d.high52 * 100 : null;
   if (fromHigh !== null) {
     if (fromHigh < -30) s += 20;
@@ -115,14 +143,27 @@ function score(d, contractSignals, barsMap) {
     else if (fromHigh < -5)  s += 3;
     if (fromHigh > -2) s -= 10;
   }
+
+  // Factor 2: Momentum — previous day % change
   if (d.changePct != null) {
     if (d.changePct >= 0.5 && d.changePct <= 4) s += 10;
     else if (d.changePct > 4) s += 4;
     else if (d.changePct < -4) s -= 5;
   }
-  // Government contract catalyst boost
+
+  // Factor 3: Earnings estimate revision — analysts raising forward estimates is bullish
+  if (eps?.epsForward !== null && eps?.epsForward !== undefined &&
+      eps?.epsTrailing !== null && eps?.epsTrailing !== undefined && eps.epsTrailing > 0) {
+    const revision = (eps.epsForward - eps.epsTrailing) / eps.epsTrailing;
+    if (revision > 0.15) s += 12;       // analysts expect 15%+ EPS growth
+    else if (revision > 0.05) s += 6;   // analysts expect 5%+ EPS growth
+    else if (revision < -0.05) s -= 5;  // analysts cutting estimates
+  }
+
+  // Factor 4: Government contract catalyst
   const signal = contractSignals?.[d.symbol];
   if (signal) s += signal.boost;
+
   return s;
 }
 
@@ -142,18 +183,21 @@ async function main() {
     console.log('Portfolio full:', [...heldSymbols].join(', ')); return;
   }
 
-  // Fetch recent daily bars for all symbols + SPY in one API call
+  // Fetch recent daily bars for all symbols + SPY in one API call (70 days for 60-day trend)
   const allSymbols = [...new Set(['SPY', ...WATCHLIST])];
-  console.log('Fetching recent bars for trend/regime analysis...');
-  const barsMap = await fetchAllBars(allSymbols, 35);
+  console.log('Fetching recent bars + fundamentals...');
+  const [barsMap, fundamentals] = await Promise.all([
+    fetchAllBars(allSymbols, 70),
+    fetchAllFundamentals(WATCHLIST),
+  ]);
 
-  // SPY regime filter — pause all buys when broad market is in 30-day downtrend
-  const spyTrend = calcTrend(barsMap['SPY'], 30);
+  // SPY regime filter — pause all buys when broad market is in downtrend
+  const spyTrend = calcTrend(barsMap['SPY'], TREND_DAYS);
   if (spyTrend !== null && spyTrend <= 0) {
-    console.log(`SPY 30-day trend: ${(spyTrend * 100).toFixed(1)}% — market in downtrend, pausing all buys`);
+    console.log(`SPY ${TREND_DAYS}-day trend: ${(spyTrend * 100).toFixed(1)}% — market in downtrend, pausing all buys`);
     return;
   }
-  console.log(`SPY 30-day trend: ${spyTrend !== null ? (spyTrend * 100).toFixed(1) + '% ✓' : 'unknown (proceeding)'}`);
+  console.log(`SPY ${TREND_DAYS}-day trend: ${spyTrend !== null ? (spyTrend * 100).toFixed(1) + '% ✓' : 'unknown (proceeding)'}`);
 
   const contractSignals = loadContractSignals();
   const signalCount     = Object.keys(contractSignals).length;
@@ -166,18 +210,20 @@ async function main() {
   console.log(`Got data for ${allData.length}/${WATCHLIST.length} symbols`);
 
   const scored = allData
-    .map(d => ({ ...d, _score: score(d, contractSignals, barsMap) }))
+    .map(d => ({ ...d, _score: score(d, contractSignals, barsMap, fundamentals) }))
     .filter(d => d._score >= 0 && !heldSymbols.has(d.symbol))
     .sort((a, b) => b._score - a._score);
 
   console.log('\nTop candidates after filters:');
   for (const d of scored.slice(0, 8)) {
-    const t30 = calcTrend(barsMap[d.symbol], 30);
-    const t5  = calcTrend(barsMap[d.symbol], 5);
-    const fh  = d.high52 ? ((d.price - d.high52) / d.high52 * 100).toFixed(1) : 'n/a';
+    const tLong = calcTrend(barsMap[d.symbol], TREND_DAYS);
+    const t5    = calcTrend(barsMap[d.symbol], 5);
+    const fh    = d.high52 ? ((d.price - d.high52) / d.high52 * 100).toFixed(1) : 'n/a';
+    const eps   = fundamentals?.[d.symbol];
+    const epsStr = eps?.epsTrailing != null ? `  eps:$${eps.epsTrailing.toFixed(2)}→$${(eps.epsForward ?? eps.epsTrailing).toFixed(2)}` : '';
     console.log(
       `  ${d.symbol.padEnd(6)} score:${String(d._score).padStart(3)}  $${d.price.toFixed(2).padStart(8)}` +
-      `  fromHigh:${fh}%  t30:${t30 !== null ? (t30*100).toFixed(1)+'%' : 'n/a'}  t5:${t5 !== null ? (t5*100).toFixed(1)+'%' : 'n/a'}`
+      `  fromHigh:${fh}%  t${TREND_DAYS}:${tLong !== null ? (tLong*100).toFixed(1)+'%' : 'n/a'}  t5:${t5 !== null ? (t5*100).toFixed(1)+'%' : 'n/a'}${epsStr}`
     );
   }
 

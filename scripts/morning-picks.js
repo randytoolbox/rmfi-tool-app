@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 // Runs via GitHub Actions at 7:45am ET (11:45 UTC) Mon-Fri.
-// Fetches stock data, scores top 3, sends email via Resend.
+// Scores watchlist using 5-factor methodology (value, momentum, profitability,
+// earnings growth, earnings estimate revisions) and sends email via Resend.
 
-const TO_EMAIL   = 'randybarclay1@gmail.com';
-const FROM_EMAIL = 'onboarding@resend.dev';
+const TO_EMAIL     = 'randybarclay1@gmail.com';
+const FROM_EMAIL   = 'onboarding@resend.dev';
+const SIGNALS_PATH = `${process.cwd()}/data/contract-signals.json`;
+const MIN_PRICE    = 15;  // hard floor — no penny stocks / falling knives
 
 const WATCHLIST = [
   'SPY','QQQ','DIA','IWM',
@@ -16,26 +19,55 @@ const WATCHLIST = [
 
 const UA = 'Mozilla/5.0 (compatible; randy-money/1.0)';
 
-async function fetchStock(sym) {
+function loadContractSignals() {
   try {
-    const r = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=1y&interval=1mo`,
-      { headers: { 'User-Agent': UA } }
-    );
-    if (!r.ok) return null;
-    const data = await r.json();
-    const meta   = data?.chart?.result?.[0]?.meta;
-    if (!meta) return null;
-    const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(v => v != null) || [];
-    const high52 = meta.fiftyTwoWeekHigh ?? (closes.length ? Math.max(...closes) : null);
-    const low52  = meta.fiftyTwoWeekLow  ?? (closes.length ? Math.min(...closes) : null);
-    return { symbol: sym, name: meta.shortName || sym, price: meta.regularMarketPrice, changePct: meta.regularMarketChangePercent, high52, low52 };
-  } catch { return null; }
+    const fs   = require('fs');
+    const raw  = fs.readFileSync(SIGNALS_PATH, 'utf8');
+    const data = JSON.parse(raw);
+    const today     = new Date().toISOString().slice(0, 10);
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    if (data.generatedAt === today || data.generatedAt === yesterday) {
+      return data.signals || {};
+    }
+  } catch { /* no signals file or stale */ }
+  return {};
 }
 
-function score(d) {
+// Batch fetch: price + 52W range + EPS in a single call
+async function fetchAllStocks(symbols) {
+  try {
+    const r = await fetch(
+      `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols.join(',')}`,
+      { headers: { 'User-Agent': UA } }
+    );
+    if (!r.ok) return [];
+    const data = await r.json();
+    return (data?.quoteResponse?.result || []).map(q => ({
+      symbol:      q.symbol,
+      name:        q.shortName || q.longName || q.symbol,
+      price:       q.regularMarketPrice,
+      changePct:   q.regularMarketChangePercent,
+      high52:      q.fiftyTwoWeekHigh,
+      low52:       q.fiftyTwoWeekLow,
+      epsTrailing: q.epsTrailingTwelveMonths ?? null,
+      epsForward:  q.epsForward ?? null,
+    }));
+  } catch { return []; }
+}
+
+function score(d, contractSignals) {
   if (!d?.price) return -1;
+
+  // Hard filter 1: price floor
+  if (d.price < MIN_PRICE) return -1;
+
+  // Hard filter 2: profitability — only when EPS data is available
+  // ETFs (SPY, GLD, TLT, etc.) have null EPS and pass through
+  if (d.epsTrailing !== null && d.epsTrailing <= 0) return -1;
+
   let s = 0;
+
+  // Factor 1: Value — discount from 52W high
   const fromHigh = d.high52 ? (d.price - d.high52) / d.high52 * 100 : null;
   if (fromHigh !== null) {
     if (fromHigh < -30) s += 20;
@@ -44,22 +76,49 @@ function score(d) {
     else if (fromHigh < -5)  s += 3;
     if (fromHigh > -2) s -= 10;
   }
+
+  // Factor 2: Momentum — previous day % change
   if (d.changePct != null) {
     if (d.changePct >= 0.5 && d.changePct <= 4) s += 10;
     else if (d.changePct > 4) s += 4;
     else if (d.changePct < -4) s -= 5;
   }
+
+  // Factor 3: Earnings estimate revision — analysts raising forward estimates is bullish
+  if (d.epsForward !== null && d.epsTrailing !== null && d.epsTrailing > 0) {
+    const revision = (d.epsForward - d.epsTrailing) / d.epsTrailing;
+    if (revision > 0.15) s += 12;       // analysts expect 15%+ EPS growth
+    else if (revision > 0.05) s += 6;   // analysts expect 5%+ EPS growth
+    else if (revision < -0.05) s -= 5;  // analysts cutting estimates
+  }
+
+  // Factor 4: Government contract catalyst
+  const signal = contractSignals?.[d.symbol];
+  if (signal) s += signal.boost;
+
   return s;
 }
 
-function reason(d) {
+function reason(d, contractSignals) {
   const parts = [];
   const fromHigh = d.high52 ? (d.price - d.high52) / d.high52 * 100 : null;
-  if (fromHigh !== null && fromHigh < -8) parts.push(`${Math.abs(fromHigh).toFixed(0)}% below 52W high`);
+  if (fromHigh !== null && fromHigh < -8)
+    parts.push(`${Math.abs(fromHigh).toFixed(0)}% below 52W high`);
   if (d.changePct != null && Math.abs(d.changePct) >= 0.3)
-    parts.push(d.changePct > 0 ? `+${d.changePct.toFixed(1)}% yesterday` : `dipped ${Math.abs(d.changePct).toFixed(1)}% — potential entry`);
-  const fromLow = d.low52 ? (d.price - d.low52) / d.low52 * 100 : null;
-  if (fromLow !== null && fromLow < 15) parts.push('near 52W low — oversold zone');
+    parts.push(d.changePct > 0
+      ? `+${d.changePct.toFixed(1)}% yesterday`
+      : `dipped ${Math.abs(d.changePct).toFixed(1)}% — potential entry`);
+  if (d.epsForward !== null && d.epsTrailing !== null && d.epsTrailing > 0) {
+    const rev = (d.epsForward - d.epsTrailing) / d.epsTrailing;
+    if (rev > 0.15) parts.push(`analysts expect +${(rev*100).toFixed(0)}% EPS growth`);
+    else if (rev > 0.05) parts.push('rising earnings estimates');
+  }
+  const signal = contractSignals?.[d.symbol];
+  if (signal) {
+    const via = signal.via === 'direct' ? 'gov contract win' : `downstream ${signal.via.replace('downstream-','')} contract`;
+    const amt = signal.amount ? ` $${(signal.amount/1e6).toFixed(0)}M` : '';
+    parts.push(`${via}${amt}`);
+  }
   return parts.length ? parts.join(' · ') : 'top watchlist position';
 }
 
@@ -68,23 +127,44 @@ function fmt(n) {
   return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function buildHtml(picks, dateStr) {
+function buildHtml(picks, dateStr, contractSignals) {
   const medals = ['🥇', '🥈', '🥉'];
+
   const cards = picks.map((d, i) => {
-    const chgClr  = (d.changePct ?? 0) >= 0 ? '#16a34a' : '#dc2626';
+    const chgClr   = (d.changePct ?? 0) >= 0 ? '#16a34a' : '#dc2626';
     const fromHigh = d.high52 ? (d.price - d.high52) / d.high52 * 100 : null;
+    const hasSignal = !!contractSignals?.[d.symbol];
+
+    let epsHtml = '';
+    if (d.epsTrailing !== null) {
+      const arrow  = (d.epsForward ?? 0) > d.epsTrailing ? ' ▲' : ((d.epsForward ?? 0) < d.epsTrailing ? ' ▼' : '');
+      const arrowColor = arrow === ' ▲' ? '#16a34a' : '#dc2626';
+      const fwdStr = d.epsForward !== null ? ` → fwd $${d.epsForward.toFixed(2)}` : '';
+      epsHtml = `<div style="font-size:12px;color:#6b7280;margin-top:6px;">
+        EPS (TTM) $${d.epsTrailing.toFixed(2)}${fwdStr}
+        ${arrow ? `<span style="color:${arrowColor};font-weight:600;">${arrow}</span>` : ''}
+      </div>`;
+    }
+
     return `
-      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:18px 20px;margin-bottom:12px;">
-        <div style="font-size:22px;font-weight:800;color:#1e3a5f;">${medals[i]} ${d.symbol}</div>
+      <div style="background:#f9fafb;border:1px solid ${hasSignal ? '#3b82f6' : '#e5e7eb'};border-radius:12px;padding:18px 20px;margin-bottom:12px;${hasSignal ? 'box-shadow:0 0 0 2px rgba(59,130,246,0.2);' : ''}">
+        <div style="font-size:22px;font-weight:800;color:#1e3a5f;">${medals[i]} ${d.symbol}${hasSignal ? '&nbsp;<span style="font-size:12px;background:#dbeafe;color:#1d4ed8;padding:2px 7px;border-radius:999px;font-weight:600;">📋 contract</span>' : ''}</div>
         <div style="font-size:13px;color:#6b7280;margin-top:2px;">${d.name}</div>
         <div style="font-size:26px;font-weight:700;color:#111827;margin-top:10px;">${fmt(d.price)}</div>
         <div style="font-size:13px;color:${chgClr};margin-top:3px;font-weight:600;">
           ${d.changePct != null ? (d.changePct >= 0 ? '+' : '') + d.changePct.toFixed(2) + '%' : '--'} (prev day)
           ${fromHigh != null ? `<span style="color:#9ca3af;font-weight:400;margin-left:12px;">${fromHigh.toFixed(1)}% from 52W high</span>` : ''}
         </div>
-        <div style="font-size:12px;color:#6b7280;margin-top:10px;padding-top:10px;border-top:1px solid #e5e7eb;">${reason(d)}</div>
+        ${epsHtml}
+        <div style="font-size:12px;color:#6b7280;margin-top:10px;padding-top:10px;border-top:1px solid #e5e7eb;">${reason(d, contractSignals)}</div>
       </div>`;
   }).join('');
+
+  const signalSyms = Object.keys(contractSignals);
+  const signalBanner = signalSyms.length ? `
+    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#1d4ed8;">
+      📋 <strong>Contract radar:</strong> ${signalSyms.join(', ')} have recent gov contract activity
+    </div>` : '';
 
   return `<!DOCTYPE html>
 <html>
@@ -95,9 +175,11 @@ function buildHtml(picks, dateStr) {
       <div style="font-size:22px;font-weight:800;color:#ffffff;">📈 Randy's Morning Picks</div>
       <div style="font-size:13px;color:#93c5fd;margin-top:4px;">${dateStr} · Pre-market brief · US equities</div>
     </div>
+    ${signalBanner}
     ${cards}
     <div style="font-size:11px;color:#9ca3af;text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid #f3f4f6;">
-      Picks scored by 52W position, momentum &amp; watchlist signals.<br>
+      Scored on: value (52W position) · momentum · earnings growth · estimate revisions · contract signals<br>
+      Profitable companies only (EPS &gt; 0) · Min price $${MIN_PRICE}<br>
       Not financial advice — do your own research before trading.<br><br>
       <a href="https://rmfi-tool-app.vercel.app/randys-money.html" style="color:#3b82f6;">Open full app →</a>
     </div>
@@ -110,19 +192,25 @@ async function main() {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) { console.error('RESEND_API_KEY not set'); process.exit(1); }
 
+  const contractSignals = loadContractSignals();
+  const signalCount = Object.keys(contractSignals).length;
+  if (signalCount) console.log(`Contract signals: ${Object.keys(contractSignals).join(', ')}`);
+
   console.log('Fetching stock data...');
-  const allData = (await Promise.all(WATCHLIST.map(fetchStock))).filter(Boolean);
+  const allData = (await fetchAllStocks(WATCHLIST)).filter(d => d?.price > 0);
   console.log(`Got data for ${allData.length}/${WATCHLIST.length} symbols`);
 
-  const picks = allData
-    .map(d => ({ ...d, _score: score(d) }))
-    .filter(d => d._score >= 0)
-    .sort((a, b) => b._score - a._score)
-    .slice(0, 3);
+  const scoredAll = allData.map(d => ({ ...d, _score: score(d, contractSignals) }));
+  const rejected  = scoredAll.filter(d => d._score < 0).map(d => d.symbol);
+  const eligible  = scoredAll.filter(d => d._score >= 0).sort((a, b) => b._score - a._score);
 
+  console.log(`Filtered out (${rejected.length}): ${rejected.join(', ')}`);
+  console.log(`Eligible (${eligible.length}): ${eligible.slice(0, 8).map(d => `${d.symbol}(${d._score})`).join(', ')}`);
+
+  const picks = eligible.slice(0, 3);
   if (!picks.length) { console.log('No picks available today'); return; }
 
-  console.log('Top picks:', picks.map(d => d.symbol).join(', '));
+  console.log('Top 3 picks:', picks.map(d => d.symbol).join(', '));
 
   const dateStr = new Date().toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/New_York'
@@ -135,7 +223,7 @@ async function main() {
       from: FROM_EMAIL,
       to:   [TO_EMAIL],
       subject: `📈 Morning Picks — ${dateStr}`,
-      html: buildHtml(picks, dateStr),
+      html: buildHtml(picks, dateStr, contractSignals),
     }),
   });
 
