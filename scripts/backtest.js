@@ -9,9 +9,9 @@ const END_DATE     = '2025-06-23';
 const INITIAL_CASH = 1000;
 const MAX_POS      = 3;
 const BUDGET_PER   = 333;
-const TAKE_PROFIT  = 0.05;
-const STOP_LOSS    = -0.03;
-const MAX_DAYS     = 5;
+const TAKE_PROFIT  = 0.08;
+const STOP_LOSS    = -0.07;
+const MAX_DAYS     = 7;
 
 const WATCHLIST = [
   'SPY','QQQ','DIA','IWM',
@@ -78,14 +78,28 @@ function scoreStock(sym, dayIndex, allBars) {
     if (today.v < avgVol * 0.5) return -999;
   }
 
-  // 52W high from available history up to this point
+  // 52W high/low from available history up to this point
   const lookback = symBars.slice(Math.max(0, dayIndex - 252), dayIndex + 1);
   const high52   = Math.max(...lookback.map(b => b.h));
+  const low52    = Math.min(...lookback.map(b => b.l));
   const fromHigh = (price - high52) / high52 * 100;
+  const fromLow  = (price - low52)  / low52  * 100;
 
   // 5-day trend: catch falling knives vs real bounces
   const fiveDaysAgo   = symBars[dayIndex - 5];
   const fiveDayChange = fiveDaysAgo ? (price - fiveDaysAgo.c) / fiveDaysAgo.c * 100 : 0;
+
+  // 30-day trend: detect sustained downtrends
+  const thirtyDaysAgo   = symBars[Math.max(0, dayIndex - 30)];
+  const thirtyDayChange = thirtyDaysAgo ? (price - thirtyDaysAgo.c) / thirtyDaysAgo.c * 100 : 0;
+
+  // Up-day ratio: count green days in last 20 sessions
+  const last20 = symBars.slice(Math.max(0, dayIndex - 20), dayIndex);
+  let upDays = 0;
+  for (let i = 1; i < last20.length; i++) {
+    if (last20[i].c > last20[i - 1].c) upDays++;
+  }
+  const upDayRatio = last20.length > 1 ? upDays / (last20.length - 1) : 0.5;
 
   let s = 0;
 
@@ -95,6 +109,10 @@ function scoreStock(sym, dayIndex, allBars) {
   else if (fromHigh < -20) s += 10;
   else if (fromHigh < -10) s += 5;
   if (fromHigh > -5)       s -= 10;
+
+  // Near 52W low = still falling, no floor found yet
+  if (fromLow < 10)       s -= 15;
+  else if (fromLow < 20)  s -= 8;
 
   // Today's momentum
   if (changePct >= 1 && changePct <= 5)      s += 12;
@@ -109,6 +127,19 @@ function scoreStock(sym, dayIndex, allBars) {
   else if (fiveDayChange < -15) s -= 15;
   else if (fiveDayChange < -8)  s -= 8;
   else if (fiveDayChange < -3)  s -= 4;
+
+  // 30-day trend (sustained downtrend = avoid)
+  if (thirtyDayChange > 10)      s += 6;
+  else if (thirtyDayChange > 0)  s += 3;
+  else if (thirtyDayChange < -20) s -= 15;
+  else if (thirtyDayChange < -10) s -= 8;
+  else if (thirtyDayChange < -5)  s -= 4;
+
+  // Up-day ratio: fewer than 40% green days = chronic loser
+  if (upDayRatio >= 0.55)      s += 6;
+  else if (upDayRatio >= 0.45) s += 2;
+  else if (upDayRatio < 0.35)  s -= 12;
+  else if (upDayRatio < 0.40)  s -= 6;
 
   return s;
 }
