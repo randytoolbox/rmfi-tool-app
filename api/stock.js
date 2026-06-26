@@ -23,8 +23,8 @@ module.exports = async function handler(req, res) {
     const snap = data[sym];
     if (!snap) return res.status(404).json({ error: 'Symbol not found' });
 
-    const price     = snap.latestTrade?.p || snap.minuteBar?.c || null;
-    const prevClose = snap.prevDailyBar?.c || price;
+    const price     = snap.latestTrade?.p || snap.minuteBar?.c || snap.dailyBar?.c || snap.prevDailyBar?.c || null;
+    const prevClose = snap.prevDailyBar?.c || snap.dailyBar?.o || price;
     const changePct = price && prevClose ? (price - prevClose) / prevClose * 100 : null;
 
     // Return in the same shape the app expects from Yahoo Finance v8

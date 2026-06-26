@@ -2798,10 +2798,12 @@ function renderDailyPicks() {
 
 async function fetchStock52W() {
   if (!stockWatchlist.length) return;
+  // Include congress buys tickers so their prices show up too
+  const allSyms = [...new Set([...stockWatchlist, ...cBuysData.map(d => d.sym)])];
   const BATCH = 20;
   let updated = false;
   const batches = [];
-  for (let i = 0; i < stockWatchlist.length; i += BATCH) batches.push(stockWatchlist.slice(i, i + BATCH));
+  for (let i = 0; i < allSyms.length; i += BATCH) batches.push(allSyms.slice(i, i + BATCH));
   await Promise.all(batches.map(async batch => {
     try {
       const r = await fetch(`/api/quote?syms=${encodeURIComponent(batch.join(','))}`, { signal: AbortSignal.timeout(15000) });
@@ -2810,12 +2812,21 @@ async function fetchStock52W() {
       for (const q of results) {
         const sym = q.symbol;
         if (!stockData[sym]) stockData[sym] = { name: STOCK_NAMES[sym] || sym };
+        // Use Yahoo Finance price when Alpaca didn't provide one (market closed, IEX gap, etc.)
+        if (q.regularMarketPrice != null && !stockData[sym].price) {
+          stockData[sym].price     = q.regularMarketPrice;
+          stockData[sym].changePct = q.regularMarketChangePercent || null;
+          stockData[sym].change    = null;
+          stockData[sym].ytdPct    = computeYTD(sym, q.regularMarketPrice);
+          stockData[sym].name      = stockData[sym].name || q.shortName || sym;
+          updated = true;
+        }
         if (q.fiftyTwoWeekHigh != null) { stockData[sym].high52 = q.fiftyTwoWeekHigh; updated = true; }
         if (q.fiftyTwoWeekLow  != null) { stockData[sym].low52  = q.fiftyTwoWeekLow;  updated = true; }
       }
     } catch(e) { console.warn('52W fetch batch:', e.message); }
   }));
-  if (updated) { save('rm_stockData', stockData); renderStockGrid(); renderDailyPicks(); }
+  if (updated) { save('rm_stockData', stockData); renderStockGrid(); renderDailyPicks(); renderCongressBuys(); }
 }
 
 async function fetchStockHistory() {
@@ -3078,6 +3089,30 @@ async function fetchCongressBuys(force = false) {
   save('rm_cBuys', cBuysData);
   save('rm_cBuysTs', lastCBuysFetch);
   renderCongressBuys();
+
+  // Fetch prices for congress buy tickers not yet in stockData
+  const missing = cBuysData.filter(d => !stockData[d.sym]?.price).map(d => d.sym);
+  if (missing.length) {
+    fetch(`/api/quote?syms=${encodeURIComponent(missing.slice(0, 20).join(','))}`, { signal: AbortSignal.timeout(10000) })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        const results = data?.quoteResponse?.result || [];
+        let changed = false;
+        for (const q of results) {
+          if (q.regularMarketPrice != null && !stockData[q.symbol]?.price) {
+            stockData[q.symbol] = {
+              price:     q.regularMarketPrice,
+              changePct: q.regularMarketChangePercent || null,
+              change:    null,
+              name:      STOCK_NAMES[q.symbol] || q.shortName || q.symbol,
+            };
+            changed = true;
+          }
+        }
+        if (changed) { save('rm_stockData', stockData); renderCongressBuys(); }
+      })
+      .catch(e => console.warn('cbuys prices:', e));
+  }
 }
 
 function renderCongressBuys() {
