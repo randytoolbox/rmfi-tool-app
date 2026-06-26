@@ -16,12 +16,18 @@ module.exports = async function handler(req, res) {
 
   try {
     const [posRes, acctRes] = await Promise.all([
-      fetch(`${ALPACA_BASE}/v2/positions`,            { headers, signal: AbortSignal.timeout(8000) }),
-      fetch(`${ALPACA_BASE}/v2/account`,              { headers, signal: AbortSignal.timeout(8000) }),
+      fetch(`${ALPACA_BASE}/v2/positions`,            { headers, signal: AbortSignal.timeout(12000) }),
+      fetch(`${ALPACA_BASE}/v2/account`,              { headers, signal: AbortSignal.timeout(12000) }),
     ]);
 
-    if (!posRes.ok)  throw new Error(`Positions ${posRes.status}`);
-    if (!acctRes.ok) throw new Error(`Account ${acctRes.status}`);
+    if (!posRes.ok) {
+      const body = await posRes.text().catch(() => '');
+      throw new Error(`Alpaca positions returned ${posRes.status}: ${body.slice(0, 200)}`);
+    }
+    if (!acctRes.ok) {
+      const body = await acctRes.text().catch(() => '');
+      throw new Error(`Alpaca account returned ${acctRes.status}: ${body.slice(0, 200)}`);
+    }
 
     const positions = await posRes.json();
     const account   = await acctRes.json();

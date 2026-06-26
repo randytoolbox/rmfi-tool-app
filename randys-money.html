@@ -3163,13 +3163,16 @@ async function fetchRobotPositions(force = false) {
   if (posEl) posEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px 0;">Loading robot trades…</div>';
 
   try {
-    const r = await fetch('/api/positions', { signal: AbortSignal.timeout(12000) });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const r = await fetch('/api/positions', { signal: AbortSignal.timeout(14000) });
+    if (!r.ok) {
+      const errBody = await r.json().catch(() => ({}));
+      throw new Error(errBody.error || `HTTP ${r.status}`);
+    }
     robotData = await r.json();
     lastRobotFetch = Date.now();
     renderRobotPositions();
   } catch(e) {
-    if (posEl) posEl.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:12px 0;">⚠ Could not load Alpaca positions: ${e.message}</div>`;
+    if (posEl) posEl.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:12px 0;">⚠ Alpaca error: ${e.message}</div>`;
   }
 }
 
