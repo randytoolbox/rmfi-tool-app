@@ -516,17 +516,17 @@
   <!-- NEWS FEED -->
   <div id="sec-news" class="section-label" style="margin-top:10px; display:flex; align-items:center; justify-content:space-between;">
     <span>&#128240; Market News Feed <span style="font-size:10px;color:var(--muted);font-weight:400;">— auto-updates every 5 min</span></span>
-    <button class="btn btn-sm" id="newsRefreshBtn" onclick="fetchNews(true)" style="background:#1e4060;color:var(--text);border:1px solid var(--border);">&#8635; Refresh News</button>
+    <button class="btn btn-sm" id="newsRefreshBtn" onclick="fetchNews(true)" style="background:var(--card-bg);color:var(--muted);border:1px solid var(--border);">&#8635;</button>
   </div>
   <div class="news-wrap" id="newsList">
-    <div class="news-empty">News loads on first refresh — click &#8635; Refresh Data or wait for auto-refresh.</div>
+    <div class="news-empty" style="color:var(--muted);">Loading market news…</div>
   </div>
 
   <!-- TRUMP DIRECT — live Truth Social posts -->
   <div id="sec-trump" style="margin-top:24px; margin-bottom:28px;">
     <div class="section-label" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
       <span>&#127482;&#127480; Trump Direct <span style="font-size:10px;color:var(--muted);font-weight:400;">— Truth Social posts &bull; real-time &bull; auto-updates 5 min</span></span>
-      <button class="btn btn-sm" onclick="fetchTrumpPosts(true)" style="background:#1a0000;color:#ff6b6b;border:1px solid #ff4444;">&#8635; Refresh</button>
+      <button class="btn btn-sm" onclick="fetchTrumpPosts(true)" style="background:var(--card-bg);color:var(--muted);border:1px solid var(--border);">&#8635;</button>
     </div>
     <div class="news-wrap" style="margin-top:8px;">
       <div id="trumpPostList"><div class="news-empty">Loading Trump&#39;s Truth Social posts&hellip;</div></div>
@@ -537,7 +537,7 @@
   <div id="sec-policy" style="margin-top:24px; margin-bottom:28px;">
     <div class="section-label" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
       <span>&#127981; Policy Watch <span style="font-size:10px;color:var(--muted);font-weight:400;">— Trump Truth Social &bull; tariffs &bull; trade deals &bull; oil sanctions &bull; auto-updates 15 min</span></span>
-      <button class="btn btn-sm" onclick="fetchPolicyNews(true)" style="background:#1e2a00;color:#f9a825;border:1px solid #f9a825;">&#8635; Refresh</button>
+      <button class="btn btn-sm" onclick="fetchPolicyNews(true)" style="background:var(--card-bg);color:var(--muted);border:1px solid var(--border);">&#8635;</button>
     </div>
     <div class="news-wrap" style="margin-top:8px;">
       <div id="policyList"><div class="news-empty">Loading policy alerts...</div></div>
@@ -547,21 +547,21 @@
   <!-- CONGRESSIONAL TRADES -->
   <div id="sec-congress" class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
     <span>&#127963; Congress Trades <span style="font-size:10px;color:var(--muted);font-weight:400;">— actual STOCK Act filings &bull; House &amp; Senate &bull; last 90 days</span></span>
-    <button class="btn btn-sm" onclick="fetchCongress(true)" style="background:#1e4060;color:var(--text);border:1px solid var(--border);">&#8635; Refresh</button>
+    <button class="btn btn-sm" onclick="fetchCongress(true)" style="background:var(--card-bg);color:var(--muted);border:1px solid var(--border);">&#8635;</button>
   </div>
   <div id="congErrorMsg" style="display:none;font-size:12px;color:var(--bad);padding:10px 0;"></div>
   <div class="news-wrap" id="congList" style="margin-bottom:28px;">
-    <div class="news-empty" style="font-size:12px;">Click &#8635; Refresh to attempt loading individual STOCK Act filings (may be slow).</div>
+    <div class="news-empty" style="font-size:12px;color:var(--muted);">Loading STOCK Act filings…</div>
   </div>
 
   <!-- CONGRESS BUYS LEADERBOARD -->
   <div class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
     <span>&#127963; Congress Buys <span style="font-size:10px;color:var(--muted);font-weight:400;">— most purchased by members &bull; STOCK Act disclosures &bull; last 90 days</span></span>
-    <button class="btn btn-sm" onclick="fetchCongressBuys(true)" style="background:#1e4060;color:var(--text);border:1px solid var(--border);">&#8635; Scan</button>
+    <button class="btn btn-sm" onclick="fetchCongressBuys(true)" style="background:var(--card-bg);color:var(--muted);border:1px solid var(--border);">&#8635;</button>
   </div>
   <div id="cBuysErr" style="display:none;font-size:12px;color:var(--bad);padding:6px 0;"></div>
   <div id="cBuysList" style="margin-bottom:28px;">
-    <div class="news-empty">Click &#8635; Scan to load — discovers what senators &amp; representatives are actively buying.</div>
+    <div class="news-empty" style="color:var(--muted);">Loading congressional purchase disclosures…</div>
   </div>
 
   <!-- CONGRESS MEMBER LEADERBOARD -->
@@ -569,13 +569,13 @@
     <span>&#128100; Who's Buying <span style="font-size:10px;color:var(--muted);font-weight:400;">— most active members by purchase count &bull; last 90 days</span></span>
   </div>
   <div id="congMembersList" style="margin-bottom:28px;">
-    <div class="news-empty">Load Congress Trades above (↻ Refresh) to see who's buying what.</div>
+    <div class="news-empty" style="color:var(--muted);">Loading member activity…</div>
   </div>
 
   <!-- CONGRESS LEADERBOARD — official PTR filing counts from disclosures.house.gov -->
   <div class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
     <span>&#127942; Congress Leaderboard <span style="font-size:10px;color:var(--muted);font-weight:400;">— ranked by STOCK Act filing count &bull; official House data &bull; auto-updates weekly</span></span>
-    <button class="btn btn-sm" onclick="fetchHouseLeaderboard(true)" style="background:#2a1a4e;color:#d4b4ff;border:1px solid #4a2a8e;">&#8635; Refresh</button>
+    <button class="btn btn-sm" onclick="fetchHouseLeaderboard(true)" style="background:var(--card-bg);color:var(--muted);border:1px solid var(--border);">&#8635;</button>
   </div>
   <div id="houseLeaderStatus" style="font-size:12px;color:var(--muted);padding:4px 0 6px;min-height:16px;"></div>
   <div id="houseLeaderList" style="margin-bottom:10px;">
@@ -595,10 +595,10 @@
   <!-- SUPPLY CHAIN INTELLIGENCE -->
   <div id="sec-supply" class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
     <span>&#128279; Supply Chain Intelligence <span style="font-size:10px;color:var(--muted);font-weight:400;">— contract awards &rarr; supplier impact</span></span>
-    <button class="btn btn-sm" onclick="fetchNews(true)" style="background:#1e4060;color:var(--text);border:1px solid var(--border);">&#8635; Scan</button>
+    <button class="btn btn-sm" onclick="fetchNews(true)" style="background:var(--card-bg);color:var(--muted);border:1px solid var(--border);">&#8635;</button>
   </div>
   <div class="news-wrap" id="supplyChainList" style="margin-bottom:28px;">
-    <div class="news-empty">Supply chain map loads with news — click &#8635; Refresh Data or wait for auto-refresh. &#9733; = on your watchlist.</div>
+    <div class="news-empty" style="color:var(--muted);">Loading supply chain intelligence…</div>
   </div>
 
   <!-- TRADE TOOLS: LAG DETECTOR + SWING SCREENER -->
@@ -617,10 +617,10 @@
     <div style="margin-bottom:28px;">
       <div class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
         <span>&#127919; Swing Screener <span style="font-size:10px;color:var(--muted);font-weight:400;">— ranks your watchlist + supply chain stocks by swing-trade suitability &bull; 2-yr history</span></span>
-        <button class="btn btn-sm" id="screenerBtn" onclick="runScreener()" style="background:#1a1a3e;color:#d4b4ff;border:1px solid #4a2a8e;">&#127919; Run Screener</button>
+        <button class="btn btn-sm" id="screenerBtn" onclick="runScreener(true)" style="background:var(--card-bg);color:var(--muted);border:1px solid var(--border);">&#8635;</button>
       </div>
       <div id="screenerStatus" style="font-size:12px;color:var(--muted);padding:4px 0 6px;min-height:16px;"></div>
-      <div id="screenerList"><div class="news-empty">Click &#127919; Run Screener to analyze your watchlist + supply chain stocks for swing-trade setups.</div></div>
+      <div id="screenerList"><div class="news-empty" style="color:var(--muted);">Loading screener…</div></div>
     </div>
 
     <!-- TRADE JOURNAL -->
@@ -1266,6 +1266,7 @@ async function refreshAll() {
     fetchTrumpPosts();        // throttled — 5 min (Trump Truth Social direct)
     fetchPolicyNews();        // throttled — 15 min (Trump/tariff/policy alerts)
     fetchRobotPositions();    // throttled — 1 min (Alpaca paper account positions)
+    setTimeout(() => runScreener(), 5000); // throttled — 6 hours; delayed 5s so stock data is ready
     document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
     setStatus('ok', 'All data loaded — ' + now);
     arCountdownVal = 120;
