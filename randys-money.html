@@ -599,6 +599,7 @@
         <span>&#128211; Trade Journal <span style="font-size:10px;color:var(--muted);font-weight:400;">— your paper trade history &bull; win rate &bull; total P&amp;L</span></span>
         <button class="btn btn-sm" onclick="clearJournal()" style="background:#2a0a0a;color:#ff5252;border:1px solid #ff5252;">&#128465; Clear All</button>
       </div>
+      <div id="perfChart"></div>
       <div id="journalList"></div>
     </div>
 
@@ -2178,6 +2179,7 @@ function recordCloseTrade(sym) {
 }
 
 function renderTradeJournal() {
+  renderPerformanceChart();
   const el = document.getElementById('journalList');
   if (!el) return;
   if (!tradeJournal.length) {
@@ -2215,6 +2217,119 @@ function clearJournal() {
   tradeJournal = [];
   save('rm_journal', []);
   renderTradeJournal();
+}
+
+function renderPerformanceChart() {
+  const el = document.getElementById('perfChart');
+  if (!el) return;
+  if (!tradeJournal.length) { el.innerHTML = ''; return; }
+
+  const wins    = tradeJournal.filter(t => t.pnlDollar > 0);
+  const losses  = tradeJournal.filter(t => t.pnlDollar <= 0);
+  const winRate = Math.round(wins.length / tradeJournal.length * 100);
+  const avgWinPct  = wins.length   ? wins.reduce((s,t)   => s + t.pnlPct, 0) / wins.length   : 0;
+  const avgLossPct = losses.length ? losses.reduce((s,t) => s + t.pnlPct, 0) / losses.length : 0;
+  const rrRatio    = wins.length && losses.length && avgLossPct !== 0
+    ? Math.abs(avgWinPct / avgLossPct).toFixed(2) : '—';
+  const totalPnl   = tradeJournal.reduce((s,t) => s + t.pnlDollar, 0);
+  const expectancy = totalPnl / tradeJournal.length;
+
+  // Oldest first for left-to-right timeline
+  const trades = [...tradeJournal].reverse();
+
+  // Running cumulative P&L
+  let running = 0;
+  const runPnl = trades.map(t => { running += t.pnlDollar; return running; });
+
+  // Bar chart
+  const BAR_W  = 34, BAR_GAP = 6, CHART_H = 110;
+  const maxPct = Math.max(8, ...trades.map(t => Math.abs(t.pnlPct)));
+  const svgW   = Math.max(360, trades.length * (BAR_W + BAR_GAP) + 10);
+
+  const bars = trades.map((t, i) => {
+    const barH = Math.max(5, (Math.abs(t.pnlPct) / maxPct) * (CHART_H / 2 - 8));
+    const x    = i * (BAR_W + BAR_GAP);
+    const y    = t.pnlDollar > 0 ? CHART_H / 2 - barH : CHART_H / 2;
+    const col  = t.pnlDollar > 0 ? '#3dd68c' : '#ff5f5f';
+    const pctLabel = (t.pnlDollar > 0 ? '+' : '') + t.pnlPct.toFixed(1) + '%';
+    // label above win bars, below loss bars
+    const lblY = t.pnlDollar > 0 ? Math.max(10, y - 3) : Math.min(CHART_H - 12, y + barH + 10);
+    return `<rect x="${x}" y="${y}" width="${BAR_W}" height="${barH}" fill="${col}" rx="4" opacity=".88"/>
+      <text x="${x + BAR_W/2}" y="${lblY}" text-anchor="middle" font-size="7.5" font-weight="700" fill="${col}">${pctLabel}</text>
+      <text x="${x + BAR_W/2}" y="${CHART_H + 11}" text-anchor="middle" font-size="8" fill="#7a9bbf">${t.sym}</text>`;
+  }).join('');
+
+  // Running P&L line
+  const LINE_H  = 70;
+  const maxAbs  = Math.max(1, ...runPnl.map(v => Math.abs(v)));
+  const pts     = runPnl.map((v, i) => `${i*(BAR_W+BAR_GAP)+BAR_W/2},${LINE_H/2-(v/maxAbs)*(LINE_H/2-10)}`).join(' ');
+  const finalV  = runPnl[runPnl.length - 1];
+  const finalX  = (runPnl.length - 1) * (BAR_W + BAR_GAP) + BAR_W/2;
+  const finalY  = LINE_H/2 - (finalV / maxAbs) * (LINE_H/2 - 10);
+  const lineCol = finalV >= 0 ? '#3dd68c' : '#ff5f5f';
+  const dots    = runPnl.map((v,i) => {
+    const cx = i*(BAR_W+BAR_GAP)+BAR_W/2;
+    const cy = LINE_H/2-(v/maxAbs)*(LINE_H/2-10);
+    return `<circle cx="${cx}" cy="${cy}" r="4" fill="${v>=0?'#3dd68c':'#ff5f5f'}" stroke="#060f1a" stroke-width="1.5"/>`;
+  }).join('');
+
+  // Status note
+  const note = totalPnl > 0
+    ? `✅ Positive expectancy — making money at ${winRate}% win rate`
+    : tradeJournal.length < 5
+      ? `📊 ${tradeJournal.length} trade${tradeJournal.length>1?'s':''} logged — more data coming`
+      : `📉 ${tradeJournal.length} trades — algorithm adjusting`;
+
+  el.innerHTML = `
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px;">
+    <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px;">&#128200; Algorithm Performance</div>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
+      <div style="text-align:center;background:#060f1a;border-radius:10px;padding:10px 4px;">
+        <div style="font-size:8px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Win Rate</div>
+        <div style="font-size:26px;font-weight:900;line-height:1;color:${winRate>=50?'var(--good)':'#f0c060'};">${winRate}%</div>
+        <div style="font-size:8px;color:var(--muted);margin-top:3px;">${wins.length}W · ${losses.length}L</div>
+      </div>
+      <div style="text-align:center;background:#060f1a;border-radius:10px;padding:10px 4px;">
+        <div style="font-size:8px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Avg Win</div>
+        <div style="font-size:26px;font-weight:900;line-height:1;color:var(--good);">+${avgWinPct.toFixed(1)}%</div>
+        <div style="font-size:8px;color:var(--muted);margin-top:3px;">per winner</div>
+      </div>
+      <div style="text-align:center;background:#060f1a;border-radius:10px;padding:10px 4px;">
+        <div style="font-size:8px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Avg Loss</div>
+        <div style="font-size:26px;font-weight:900;line-height:1;color:var(--bad);">${avgLossPct.toFixed(1)}%</div>
+        <div style="font-size:8px;color:var(--muted);margin-top:3px;">per loser</div>
+      </div>
+      <div style="text-align:center;background:#060f1a;border-radius:10px;padding:10px 4px;">
+        <div style="font-size:8px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">R:R Ratio</div>
+        <div style="font-size:26px;font-weight:900;line-height:1;color:${rrRatio!=='—'&&parseFloat(rrRatio)>=1?'var(--good)':'#f0c060'};">${rrRatio}</div>
+        <div style="font-size:8px;color:var(--muted);margin-top:3px;">win÷loss</div>
+      </div>
+    </div>
+
+    <div style="font-size:8px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Each Trade &nbsp;&#9646; Green = Win &nbsp;&#9646; Red = Loss</div>
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;background:#060f1a;border-radius:8px;padding:8px 6px 4px;">
+      <svg width="${svgW}" height="${CHART_H + 18}" style="display:block;overflow:visible;">
+        <line x1="0" y1="${CHART_H/2}" x2="${svgW}" y2="${CHART_H/2}" stroke="#1e4060" stroke-width="1.5" stroke-dasharray="4,4"/>
+        ${bars}
+      </svg>
+    </div>
+
+    <div style="font-size:8px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin:10px 0 4px;">Cumulative P&amp;L Curve</div>
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;background:#060f1a;border-radius:8px;padding:8px 6px;">
+      <svg width="${svgW}" height="${LINE_H}" style="display:block;overflow:visible;">
+        <line x1="0" y1="${LINE_H/2}" x2="${svgW}" y2="${LINE_H/2}" stroke="#1e4060" stroke-width="1.5" stroke-dasharray="4,4"/>
+        ${runPnl.length > 1 ? `<polyline points="${pts}" fill="none" stroke="${lineCol}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>` : ''}
+        ${dots}
+        <text x="${Math.min(finalX+10,svgW-48)}" y="${finalY+4}" font-size="11" font-weight="800" fill="${lineCol}">${finalV>=0?'+':''}$${Math.abs(finalV).toFixed(0)}</text>
+      </svg>
+    </div>
+
+    <div style="margin-top:10px;padding:8px 12px;background:#060f1a;border-radius:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+      <div style="font-size:11px;color:var(--muted);">${note}</div>
+      <div style="font-size:13px;font-weight:900;color:${expectancy>=0?'var(--good)':'var(--bad)'};">${expectancy>=0?'+':''}$${Math.abs(expectancy).toFixed(0)} / trade avg</div>
+    </div>
+  </div>`;
 }
 
 async function runScreener(force = false) {
