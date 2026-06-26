@@ -17,7 +17,7 @@ const WATCHLIST = [
   'GLD','SLV','TLT','PYPL','BRK.B',
 ];
 
-const UA = 'Mozilla/5.0 (compatible; randy-money/1.0)';
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
 function loadContractSignals() {
   try {
@@ -35,24 +35,37 @@ function loadContractSignals() {
 
 // Batch fetch: price + 52W range + EPS in a single call
 async function fetchAllStocks(symbols) {
-  try {
-    const r = await fetch(
-      `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols.join(',')}`,
-      { headers: { 'User-Agent': UA } }
-    );
-    if (!r.ok) return [];
-    const data = await r.json();
-    return (data?.quoteResponse?.result || []).map(q => ({
-      symbol:      q.symbol,
-      name:        q.shortName || q.longName || q.symbol,
-      price:       q.regularMarketPrice,
-      changePct:   q.regularMarketChangePercent,
-      high52:      q.fiftyTwoWeekHigh,
-      low52:       q.fiftyTwoWeekLow,
-      epsTrailing: q.epsTrailingTwelveMonths ?? null,
-      epsForward:  q.epsForward ?? null,
-    }));
-  } catch { return []; }
+  const headers = {
+    'User-Agent': UA,
+    'Accept': 'application/json',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Referer': 'https://finance.yahoo.com/',
+  };
+  const parse = data => (data?.quoteResponse?.result || []).map(q => ({
+    symbol:      q.symbol,
+    name:        q.shortName || q.longName || q.symbol,
+    price:       q.regularMarketPrice,
+    changePct:   q.regularMarketChangePercent,
+    high52:      q.fiftyTwoWeekHigh,
+    low52:       q.fiftyTwoWeekLow,
+    epsTrailing: q.epsTrailingTwelveMonths ?? null,
+    epsForward:  q.epsForward ?? null,
+  }));
+
+  // Try query2 first (more reliable from CI environments), then query1 as fallback
+  for (const host of ['query2.finance.yahoo.com', 'query1.finance.yahoo.com']) {
+    try {
+      const r = await fetch(
+        `https://${host}/v8/finance/quote?symbols=${symbols.join(',')}`,
+        { headers, signal: AbortSignal.timeout(15000) }
+      );
+      if (!r.ok) continue;
+      const data = await r.json();
+      const results = parse(data);
+      if (results.length > 0) return results;
+    } catch { /* try next host */ }
+  }
+  return [];
 }
 
 function score(d, contractSignals) {
@@ -213,7 +226,24 @@ async function main() {
   console.log(`Eligible (${eligible.length}): ${eligible.slice(0, 8).map(d => `${d.symbol}(${d._score})`).join(', ')}`);
 
   const picks = eligible.slice(0, 3);
-  if (!picks.length) { console.log('No picks available today'); return; }
+  if (!picks.length) {
+    console.log('No picks available today');
+    if (!allData.length) {
+      // Data fetch failed entirely — send warning email
+      const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/New_York' });
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: FROM_EMAIL, to: [TO_EMAIL],
+          subject: `⚠️ Morning Picks — data unavailable (${dateStr})`,
+          html: `<p>Could not fetch stock data from Yahoo Finance this morning. No picks were generated.</p><p><a href="https://rmfi-tool-app.vercel.app/randys-money.html">Open app →</a></p>`,
+        }),
+      });
+      console.log('Sent data-unavailable warning email');
+    }
+    return;
+  }
 
   console.log('Top 3 picks:', picks.map(d => d.symbol).join(', '));
 
