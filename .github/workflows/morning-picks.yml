@@ -15,5 +15,7 @@ jobs:
           node-version: '20'
       - name: Send morning picks email
         env:
-          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_API_KEY:    ${{ secrets.RESEND_API_KEY }}
+          ALPACA_KEY_ID:     ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
         run: node scripts/morning-picks.js

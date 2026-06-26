@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 // Runs via GitHub Actions at 7:45am ET (11:45 UTC) Mon-Fri.
-// Scores watchlist using 5-factor methodology (value, momentum, profitability,
-// earnings growth, earnings estimate revisions) and sends email via Resend.
+// Uses Alpaca Data API exclusively — no Yahoo Finance dependency.
+// Scores watchlist on value (52W position), momentum, and contract signals.
 
 const TO_EMAIL     = 'randybarclay1@gmail.com';
 const FROM_EMAIL   = 'onboarding@resend.dev';
 const SIGNALS_PATH = `${process.cwd()}/data/contract-signals.json`;
-const MIN_PRICE    = 15;  // hard floor — no penny stocks / falling knives
+const MIN_PRICE    = 15;
+
+const ALPACA_DATA = 'https://data.alpaca.markets';
 
 const WATCHLIST = [
   'SPY','QQQ','DIA','IWM',
@@ -14,103 +16,124 @@ const WATCHLIST = [
   'NVDA','MSFT','AAPL','TSLA','AMZN','META','GOOGL',
   'AMD','AVGO','IBM','DELL','CRWD',
   'OXY','CVX','HAL','MRO','WMB',
-  'GLD','SLV','TLT','PYPL','BRK.B',
+  'GLD','SLV','TLT','PYPL',
 ];
 
-const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+const NAMES = {
+  SPY:'S&P 500 ETF', QQQ:'Nasdaq 100 ETF', DIA:'Dow Jones ETF', IWM:'Russell 2000 ETF',
+  LMT:'Lockheed Martin', RTX:'RTX Corp', PLTR:'Palantir', CAT:'Caterpillar',
+  XLE:'Energy ETF', BE:'Bloom Energy', LUMN:'Lumen Technologies',
+  NVDA:'Nvidia', MSFT:'Microsoft', AAPL:'Apple', TSLA:'Tesla',
+  AMZN:'Amazon', META:'Meta', GOOGL:'Alphabet',
+  AMD:'AMD', AVGO:'Broadcom', IBM:'IBM', DELL:'Dell', CRWD:'CrowdStrike',
+  OXY:'Occidental', CVX:'Chevron', HAL:'Halliburton', MRO:'Marathon Oil', WMB:'Williams Cos',
+  GLD:'Gold ETF', SLV:'Silver ETF', TLT:'20Y Treasury ETF', PYPL:'PayPal',
+};
+
+function alpacaHeaders() {
+  return {
+    'APCA-API-KEY-ID':     process.env.ALPACA_KEY_ID,
+    'APCA-API-SECRET-KEY': process.env.ALPACA_SECRET_KEY,
+  };
+}
 
 function loadContractSignals() {
   try {
-    const fs   = require('fs');
-    const raw  = fs.readFileSync(SIGNALS_PATH, 'utf8');
+    const fs  = require('fs');
+    const raw = fs.readFileSync(SIGNALS_PATH, 'utf8');
     const data = JSON.parse(raw);
     const today     = new Date().toISOString().slice(0, 10);
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-    if (data.generatedAt === today || data.generatedAt === yesterday) {
-      return data.signals || {};
-    }
-  } catch { /* no signals file or stale */ }
+    if (data.generatedAt === today || data.generatedAt === yesterday) return data.signals || {};
+  } catch { /* no file or stale */ }
   return {};
 }
 
-// Batch fetch: price + 52W range + EPS in a single call
-async function fetchAllStocks(symbols) {
-  const headers = {
-    'User-Agent': UA,
-    'Accept': 'application/json',
-    'Accept-Language': 'en-US,en;q=0.9',
-    'Referer': 'https://finance.yahoo.com/',
-  };
-  const parse = data => (data?.quoteResponse?.result || []).map(q => ({
-    symbol:      q.symbol,
-    name:        q.shortName || q.longName || q.symbol,
-    price:       q.regularMarketPrice,
-    changePct:   q.regularMarketChangePercent,
-    high52:      q.fiftyTwoWeekHigh,
-    low52:       q.fiftyTwoWeekLow,
-    epsTrailing: q.epsTrailingTwelveMonths ?? null,
-    epsForward:  q.epsForward ?? null,
-  }));
+async function fetchSnapshots(symbols) {
+  const r = await fetch(
+    `${ALPACA_DATA}/v2/stocks/snapshots?symbols=${symbols.join(',')}&feed=iex`,
+    { headers: alpacaHeaders(), signal: AbortSignal.timeout(20000) }
+  );
+  if (!r.ok) throw new Error(`Alpaca snapshots returned ${r.status}`);
+  return r.json();
+}
 
-  // Try query2 first (more reliable from CI environments), then query1 as fallback
-  for (const host of ['query2.finance.yahoo.com', 'query1.finance.yahoo.com']) {
-    try {
-      const r = await fetch(
-        `https://${host}/v8/finance/quote?symbols=${symbols.join(',')}`,
-        { headers, signal: AbortSignal.timeout(15000) }
-      );
-      if (!r.ok) continue;
-      const data = await r.json();
-      const results = parse(data);
-      if (results.length > 0) return results;
-    } catch { /* try next host */ }
-  }
-  return [];
+async function fetchYearBars(symbols) {
+  const start = new Date(Date.now() - 366 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+  const allBars = {};
+  let pageToken = null;
+
+  do {
+    const url = new URL(`${ALPACA_DATA}/v2/stocks/bars`);
+    url.searchParams.set('symbols', symbols.join(','));
+    url.searchParams.set('timeframe', '1Day');
+    url.searchParams.set('start', start);
+    url.searchParams.set('limit', '10000');
+    url.searchParams.set('feed', 'iex');
+    if (pageToken) url.searchParams.set('page_token', pageToken);
+
+    const r = await fetch(url.toString(), { headers: alpacaHeaders(), signal: AbortSignal.timeout(30000) });
+    if (!r.ok) throw new Error(`Alpaca bars returned ${r.status}`);
+    const data = await r.json();
+
+    for (const [sym, bars] of Object.entries(data.bars || {})) {
+      if (!allBars[sym]) allBars[sym] = [];
+      allBars[sym].push(...bars);
+    }
+    pageToken = data.next_page_token || null;
+  } while (pageToken);
+
+  return allBars;
+}
+
+async function fetchAllStocks(symbols) {
+  const [snapshots, yearBars] = await Promise.all([
+    fetchSnapshots(symbols),
+    fetchYearBars(symbols),
+  ]);
+
+  return symbols.map(sym => {
+    const snap = snapshots[sym];
+    if (!snap) return null;
+
+    const price    = snap.latestTrade?.p || snap.dailyBar?.c || snap.prevDailyBar?.c || null;
+    const prevClose = snap.prevDailyBar?.c || snap.dailyBar?.o || null;
+    const changePct = (price && prevClose) ? (price - prevClose) / prevClose * 100 : null;
+
+    const bars  = yearBars[sym] || [];
+    const highs = bars.map(b => b.h);
+    const lows  = bars.map(b => b.l);
+    const high52 = highs.length ? highs.reduce((a, b) => Math.max(a, b), -Infinity) : null;
+    const low52  = lows.length  ? lows.reduce((a, b) => Math.min(a, b), Infinity)  : null;
+
+    return { symbol: sym, name: NAMES[sym] || sym, price, changePct, high52, low52 };
+  }).filter(d => d?.price > 0);
 }
 
 function score(d, contractSignals) {
   if (!d?.price) return -1;
-
-  // Hard filter 1: price floor
   if (d.price < MIN_PRICE) return -1;
-
-  // Hard filter 2: profitability — ETFs (SPY, GLD, TLT) have null EPS and pass through
-  if (d.epsTrailing !== null && d.epsTrailing <= 0) return -1;
-
-  // Hard filter 3: earnings must be GROWING (consensus: SA + CANSLIM + Motley Fool + Magic Formula)
-  // If analysts expect >5% earnings decline, company is deteriorating — skip it
-  if (d.epsForward !== null && d.epsTrailing !== null && d.epsTrailing > 0) {
-    if (d.epsForward < d.epsTrailing * 0.95) return -1;
-  }
 
   let s = 0;
 
-  // Factor 1: Value — discount from 52W high
+  // Factor 1: Value — distance from 52W high
   const fromHigh = d.high52 ? (d.price - d.high52) / d.high52 * 100 : null;
   if (fromHigh !== null) {
-    if (fromHigh < -30) s += 20;
-    else if (fromHigh < -20) s += 15;
-    else if (fromHigh < -10) s += 8;
-    else if (fromHigh < -5)  s += 3;
-    if (fromHigh > -2) s -= 10;
+    if (fromHigh < -30)      s += 22;
+    else if (fromHigh < -20) s += 16;
+    else if (fromHigh < -10) s += 9;
+    else if (fromHigh < -5)  s += 4;
+    if (fromHigh > -2)       s -= 10;
   }
 
   // Factor 2: Momentum — previous day % change
   if (d.changePct != null) {
     if (d.changePct >= 0.5 && d.changePct <= 4) s += 10;
-    else if (d.changePct > 4) s += 4;
-    else if (d.changePct < -4) s -= 5;
+    else if (d.changePct > 4)                   s += 4;
+    else if (d.changePct < -4)                  s -= 5;
   }
 
-  // Factor 3: Earnings estimate revision — analysts raising forward estimates is bullish
-  if (d.epsForward !== null && d.epsTrailing !== null && d.epsTrailing > 0) {
-    const revision = (d.epsForward - d.epsTrailing) / d.epsTrailing;
-    if (revision > 0.15) s += 12;       // analysts expect 15%+ EPS growth
-    else if (revision > 0.05) s += 6;   // analysts expect 5%+ EPS growth
-    else if (revision < -0.05) s -= 5;  // analysts cutting estimates
-  }
-
-  // Factor 4: Government contract catalyst
+  // Factor 3: Government contract catalyst
   const signal = contractSignals?.[d.symbol];
   if (signal) s += signal.boost;
 
@@ -126,15 +149,10 @@ function reason(d, contractSignals) {
     parts.push(d.changePct > 0
       ? `+${d.changePct.toFixed(1)}% yesterday`
       : `dipped ${Math.abs(d.changePct).toFixed(1)}% — potential entry`);
-  if (d.epsForward !== null && d.epsTrailing !== null && d.epsTrailing > 0) {
-    const rev = (d.epsForward - d.epsTrailing) / d.epsTrailing;
-    if (rev > 0.15) parts.push(`analysts expect +${(rev*100).toFixed(0)}% EPS growth`);
-    else if (rev > 0.05) parts.push('rising earnings estimates');
-  }
   const signal = contractSignals?.[d.symbol];
   if (signal) {
-    const via = signal.via === 'direct' ? 'gov contract win' : `downstream ${signal.via.replace('downstream-','')} contract`;
-    const amt = signal.amount ? ` $${(signal.amount/1e6).toFixed(0)}M` : '';
+    const via = signal.via === 'direct' ? 'gov contract win' : `downstream ${signal.via.replace('downstream-', '')} contract`;
+    const amt = signal.amount ? ` $${(signal.amount / 1e6).toFixed(0)}M` : '';
     parts.push(`${via}${amt}`);
   }
   return parts.length ? parts.join(' · ') : 'top watchlist position';
@@ -153,17 +171,6 @@ function buildHtml(picks, dateStr, contractSignals) {
     const fromHigh = d.high52 ? (d.price - d.high52) / d.high52 * 100 : null;
     const hasSignal = !!contractSignals?.[d.symbol];
 
-    let epsHtml = '';
-    if (d.epsTrailing !== null) {
-      const arrow  = (d.epsForward ?? 0) > d.epsTrailing ? ' ▲' : ((d.epsForward ?? 0) < d.epsTrailing ? ' ▼' : '');
-      const arrowColor = arrow === ' ▲' ? '#16a34a' : '#dc2626';
-      const fwdStr = d.epsForward !== null ? ` → fwd $${d.epsForward.toFixed(2)}` : '';
-      epsHtml = `<div style="font-size:12px;color:#6b7280;margin-top:6px;">
-        EPS (TTM) $${d.epsTrailing.toFixed(2)}${fwdStr}
-        ${arrow ? `<span style="color:${arrowColor};font-weight:600;">${arrow}</span>` : ''}
-      </div>`;
-    }
-
     return `
       <div style="background:#f9fafb;border:1px solid ${hasSignal ? '#3b82f6' : '#e5e7eb'};border-radius:12px;padding:18px 20px;margin-bottom:12px;${hasSignal ? 'box-shadow:0 0 0 2px rgba(59,130,246,0.2);' : ''}">
         <div style="font-size:22px;font-weight:800;color:#1e3a5f;">${medals[i]} ${d.symbol}${hasSignal ? '&nbsp;<span style="font-size:12px;background:#dbeafe;color:#1d4ed8;padding:2px 7px;border-radius:999px;font-weight:600;">📋 contract</span>' : ''}</div>
@@ -173,7 +180,6 @@ function buildHtml(picks, dateStr, contractSignals) {
           ${d.changePct != null ? (d.changePct >= 0 ? '+' : '') + d.changePct.toFixed(2) + '%' : '--'} (prev day)
           ${fromHigh != null ? `<span style="color:#9ca3af;font-weight:400;margin-left:12px;">${fromHigh.toFixed(1)}% from 52W high</span>` : ''}
         </div>
-        ${epsHtml}
         <div style="font-size:12px;color:#6b7280;margin-top:10px;padding-top:10px;border-top:1px solid #e5e7eb;">${reason(d, contractSignals)}</div>
       </div>`;
   }).join('');
@@ -196,8 +202,8 @@ function buildHtml(picks, dateStr, contractSignals) {
     ${signalBanner}
     ${cards}
     <div style="font-size:11px;color:#9ca3af;text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid #f3f4f6;">
-      Scored on: value (52W position) · momentum · earnings growth · estimate revisions · contract signals<br>
-      Profitable companies only (EPS &gt; 0) · Min price $${MIN_PRICE}<br>
+      Scored on: value (52W position) · momentum · contract signals<br>
+      Min price $${MIN_PRICE} · Powered by Alpaca Market Data<br>
       Not financial advice — do your own research before trading.<br><br>
       <a href="https://rmfi-tool-app.vercel.app/randys-money.html" style="color:#3b82f6;">Open full app →</a>
     </div>
@@ -209,13 +215,16 @@ function buildHtml(picks, dateStr, contractSignals) {
 async function main() {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) { console.error('RESEND_API_KEY not set'); process.exit(1); }
+  if (!process.env.ALPACA_KEY_ID || !process.env.ALPACA_SECRET_KEY) {
+    console.error('ALPACA credentials not set'); process.exit(1);
+  }
 
   const contractSignals = loadContractSignals();
   const signalCount = Object.keys(contractSignals).length;
   if (signalCount) console.log(`Contract signals: ${Object.keys(contractSignals).join(', ')}`);
 
-  console.log('Fetching stock data...');
-  const allData = (await fetchAllStocks(WATCHLIST)).filter(d => d?.price > 0);
+  console.log('Fetching stock data from Alpaca...');
+  const allData = await fetchAllStocks(WATCHLIST);
   console.log(`Got data for ${allData.length}/${WATCHLIST.length} symbols`);
 
   const scoredAll = allData.map(d => ({ ...d, _score: score(d, contractSignals) }));
@@ -226,24 +235,7 @@ async function main() {
   console.log(`Eligible (${eligible.length}): ${eligible.slice(0, 8).map(d => `${d.symbol}(${d._score})`).join(', ')}`);
 
   const picks = eligible.slice(0, 3);
-  if (!picks.length) {
-    console.log('No picks available today');
-    if (!allData.length) {
-      // Data fetch failed entirely — send warning email
-      const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/New_York' });
-      await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: FROM_EMAIL, to: [TO_EMAIL],
-          subject: `⚠️ Morning Picks — data unavailable (${dateStr})`,
-          html: `<p>Could not fetch stock data from Yahoo Finance this morning. No picks were generated.</p><p><a href="https://rmfi-tool-app.vercel.app/randys-money.html">Open app →</a></p>`,
-        }),
-      });
-      console.log('Sent data-unavailable warning email');
-    }
-    return;
-  }
+  if (!picks.length) { console.log('No picks today — all filtered out'); return; }
 
   console.log('Top 3 picks:', picks.map(d => d.symbol).join(', '));
 
