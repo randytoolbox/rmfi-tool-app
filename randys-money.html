@@ -359,6 +359,9 @@
   #macroBand { display:flex; gap:10px; padding:12px 20px; background:#04080f; border-bottom:1px solid var(--border); overflow-x:auto; flex-wrap:nowrap; }
   #macroBand::-webkit-scrollbar { height:3px; }
   #macroBand::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+  #marketsBand { display:flex; gap:10px; padding:10px 20px; background:#060d15; border-bottom:2px solid #1a3a2a; overflow-x:auto; flex-wrap:nowrap; }
+  #marketsBand::-webkit-scrollbar { height:3px; }
+  #marketsBand::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
   .mpulse { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:10px 16px; min-width:128px; flex-shrink:0; }
   .mpulse-label { font-size:9px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.8px; margin-bottom:5px; }
   .mpulse-val { font-size:20px; font-weight:900; color:var(--text); line-height:1; }
@@ -421,6 +424,15 @@
   <button class="at-close" onclick="document.getElementById('alertToast').style.display='none'">&#x2715;</button>
   <div class="at-title">&#128276; Price Alert!</div>
   <div class="at-body" id="alertToastBody"></div>
+</div>
+
+<!-- MARKETS AT A GLANCE — equities & commodities strip -->
+<div id="marketsBand">
+  <div class="mpulse"><div class="mpulse-label">&#128200; S&amp;P 500</div><div class="mpulse-val val-loading" id="mktVal-SPY">--</div><div class="mpulse-sub" id="mktChg-SPY"></div></div>
+  <div class="mpulse"><div class="mpulse-label">&#128187; Nasdaq 100</div><div class="mpulse-val val-loading" id="mktVal-QQQ">--</div><div class="mpulse-sub" id="mktChg-QQQ"></div></div>
+  <div class="mpulse"><div class="mpulse-label">&#127941; Gold</div><div class="mpulse-val val-loading" id="mktVal-GLD">--</div><div class="mpulse-sub" id="mktChg-GLD"></div></div>
+  <div class="mpulse"><div class="mpulse-label">&#9899; Silver</div><div class="mpulse-val val-loading" id="mktVal-SLV">--</div><div class="mpulse-sub" id="mktChg-SLV"></div></div>
+  <div class="mpulse"><div class="mpulse-label">&#128707; Oil (WTI)</div><div class="mpulse-val val-loading" id="mktVal-USO">--</div><div class="mpulse-sub" id="mktChg-USO"></div></div>
 </div>
 
 <!-- MARKET PULSE — macro weather forecast strip -->
@@ -723,6 +735,7 @@ const STOCK_REFRESH_MS    = 5 * 60 * 1000;
 const CRYPTO_HIST_TTL_MS  = 6 * 60 * 60 * 1000; // 6 hours between full history re-fetches
 
 const DEFAULT_STOCKS = ['SPY','QQQ','DIA','IWM'];
+const MARKETS_SYMS   = ['SPY','QQQ','GLD','SLV','USO'];
 const STOCK_NAMES = {
   SPY:'S&P 500 ETF', QQQ:'Nasdaq 100 ETF', DIA:'Dow Jones ETF', IWM:'Russell 2000 ETF',
   'BRK.B':'Berkshire Hathaway B',
@@ -1248,12 +1261,12 @@ async function refreshAll() {
     document.getElementById('lastUpdated').textContent = 'Updated ' + now;
     setStatus('ok', 'Crypto loaded — fetching stocks...');
     checkAlerts();
-    renderDailyPicks(); // render from cache immediately (shows picks if cache is fresh)
+    renderMarketsStrip(); renderDailyPicks(); // render from cache immediately (shows picks if cache is fresh)
     if (Date.now() - lastStockFetch >= STOCK_REFRESH_MS) {
       try {
         await fetchStocks();
         renderStockGrid(); checkStockAlerts(); lastStockFetch = Date.now();
-        renderDailyPicks(); // re-render now that fresh stock prices are in
+        renderMarketsStrip(); renderDailyPicks(); // re-render now that fresh stock prices are in
       } catch(se) { console.warn('Stocks:', se); }
     }
     setTimeout(() => fetchStockHistory(), 8000); // non-blocking, delayed to avoid racing with fetchStocks v8 calls
@@ -2623,7 +2636,7 @@ async function fetchStocks() {
 
   // Use our Vercel proxy — same-domain, no CORS, Yahoo Finance server-side
   let anyOk = false;
-  for (const sym of stockWatchlist) {
+  for (const sym of [...new Set([...MARKETS_SYMS, ...stockWatchlist])]) {
     if (stockData[sym]?.price) continue;
     try {
       const r = await fetch(`/api/stock?sym=${encodeURIComponent(sym)}&range=5d&interval=1d`, { cache: 'no-store' });
@@ -2756,6 +2769,23 @@ function pickReason(sym) {
   return parts.length ? parts.join(' · ') : 'top watchlist position';
 }
 
+function renderMarketsStrip() {
+  MARKETS_SYMS.forEach(sym => {
+    const d = stockData[sym];
+    const valEl = document.getElementById('mktVal-' + sym);
+    const chgEl = document.getElementById('mktChg-' + sym);
+    if (!valEl) return;
+    if (!d?.price) return;
+    valEl.classList.remove('val-loading');
+    valEl.textContent = '$' + d.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (chgEl && d.changePct != null) {
+      const up = d.changePct >= 0;
+      chgEl.style.color = up ? '#4ade80' : '#f87171';
+      chgEl.textContent = (up ? '+' : '') + d.changePct.toFixed(2) + '%';
+    }
+  });
+}
+
 let _picksRetry = 0;
 function renderDailyPicks() {
   const el = document.getElementById('picksList');
@@ -2809,7 +2839,7 @@ function renderDailyPicks() {
 async function fetchStock52W() {
   if (!stockWatchlist.length) return;
   // Include congress buys tickers so their prices show up too
-  const allSyms = [...new Set([...stockWatchlist, ...cBuysData.map(d => d.sym)])];
+  const allSyms = [...new Set([...MARKETS_SYMS, ...stockWatchlist, ...cBuysData.map(d => d.sym)])];
   const BATCH = 20;
   let updated = false;
   const batches = [];
@@ -2836,7 +2866,7 @@ async function fetchStock52W() {
       }
     } catch(e) { console.warn('52W fetch batch:', e.message); }
   }));
-  if (updated) { save('rm_stockData', stockData); renderStockGrid(); renderDailyPicks(); renderCongressBuys(); }
+  if (updated) { save('rm_stockData', stockData); renderStockGrid(); renderMarketsStrip(); renderDailyPicks(); renderCongressBuys(); }
 }
 
 async function fetchStockHistory() {
