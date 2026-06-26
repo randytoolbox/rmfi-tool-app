@@ -2222,7 +2222,37 @@ function clearJournal() {
 function renderPerformanceChart() {
   const el = document.getElementById('perfChart');
   if (!el) return;
-  if (!tradeJournal.length) { el.innerHTML = ''; return; }
+  if (!tradeJournal.length) {
+    el.innerHTML = `
+    <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px 16px;margin-bottom:12px;text-align:center;">
+      <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:16px;">&#128200; Algorithm Performance</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;opacity:.35;">
+        <div style="background:#060f1a;border-radius:10px;padding:14px 4px;">
+          <div style="font-size:8px;color:var(--muted);font-weight:800;text-transform:uppercase;margin-bottom:4px;">Win Rate</div>
+          <div style="font-size:28px;font-weight:900;color:var(--good);">--%</div>
+          <div style="font-size:8px;color:var(--muted);">0W · 0L</div>
+        </div>
+        <div style="background:#060f1a;border-radius:10px;padding:14px 4px;">
+          <div style="font-size:8px;color:var(--muted);font-weight:800;text-transform:uppercase;margin-bottom:4px;">Avg Win</div>
+          <div style="font-size:28px;font-weight:900;color:var(--good);">+--% </div>
+          <div style="font-size:8px;color:var(--muted);">per winner</div>
+        </div>
+        <div style="background:#060f1a;border-radius:10px;padding:14px 4px;">
+          <div style="font-size:8px;color:var(--muted);font-weight:800;text-transform:uppercase;margin-bottom:4px;">Avg Loss</div>
+          <div style="font-size:28px;font-weight:900;color:var(--bad);">--%</div>
+          <div style="font-size:8px;color:var(--muted);">per loser</div>
+        </div>
+        <div style="background:#060f1a;border-radius:10px;padding:14px 4px;">
+          <div style="font-size:8px;color:var(--muted);font-weight:800;text-transform:uppercase;margin-bottom:4px;">R:R Ratio</div>
+          <div style="font-size:28px;font-weight:900;color:var(--muted);">—</div>
+          <div style="font-size:8px;color:var(--muted);">win÷loss</div>
+        </div>
+      </div>
+      <div style="color:var(--muted);font-size:13px;padding:8px 0;">&#128200; Chart populates as trades close — first bars appear after your first exit</div>
+      <div style="font-size:11px;color:#4a7a9b;margin-top:4px;">Close a stock position using the "Exit Trade" button on any card to log your first trade</div>
+    </div>`;
+    return;
+  }
 
   const wins    = tradeJournal.filter(t => t.pnlDollar > 0);
   const losses  = tradeJournal.filter(t => t.pnlDollar <= 0);
