@@ -387,6 +387,26 @@
   .sc-alert:hover { background:#1a3555; }
   .sc-alert.has-hit { border-color:#f5a623; background:#150f00; }
   .sc-alert.pinned { border-color:#7c5cbf; background:#10092a; }
+
+  /* Defense Sub-Contractor Lookup */
+  .sub-filter-bar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:10px 0 6px; }
+  .sub-filter-bar select, .sub-filter-bar input { background:#0a1a2e; border:1px solid var(--border); color:var(--text); border-radius:6px; padding:5px 10px; font-size:12px; font-family:inherit; }
+  .sub-filter-bar input { width:72px; text-transform:uppercase; }
+  .sub-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .sub-table th { text-align:left; color:var(--muted); font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.6px; padding:6px 10px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  .sub-row { border-bottom:1px solid #0c1e30; }
+  .sub-row:hover { background:#0a1520; }
+  .sub-row td { padding:7px 10px; vertical-align:middle; }
+  .sub-name { font-weight:700; color:var(--text); font-size:11px; }
+  .sub-city { font-size:10px; color:var(--muted); }
+  .sub-naics { font-size:9px; color:var(--muted); }
+  .sub-amount { font-weight:900; color:#4ade80; font-size:12px; white-space:nowrap; }
+  .sub-prime { font-size:10px; color:#6aaeff; }
+  .sub-ticker { display:inline-block; background:#0d2d1a; border:1px solid #4caf50; color:#4caf50; border-radius:4px; font-size:10px; font-weight:900; padding:2px 7px; cursor:pointer; white-space:nowrap; }
+  .sub-ticker:hover { background:#1a4a2a; }
+  .sub-private { font-size:10px; color:var(--muted); font-style:italic; }
+  .sub-samlink { font-size:10px; color:#6aaeff; text-decoration:none; white-space:nowrap; }
+  .sub-samlink:hover { text-decoration:underline; }
   .sc-alert-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; gap:8px; }
   .sc-alert-prime { font-size:11px; font-weight:900; color:#6aaeff; flex-shrink:0; }
   .sc-alert-title { font-size:13px; color:var(--text); line-height:1.45; margin-bottom:5px; }
@@ -611,6 +631,29 @@
   </div>
   <div class="news-wrap" id="supplyChainList" style="margin-bottom:28px;">
     <div class="news-empty" style="color:var(--muted);">Loading supply chain intelligence…</div>
+  </div>
+
+  <!-- DEFENSE SUB-CONTRACTOR LOOKUP -->
+  <div id="sec-subcontract" class="section-label" style="margin-top:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+    <span>&#127970; Defense Sub-Contractors <span style="font-size:10px;color:var(--muted);font-weight:400;">— Tier 2/3 award data via USASpending.gov &bull; RMFI customer leads + stock ideas</span></span>
+    <button class="btn btn-sm" onclick="fetchSubcontractors(true)" style="background:var(--card-bg);color:var(--muted);border:1px solid var(--border);">&#8635;</button>
+  </div>
+  <div class="sub-filter-bar">
+    <select id="subPrimeFilter">
+      <option value="lockheed">Lockheed Martin</option>
+      <option value="boeing">Boeing</option>
+      <option value="raytheon">Raytheon</option>
+      <option value="northrop">Northrop Grumman</option>
+      <option value="gd">General Dynamics</option>
+      <option value="l3harris">L3Harris</option>
+      <option value="bae">BAE Systems</option>
+    </select>
+    <input id="subStateFilter" placeholder="State (OH)" maxlength="2" oninput="this.value=this.value.toUpperCase()" title="Filter by 2-letter state code">
+    <button class="btn btn-sm" onclick="fetchSubcontractors(true)" style="background:#0d2d1a;color:#4caf50;border:1px solid #4caf50;">Search</button>
+    <span id="subStatus" style="font-size:11px;color:var(--muted);"></span>
+  </div>
+  <div id="subcontractorList" style="margin-bottom:28px; overflow-x:auto;">
+    <div class="news-empty" style="color:var(--muted);">Select a prime contractor and click Search to load Tier 2/3 award data.</div>
   </div>
 
   <!-- TRADE TOOLS: LAG DETECTOR + SWING SCREENER -->
@@ -4137,6 +4180,108 @@ setInterval(() => {
 }, 1000);
 
 // ── Init ──────────────────────────────────────────────────────────────────────
+// ── Defense Sub-Contractor Lookup ──────────────────────────────────────────────
+let subcontractorData = [];
+let lastSubFetch      = 0;
+const SUB_CACHE_TTL   = 6 * 60 * 60 * 1000;
+
+// Additional publicly-traded subs for client-side fallback matching
+const PUBLIC_SUB_TICKERS = {
+  'TRANSDIGM':'TDG','HEICO':'HEI','MERCURY SYSTEMS':'MRCY','CURTISS-WRIGHT':'CW',
+  'MOOG':'MOG','DUCOMMUN':'DCO','KAMAN':'KMAN','TRIUMPH GROUP':'TGI','KRATOS':'KTOS',
+  'SAIC':'SAIC','LEIDOS':'LDOS','CACI':'CACI','LEONARDO DRS':'DRS','TELEDYNE':'TDY',
+  'AEROJET':'AJRD','HOWMET':'HWM','SPIRIT AEROSYSTEMS':'SPR','PARSONS':'PSN',
+  'BOOZ ALLEN':'BAH','TEXTRON':'TXT','WOODWARD':'WWD','ASTRONICS':'ATRO',
+  'BWX TECHNOLOGIES':'BWXT','MAXAR':'MAXR','VECTRUS':'VEC',
+  'BENCHMARK ELECTRONICS':'BHE',
+};
+
+function subCheckTicker(name) {
+  if (!name) return null;
+  const u = name.toUpperCase();
+  for (const [k, v] of Object.entries(PUBLIC_SUB_TICKERS)) {
+    if (v && u.includes(k)) return v;
+  }
+  return null;
+}
+
+async function fetchSubcontractors(force = false) {
+  const prime   = document.getElementById('subPrimeFilter')?.value || 'lockheed';
+  const state   = (document.getElementById('subStateFilter')?.value || '').trim();
+  const statusEl = document.getElementById('subStatus');
+  const listEl   = document.getElementById('subcontractorList');
+
+  if (!force && Date.now() - lastSubFetch < SUB_CACHE_TTL && subcontractorData.length) {
+    renderSubcontractors();
+    return;
+  }
+
+  if (statusEl) statusEl.textContent = 'Fetching…';
+  if (listEl) listEl.innerHTML = '<div class="news-empty" style="color:var(--muted);">Querying USASpending.gov — this takes ~15s on first load…</div>';
+
+  try {
+    const params = new URLSearchParams({ prime });
+    if (state) params.set('state', state);
+    const r = await fetch('/api/subcontractors?' + params, { signal: AbortSignal.timeout(38000) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    subcontractorData = data.results || [];
+    lastSubFetch = Date.now();
+    const cached = data.fromCache ? ' (cached)' : '';
+    if (statusEl) statusEl.textContent = `${subcontractorData.length} subcontractors found — USASpending.gov${cached}`;
+    renderSubcontractors();
+  } catch (e) {
+    if (listEl) listEl.innerHTML = `<div class="news-empty" style="color:#f87171;">Failed to load: ${e.message}</div>`;
+    if (statusEl) statusEl.textContent = '';
+  }
+}
+
+function renderSubcontractors() {
+  const el = document.getElementById('subcontractorList');
+  if (!el) return;
+
+  if (!subcontractorData.length) {
+    el.innerHTML = '<div class="news-empty" style="color:var(--muted);">No subaward data found — try a different prime contractor or remove the state filter.</div>';
+    return;
+  }
+
+  const rows = subcontractorData.map(s => {
+    const ticker    = s.ticker || subCheckTicker(s.name);
+    const tickerHtml = ticker
+      ? `<span class="sub-ticker" onclick="window.open('https://finance.yahoo.com/quote/${ticker}','_blank')" title="${ticker} — click for Yahoo Finance">${ticker} &#8599;</span>`
+      : `<span class="sub-private">private</span>`;
+    const amt = s.amount != null
+      ? '$' + Number(s.amount).toLocaleString('en-US', { maximumFractionDigits: 0 })
+      : '--';
+    const samUrl   = `https://sam.gov/search/?index=opp&q=${encodeURIComponent(s.name || '')}`;
+    const naicsLbl = [s.naics, s.naicsDesc].filter(Boolean).join(' — ');
+    const location = [s.city, s.state].filter(Boolean).join(', ');
+
+    return `<tr class="sub-row">
+      <td>
+        <div class="sub-name">${s.name || 'Unknown'}</div>
+        ${location ? `<div class="sub-city">${location}</div>` : ''}
+        ${naicsLbl ? `<div class="sub-naics">${naicsLbl}</div>` : ''}
+      </td>
+      <td class="sub-amount">${amt}</td>
+      <td><div class="sub-prime">${s.prime || ''}</div></td>
+      <td>${tickerHtml}</td>
+      <td><a class="sub-samlink" href="${samUrl}" target="_blank" rel="noopener">SAM.gov &#8599;</a></td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `<table class="sub-table">
+    <thead><tr>
+      <th>Company</th>
+      <th>Award $</th>
+      <th>Prime</th>
+      <th>Ticker</th>
+      <th>Profile</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
 if (Notification.permission === 'default') Notification.requestPermission();
 document.getElementById('addInput').addEventListener('keydown', e => { if (e.key === 'Enter') addCoin(); });
 document.getElementById('addStockInput').addEventListener('keydown', e => { if (e.key === 'Enter') addStock(); });

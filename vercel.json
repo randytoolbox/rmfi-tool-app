@@ -10,6 +10,7 @@
     "api/history.js":        { "maxDuration": 20 },
     "api/prices.js":         { "maxDuration": 15 },
     "api/earnings.js":       { "maxDuration": 15 },
-    "api/positions.js":      { "maxDuration": 15 }
+    "api/positions.js":      { "maxDuration": 15 },
+    "api/subcontractors.js": { "maxDuration": 40 }
   }
 }
