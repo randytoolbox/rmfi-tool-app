@@ -1470,39 +1470,18 @@ async function generateReport() {
     out += '\n';
   }
 
-  // Collect all articles to fetch
-  const articleQueue = [];
   const newsSlice = newsItems.slice(0, 12);
   const congressSlice = congressTrades.slice(0, 12); // used below for report text
-  newsSlice.forEach(i => { if (i.link) articleQueue.push({ item: i, section: 'news' }); });
-  // Congress trades are now raw STOCK Act filings (not news articles), so no article fetch needed
-
-  if (articleQueue.length > 0) {
-    document.getElementById('reportBox').textContent = `Building report — fetching full article text...\n(0 / ${articleQueue.length} articles)\n\nThis may take 1–2 minutes. Please wait.`;
-    let fetched = 0;
-    for (const entry of articleQueue) {
-      try {
-        entry.item._fullText = await fetchArticleText(entry.item.link);
-      } catch(e) {}
-      fetched++;
-      document.getElementById('reportBox').textContent =
-        `Building report — fetching full article text...\n(${fetched} / ${articleQueue.length} articles done)\n\nThis may take 1–2 minutes. Please wait.`;
-      await new Promise(r => setTimeout(r, 200));
-    }
-  }
 
   if (newsItems.length) {
-    out += `\nRECENT MARKET NEWS — FULL ARTICLES\n`;
+    out += `\nRECENT MARKET NEWS\n`;
     out += `${'─'.repeat(50)}\n`;
     newsSlice.forEach(item => {
       const ticker = detectTicker(item.title) || item.tag || '';
       out += `\n[${timeAgo(item.pubDate)}]${ticker ? ' [' + ticker + ']' : ''} ${item.title}\n`;
       if (item.source) out += `Source: ${item.source}\n`;
-      if (item._fullText) {
-        out += `--- ARTICLE TEXT ---\n${item._fullText}\n--- END ---\n`;
-      } else {
-        out += `(Full text unavailable — paywalled or blocked)\n`;
-      }
+      if (item.description) out += `${item.description.slice(0, 400)}\n`;
+      if (item.link) out += `Link: ${item.link}\n`;
     });
     out += '\n';
   }
