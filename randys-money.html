@@ -179,6 +179,8 @@
     }
     .topbar::-webkit-scrollbar { display: none; }
     .topbar .btn { flex-shrink: 0; white-space: nowrap; }
+    #statusText { white-space: nowrap; flex-shrink: 0; max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+    .status-dot { flex-shrink: 0; }
     #arCountdown { display: none; }
     #arToggle    { display: none; }
 
@@ -1030,14 +1032,14 @@ function renderGrid() {
       <div class="cname">${name}</div>
       <div class="price">${fmtPrice(d.price)}</div>
       <div class="row"><span class="label">24h</span><span class="val ${cls(d.change24h)}">${fmtPct(d.change24h)}</span></div>
-      <div class="row"><span class="label">7d</span><span class="val ${cls(d.change7d)}">${fmtPct(d.change7d)}</span></div>
-      <div class="row"><span class="label">1 Year</span><span class="val ${cls(yr1pct)}">${fmtPct(yr1pct)}</span></div>
-      <div class="row"><span class="label">1Y High</span><span class="val">${fmtPrice(h.high1y)}</span></div>
-      <div class="row"><span class="label">1Y Low</span><span class="val">${fmtPrice(h.low1y)}</span></div>
-      <div class="row"><span class="label">2 Year</span><span class="val ${cls(yr2pct)}">${fmtPct(yr2pct)}</span></div>
-      <div class="row"><span class="label">2Y High</span><span class="val">${fmtPrice(h.high2y)}</span></div>
-      <div class="row"><span class="label">2Y Low</span><span class="val">${fmtPrice(h.low2y)}</span></div>
-      <div class="row"><span class="label">Mkt Cap</span><span class="val">${fmtBig(d.marketCap)}</span></div>
+      ${d.change7d != null ? `<div class="row"><span class="label">7d</span><span class="val ${cls(d.change7d)}">${fmtPct(d.change7d)}</span></div>` : ''}
+      ${yr1pct != null ? `<div class="row"><span class="label">1 Year</span><span class="val ${cls(yr1pct)}">${fmtPct(yr1pct)}</span></div>` : ''}
+      ${h.high1y ? `<div class="row"><span class="label">1Y High</span><span class="val">${fmtPrice(h.high1y)}</span></div>` : ''}
+      ${h.low1y  ? `<div class="row"><span class="label">1Y Low</span><span class="val">${fmtPrice(h.low1y)}</span></div>` : ''}
+      ${yr2pct != null ? `<div class="row"><span class="label">2 Year</span><span class="val ${cls(yr2pct)}">${fmtPct(yr2pct)}</span></div>` : ''}
+      ${h.high2y ? `<div class="row"><span class="label">2Y High</span><span class="val">${fmtPrice(h.high2y)}</span></div>` : ''}
+      ${h.low2y  ? `<div class="row"><span class="label">2Y Low</span><span class="val">${fmtPrice(h.low2y)}</span></div>` : ''}
+      ${d.marketCap ? `<div class="row"><span class="label">Mkt Cap</span><span class="val">${fmtBig(d.marketCap)}</span></div>` : ''}
       <hr class="holdings-divider">
       <div class="holdings-inputs">
         <label>How many coins<input id="qty-${sym}" type="number" step="any" min="0" placeholder="e.g. 500"
