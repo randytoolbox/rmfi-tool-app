@@ -56,12 +56,15 @@
     background: #06111e; border-top: 1px solid #1e3a5f;
     display: flex; justify-content: space-around; align-items: center;
     padding: 6px 4px env(safe-area-inset-bottom, 6px);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
+  #bottomNav::-webkit-scrollbar { display: none; }
   #bottomNav button {
     background: none; border: none; color: #557799;
     font-size: 18px; cursor: pointer;
     display: flex; flex-direction: column; align-items: center; gap: 1px;
-    padding: 4px 2px; border-radius: 8px; flex: 1; min-width: 0;
+    padding: 4px 6px; border-radius: 8px; flex: 1; min-width: 44px;
     transition: color .15s, background .15s;
   }
   #bottomNav button span { font-size: 8px; font-weight: 700; letter-spacing: .2px; white-space: nowrap; }
@@ -160,9 +163,114 @@
   .market-wrap { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
   .market-wrap .table-scroll { overflow-x: auto; max-height: 480px; overflow-y: auto; }
 
-  @media (max-width: 600px) {
+  /* ── Mobile responsiveness ──────────────────────────── */
+  @media (max-width: 768px) {
+    .header { padding: 12px 14px; gap: 6px; }
     .header h1 { font-size: 22px; }
-    .coin-card .price { font-size: 19px; }
+    .header .sub { font-size: 11px; }
+
+    /* Topbar: scroll horizontally instead of wrapping into a mess */
+    .topbar {
+      padding: 8px 10px;
+      gap: 8px;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .topbar::-webkit-scrollbar { display: none; }
+    .topbar .btn { flex-shrink: 0; white-space: nowrap; }
+    #arCountdown { display: none; }
+    #arToggle    { display: none; }
+
+    /* Main content padding */
+    .main { padding: 12px 10px 100px; }
+
+    /* Portfolio summary — enhance it as a hero block when visible on mobile */
+    #portfolioSummary {
+      background: linear-gradient(135deg, #081f10, #0d1f35);
+      border: 2px solid var(--good);
+      border-radius: 16px;
+      padding: 16px 18px;
+      margin-bottom: 14px;
+      text-align: center;
+    }
+    .ps-row { flex-direction: column; align-items: center; gap: 8px; }
+    .ps-val { font-size: 22px; }
+    .ps-verdict { font-size: 28px; }
+    .ps-label { font-size: 10px; }
+
+    /* Coin/stock grid — 2 columns on tablet-ish mobile */
+    .coin-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .coin-card { padding: 12px 10px; }
+    .coin-card .ticker { font-size: 17px; }
+    .coin-card .cname { font-size: 10px; }
+    .coin-card .price { font-size: 18px; }
+    .coin-card .row { font-size: 11px; }
+
+    /* Add-row: stack vertically, hide hint text */
+    .add-row { flex-direction: column; align-items: stretch; }
+    .add-row input { width: 100%; }
+    .add-row .hint { display: none; }
+
+    /* Market pulse band */
+    #macroBand { padding: 8px 10px; gap: 8px; }
+    .mpulse { min-width: 100px; padding: 8px 10px; }
+    .mpulse-label { font-size: 8px; }
+    .mpulse-val { font-size: 17px; }
+    .mpulse-sub { font-size: 10px; }
+
+    /* Section labels: allow label to wrap above button */
+    .section-label {
+      flex-direction: row !important;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+    }
+    .section-label > span { flex: 1; min-width: 0; }
+    /* hide the parenthetical micro-text on mobile to reduce clutter */
+    .section-label span span[style*="font-size:10px"] { display: none; }
+
+    /* News / congress items */
+    .news-item { padding: 8px 10px; gap: 7px; }
+    .news-headline { font-size: 12px; }
+    .news-src { font-size: 10px; }
+    .cong-item { padding: 8px 10px; gap: 8px; }
+    .cong-ticker { font-size: 14px; min-width: 46px; }
+    .cong-member { font-size: 11px; }
+    .cong-detail { font-size: 10px; }
+
+    /* Market scanner: hide company name column on mobile */
+    .market-table .name-cell { display: none; }
+    .market-table th:nth-child(2) { display: none; } /* Coin name header */
+    .market-table td:nth-child(2) { display: none; }
+    .market-table th, .market-table td { padding: 7px 7px; font-size: 12px; }
+
+    /* Alert toast: full-width at top on mobile */
+    #alertToast { left: 10px; right: 10px; max-width: none; top: 60px; }
+
+    /* Holdings inputs */
+    .holdings-inputs { flex-direction: column; gap: 8px; }
+
+    /* Buttons in topbar should be smaller */
+    .btn { padding: 7px 12px; font-size: 12px; }
+
+    /* Picks grid */
+    #picksList { grid-template-columns: 1fr 1fr !important; }
+
+    /* Finnhub key input has inline min-width:200px — override to prevent overflow */
+    #tdKeyInput { min-width: 0 !important; width: 100% !important; }
+  }
+
+  @media (max-width: 480px) {
+    .header h1 { font-size: 19px; }
+    #lastUpdated { display: none; }
+
+    /* Single column on small phones */
+    .coin-grid { grid-template-columns: 1fr; }
+    #picksList  { grid-template-columns: 1fr !important; }
+
+    .coin-card .price { font-size: 20px; }
+    .coin-card .ticker { font-size: 18px; }
   }
 
   /* Price alert inputs on coin cards */
@@ -254,6 +362,8 @@
   .mpulse-val { font-size:20px; font-weight:900; color:var(--text); line-height:1; }
   .mpulse-sub { font-size:11px; margin-top:4px; }
   .mpulse-note { font-size:9px; color:var(--muted); margin-top:3px; font-style:italic; }
+  /* Shimmer for macro values before data loads */
+  .val-loading { background:#1e3d5a; border-radius:6px; color:transparent !important; animation:pulse 1.2s infinite; min-width:60px; display:inline-block; }
   .fg-extreme-fear { color:#ff4444; }
   .fg-fear { color:#ff8c00; }
   .fg-neutral { color:#aaaaaa; }
@@ -313,11 +423,11 @@
 
 <!-- MARKET PULSE — macro weather forecast strip -->
 <div id="macroBand">
-  <div class="mpulse"><div class="mpulse-label">&#8383; Bitcoin</div><div class="mpulse-val" id="mpBTCval">--</div><div class="mpulse-sub" id="mpBTCsub">--</div></div>
-  <div class="mpulse"><div class="mpulse-label">&#9830; Ethereum</div><div class="mpulse-val" id="mpETHval">--</div><div class="mpulse-sub" id="mpETHsub">--</div></div>
-  <div class="mpulse"><div class="mpulse-label">&#128202; BTC Dominance</div><div class="mpulse-val" id="mpDOMval">--</div><div class="mpulse-note" id="mpDOMnote"></div></div>
-  <div class="mpulse"><div class="mpulse-label">&#128200; Fear &amp; Greed</div><div class="mpulse-val" id="mpFGval">--</div><div class="mpulse-sub" id="mpFGsub">--</div></div>
-  <div class="mpulse"><div class="mpulse-label">&#128176; Total Crypto Mkt</div><div class="mpulse-val" id="mpMCval" style="font-size:16px;">--</div><div class="mpulse-sub" id="mpMCsub">--</div></div>
+  <div class="mpulse"><div class="mpulse-label">&#8383; Bitcoin</div><div class="mpulse-val val-loading" id="mpBTCval">--</div><div class="mpulse-sub" id="mpBTCsub"></div></div>
+  <div class="mpulse"><div class="mpulse-label">&#9830; Ethereum</div><div class="mpulse-val val-loading" id="mpETHval">--</div><div class="mpulse-sub" id="mpETHsub"></div></div>
+  <div class="mpulse"><div class="mpulse-label">&#128202; BTC Dominance</div><div class="mpulse-val val-loading" id="mpDOMval">--</div><div class="mpulse-note" id="mpDOMnote"></div></div>
+  <div class="mpulse"><div class="mpulse-label">&#128200; Fear &amp; Greed</div><div class="mpulse-val val-loading" id="mpFGval">--</div><div class="mpulse-sub" id="mpFGsub"></div></div>
+  <div class="mpulse"><div class="mpulse-label">&#128176; Total Crypto Mkt</div><div class="mpulse-val val-loading" id="mpMCval" style="font-size:16px;">--</div><div class="mpulse-sub" id="mpMCsub"></div></div>
 </div>
 
 <div class="main">
@@ -962,6 +1072,7 @@ function fgClass(score) {
 
 function renderMacro() {
   const m = macroData;
+  document.querySelectorAll('.val-loading').forEach(el => el.classList.remove('val-loading'));
 
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   const setClass = (id, c) => { const el = document.getElementById(id); if (el) el.className = 'mpulse-sub ' + c; };
