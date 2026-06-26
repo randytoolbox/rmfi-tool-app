@@ -1,0 +1,26 @@
+name: Morning Briefing Email
+
+on:
+  schedule:
+    - cron: '30 11 * * 1-5'   # 7:30am ET (11:30 UTC) Mon–Fri
+  workflow_dispatch:            # manual trigger from GitHub Actions tab
+
+jobs:
+  scrape-and-send:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright + Chromium
+        run: |
+          npm install playwright
+          npx playwright install chromium --with-deps
+
+      - name: Run morning briefing scraper
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: node scripts/morning-briefing.js
