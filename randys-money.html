@@ -436,9 +436,8 @@
 
   <!-- TODAY'S TOP PICKS -->
   <div id="sec-picks" style="margin-bottom:20px;">
-    <div class="section-label" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-      <span>⭐ Today's Top Picks <span style="font-size:10px;color:var(--muted);font-weight:400;">— auto-scored from screener · 52W position · news · congress buys</span></span>
-      <button class="btn btn-sm" onclick="renderDailyPicks()" style="background:#1a2a1a;color:#7fff7f;border:1px solid #3a8a3a;">↻ Refresh</button>
+    <div class="section-label">
+      ⭐ Today's Top Picks <span style="font-size:10px;color:var(--muted);font-weight:400;">— auto-scored · updates every 2 min</span>
     </div>
     <div id="picksList" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap:12px; margin-top:8px;">
       <div style="color:var(--muted);font-size:12px;padding:12px 0;">Loading picks…</div>
@@ -2763,12 +2762,12 @@ function renderDailyPicks() {
 
   const eligible = stockWatchlist.filter(sym => stockData[sym]?.price);
   if (eligible.length < 1) {
-    if (_picksRetry < 6) {
+    if (_picksRetry < 15) {
       _picksRetry++;
-      el.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:12px 0;">Loading picks… (${stockWatchlist.length} stocks tracked, waiting for prices)</div>`;
+      el.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:12px 0;">Loading picks…</div>`;
       setTimeout(renderDailyPicks, 2000);
     } else {
-      el.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:12px 0;">No stock prices loaded yet — hit ↻ Refresh Data above.</div>`;
+      el.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:12px 0;">Stock prices unavailable — check your connection and try ↻ Refresh Data.</div>`;
     }
     return;
   }
