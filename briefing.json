@@ -1,7 +1,181 @@
 {
-  "date": "",
-  "generated": "",
-  "articlesRead": 0,
-  "aiAnalyzed": 0,
-  "articles": []
+  "date": "2026-06-27",
+  "generated": "2026-06-27T01:58:18.530Z",
+  "articlesRead": 11,
+  "aiAnalyzed": 11,
+  "articles": [
+    {
+      "title": "NATO allies promised Trump they’d secure the Arctic; they’ve got work to do",
+      "url": "https://www.defensenews.com/opinion/commentary/2026/06/26/nato-allies-promised-trump-theyd-secure-the-arctic-theyve-got-work-to-do/",
+      "summary": "",
+      "source": "Defense News",
+      "analysis": {
+        "insight": "NATO is significantly escalating Arctic defense investments through the Arctic Sentry initiative, driven by Russia's modernization efforts and climate-induced strategic competition, creating sustained demand for advanced military hardware including ice-breakers, submarines, drones, and satellites.",
+        "tickers": [
+          "RTX",
+          "LMT",
+          "NOC",
+          "HII"
+        ],
+        "rmfi": "Opportunity to bid on precision-machined components for Arctic defense platforms including submarine systems, missile guidance components, and ice-breaker mechanical assemblies as NATO allies accelerate modernization.",
+        "category": "Defense",
+        "urgency": "high"
+      }
+    },
+    {
+      "title": "Romania bolsters Black Sea fleet with Turkish-built corvette",
+      "url": "https://www.defensenews.com/global/europe/2026/06/26/romania-bolsters-black-sea-fleet-with-turkish-built-corvette/",
+      "summary": "",
+      "source": "Defense News",
+      "analysis": {
+        "insight": "Romania's €223M purchase of a Turkish-built corvette signals strengthening Turkey-NATO defense partnerships and growing Turkish naval export capabilities, while the planned follow-on €42M package indicates sustained regional defense spending in the Black Sea amid geopolitical tensions.",
+        "tickers": [],
+        "rmfi": "Potential opportunity to bid on precision machining components for corvette systems integration, fire-control radar assemblies, or the planned vertical launching system and close-in weapon system upgrades in the €42M follow-on package.",
+        "category": "Defense",
+        "urgency": "medium"
+      }
+    },
+    {
+      "title": "German Counter-drone startup Tytan eyes 3,000 interceptors per month in new factory",
+      "url": "https://www.defensenews.com/global/europe/2026/06/26/german-counter-drone-startup-tytan-eyes-3000-interceptors-per-month-in-new-factory/",
+      "summary": "",
+      "source": "Defense News",
+      "analysis": {
+        "insight": "German counter-drone startup Tytan Technologies is scaling production to 3,000 interceptors/month with a new factory launching August 2026, capitalizing on proven Ukraine demand where AI-powered autonomous systems are 200x cheaper than legacy air defense. This represents a major shift in defense spending toward autonomous software-driven solutions rather than traditional expensive platforms.",
+        "tickers": [],
+        "rmfi": "Potential precision machining opportunity: Tytan's scaling from prototype to 3,000 units/month likely requires CNC-machined components for drone frames, motor mounts, and structural assemblies—worth exploring direct outreach to their supply chain team.",
+        "category": "Defense",
+        "urgency": "high"
+      }
+    },
+    {
+      "title": "Ukraine’s top strike-drone maker moves into ballistic missile defense",
+      "url": "https://www.defensenews.com/unmanned/2026/06/25/ukraines-top-strike-drone-maker-moves-into-ballistic-missile-defense/",
+      "summary": "",
+      "source": "Defense News",
+      "analysis": {
+        "insight": "Ukrainian drone manufacturer Fire Point is expanding from offensive strike systems into ballistic missile defense (Freyja system with German partner Hensoldt), positioning itself as a critical dual-role provider in the deep-strike warfare market and signaling sustained defense spending on advanced unmanned systems and air defense.",
+        "tickers": [
+          "RTX",
+          "NOC",
+          "LMT"
+        ],
+        "rmfi": "Potential supply chain opportunity: precision components for Fire Point's expanding drone/missile production or for Freyja missile defense system integration could create direct OEM or Tier-1 supplier demand.",
+        "category": "Defense",
+        "urgency": "high"
+      }
+    },
+    {
+      "title": "Ukraine’s newest strike weapon drifts into Russia on the wind",
+      "url": "https://www.defensenews.com/global/europe/2026/06/25/ukraines-newest-strike-weapon-drifts-into-russia-on-the-wind/",
+      "summary": "",
+      "source": "Defense News",
+      "analysis": {
+        "insight": "Ukraine's new DART balloon-launched missile system demonstrates asymmetric warfare innovation using low-cost platforms with satellite guidance and EW resistance, signaling sustained demand for advanced defense manufacturing and precision components in the Ukraine conflict.",
+        "tickers": [
+          "RTX",
+          "NOC",
+          "LMT"
+        ],
+        "rmfi": "Potential opportunity: precision machining for missile components, guidance system housings, or satellite-guided weapons systems as US/NATO allies scale production of advanced munitions for Ukraine.",
+        "category": "Defense",
+        "urgency": "high"
+      }
+    },
+    {
+      "title": "China studied US stealth aircraft — and learned the wrong lessons",
+      "url": "https://www.defensenews.com/global/asia-pacific/2026/06/24/china-studied-us-stealth-aircraft-and-learned-the-wrong-lessons/",
+      "summary": "",
+      "source": "Defense News",
+      "analysis": {
+        "insight": "China is pursuing technology-heavy stealth countermeasures (advanced radar/sensors) based on flawed assumptions about U.S. stealth capabilities, which rely more on integrated tactics and operations than raw tech—potentially creating inefficient defense spending and market opportunities for U.S. defense contractors.",
+        "tickers": [
+          "LMT",
+          "NOC",
+          "RTX",
+          "BA"
+        ],
+        "rmfi": "Potential opportunity: As U.S. defense prioritizes integrated stealth warfare systems over pure tech solutions, precision machining demand could increase for complex integrated assemblies, sensor systems, and next-gen aircraft components that emphasize operational integration.",
+        "category": "Defense",
+        "urgency": "medium"
+      }
+    },
+    {
+      "title": "Kyiv’s drone leverage moved the US. Moscow could be next, a top Ukrainian official says.",
+      "url": "https://www.defensenews.com/pentagon/2026/06/22/kyivs-drone-leverage-moved-the-us-moscow-could-be-next-a-top-ukrainian-official-says/",
+      "summary": "",
+      "source": "Defense News",
+      "analysis": {
+        "insight": "Ukraine is shifting from aid-dependent to weapons-producer partner, securing US approval for domestic Patriot missile and interceptor drone production while strengthening negotiating position ahead of potential September ceasefire talks. This represents a major pivot in defense industrial capacity with implications for US defense supply chains and NATO production partnerships.",
+        "tickers": [
+          "RTX",
+          "LMT",
+          "NOC"
+        ],
+        "rmfi": "RMFI could pursue subcontracting opportunities for precision-machined components in Ukrainian/allied interceptor drone and Patriot missile production, particularly if US companies partner on licensed manufacturing.",
+        "category": "Defense",
+        "urgency": "high"
+      }
+    },
+    {
+      "title": "Ukraine launches ‘TrophyLab’ platform to share captured Russian weapons with allies",
+      "url": "https://www.defensenews.com/global/europe/2026/06/22/ukraine-launches-trophylab-platform-to-share-captured-russian-weapons-with-allies/",
+      "summary": "",
+      "source": "Defense News",
+      "analysis": {
+        "insight": "Ukraine formalized intelligence sharing on captured Russian weapons through TrophyLab, accelerating reverse-engineering efforts across allied defense industries and creating sustained demand for technical analysis and component manufacturing. This legitimizes and expands the defense supply chain opportunities for companies supporting NATO allies' countermeasures development and platform hardening.",
+        "tickers": [
+          "RTX",
+          "NOC",
+          "LMT"
+        ],
+        "rmfi": "Potential machining contracts from Tier-1 defense primes and allied manufacturers developing countermeasures or hardened components based on captured Russian system analysis shared via TrophyLab.",
+        "category": "Defense",
+        "urgency": "high"
+      }
+    },
+    {
+      "title": "VA inventory report reveals 367 AI systems operating in healthcare, benefits and services",
+      "url": "https://www.federaltimes.com/veterans/2026/06/23/va-inventory-report-reveals-367-ai-systems-operating-in-healthcare-benefits-and-services/",
+      "summary": "",
+      "source": "Federal Times",
+      "analysis": {
+        "insight": "The VA's disclosure of 367 operational AI systems—215 classified as high-impact—signals massive federal healthcare/benefits digitization momentum, creating sustained demand for backend infrastructure, data processing, and specialized software integration services. This validates long-term government AI adoption trends and suggests defense contractors supporting VA modernization will see expanded opportunities.",
+        "tickers": [
+          "MSFT",
+          "GDIT",
+          "CACI"
+        ],
+        "rmfi": "Potential indirect opportunity: precision machining could support hardware/server infrastructure buildout for VA AI systems deployment, or specialized components for medical imaging/diagnostic equipment integration.",
+        "category": "Government",
+        "urgency": "medium"
+      }
+    },
+    {
+      "title": "Ask Reg: Can I negotiate my federal salary offer?",
+      "url": "https://www.federaltimes.com/your-career/2024/07/17/ask-reg-can-i-negotiate-my-federal-salary-offer/",
+      "summary": "",
+      "source": "Federal Times",
+      "analysis": {
+        "insight": "This article about federal salary negotiation has no relevance to equity markets, crypto trading, or defense/aerospace manufacturing operations.",
+        "tickers": [],
+        "rmfi": null,
+        "category": "Other",
+        "urgency": "low"
+      }
+    },
+    {
+      "title": "GWOT Memorial Foundation president on proposed design: 'We're listening'",
+      "url": "https://www.federaltimes.com/video/2026/06/25/gwot-memorial-foundation-president-on-proposed-design-were-listening/",
+      "summary": "",
+      "source": "Federal Times",
+      "analysis": {
+        "insight": "The GWOT Memorial Foundation is in early design phases with public input expected, signaling a major government infrastructure project that will likely require construction contracts and specialized manufacturing over the coming years.",
+        "tickers": [],
+        "rmfi": "Precision machining could support memorial construction contractors with fabricated structural components, fixtures, or specialized metal work depending on final design specifications.",
+        "category": "Government",
+        "urgency": "low"
+      }
+    }
+  ]
 }
