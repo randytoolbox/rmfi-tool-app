@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Morning Briefing</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:       #030d18;
+      --card-bg:  #0a1520;
+      --border:   #1a3a5c;
+      --text:     #e2e8f0;
+      --muted:    #7a95b0;
+      --accent:   #4aaeff;
+      --green:    #4ade80;
+      --gold:     #f59e0b;
+      --red:      #f87171;
+    }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+
+    /* ── Top nav ── */
+    .topnav { background: #060f1a; border-bottom: 1px solid var(--border); padding: 10px 20px; display: flex; align-items: center; gap: 16px; }
+    .topnav a { color: var(--muted); text-decoration: none; font-size: 13px; }
+    .topnav a:hover { color: var(--text); }
+    .topnav .brand { color: var(--text); font-weight: 700; font-size: 15px; margin-right: auto; }
+
+    /* ── Hero header ── */
+    .hero { background: linear-gradient(135deg, #0f2040 0%, #091828 100%); border-bottom: 2px solid #1a4a3a; padding: 28px 24px 22px; }
+    .hero h1 { font-size: 26px; font-weight: 800; color: #fff; margin-bottom: 4px; }
+    .hero .meta { color: var(--accent); font-size: 14px; margin-bottom: 10px; }
+    .hero .stats { display: flex; gap: 20px; flex-wrap: wrap; }
+    .stat-chip { background: #0a1a2e; border: 1px solid var(--border); border-radius: 20px; padding: 4px 14px; font-size: 12px; color: var(--green); font-weight: 700; }
+
+    /* ── Filter bar ── */
+    .filter-bar { padding: 12px 24px; background: #06101a; border-bottom: 1px solid var(--border); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .filter-btn { background: var(--card-bg); border: 1px solid var(--border); color: var(--muted); border-radius: 20px; padding: 4px 14px; font-size: 12px; cursor: pointer; transition: all .15s; }
+    .filter-btn.active, .filter-btn:hover { background: var(--border); color: var(--text); border-color: var(--accent); }
+
+    /* ── Main layout ── */
+    .main { max-width: 900px; margin: 0 auto; padding: 20px 16px 60px; }
+
+    /* ── Section header ── */
+    .section-header { display: flex; align-items: center; gap: 10px; margin: 28px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .section-header h2 { font-size: 16px; font-weight: 700; color: var(--accent); }
+    .section-count { background: var(--border); color: var(--muted); border-radius: 10px; padding: 1px 8px; font-size: 11px; }
+
+    /* ── Article card ── */
+    .article-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; border-left: 3px solid var(--border); transition: border-color .15s; }
+    .article-card.urgency-high   { border-left-color: var(--gold); }
+    .article-card.urgency-medium { border-left-color: var(--accent); }
+    .article-card.urgency-low    { border-left-color: #334; }
+    .article-card:hover { border-color: var(--accent); }
+    .article-title { font-size: 14px; font-weight: 700; color: var(--accent); text-decoration: none; line-height: 1.4; display: block; margin-bottom: 4px; }
+    .article-title:hover { color: #7dd3fc; }
+    .article-source { font-size: 10px; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .5px; }
+    .article-insight { font-size: 13px; color: #c8d8e8; line-height: 1.6; margin-bottom: 8px; }
+    .ticker-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+    .ticker-badge { background: #0d2d1a; border: 1px solid var(--green); color: var(--green); border-radius: 4px; font-size: 11px; font-weight: 900; padding: 2px 8px; cursor: pointer; text-decoration: none; }
+    .ticker-badge:hover { background: #1a4a2a; }
+    .rmfi-flag { background: #0d1f0d; border: 1px solid #2d5a2d; border-radius: 6px; padding: 6px 10px; font-size: 11px; color: var(--green); line-height: 1.4; }
+    .rmfi-label { font-weight: 800; margin-right: 4px; }
+
+    /* ── Empty / loading ── */
+    .loading { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .loading .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Urgency legend ── */
+    .legend { display: flex; gap: 16px; flex-wrap: wrap; padding: 10px 24px; background: #04080f; border-bottom: 1px solid #0a1a2e; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+    /* ── Footer ── */
+    .page-footer { text-align: center; padding: 20px; color: #333; font-size: 11px; }
+  </style>
+</head>
+<body>
+
+<nav class="topnav">
+  <span class="brand">📰 Morning Briefing</span>
+  <a href="randys-money.html">Randy's Money →</a>
+  <a href="index.html">Tool Library →</a>
+</nav>
+
+<div class="legend">
+  <span style="color:var(--muted);font-size:11px;font-weight:700;margin-right:4px;">URGENCY:</span>
+  <span class="legend-item"><span class="legend-dot" style="background:#f59e0b;"></span> High</span>
+  <span class="legend-item"><span class="legend-dot" style="background:#4aaeff;"></span> Medium</span>
+  <span class="legend-item"><span class="legend-dot" style="background:#334;"></span> Low / informational</span>
+</div>
+
+<div class="hero">
+  <h1>Morning Briefing</h1>
+  <div class="meta" id="heroMeta">Loading...</div>
+  <div class="stats" id="heroStats"></div>
+</div>
+
+<div class="filter-bar" id="filterBar">
+  <span style="font-size:11px;color:var(--muted);font-weight:700;">FILTER:</span>
+  <button class="filter-btn active" data-cat="all" onclick="setFilter('all')">All</button>
+</div>
+
+<div class="main" id="mainContent">
+  <div class="loading">
+    <div class="spinner"></div>
+    <div>Loading this morning's briefing...</div>
+  </div>
+</div>
+
+<div class="page-footer">Auto-generated by GitHub Actions &bull; Playwright + Claude AI &bull; <span id="footerTs"></span></div>
+
+<script>
+const CAT_ICONS = { 'AI/Tech':'🤖', 'Defense':'🛡️', 'Government':'🏛️', 'Markets':'📈', 'Crypto':'₿', 'Other':'📰' };
+const CAT_ORDER = ['AI/Tech','Defense','Government','Markets','Crypto','Other'];
+
+let allArticles = [];
+let activeFilter = 'all';
+
+function setFilter(cat) {
+  activeFilter = cat;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
+  renderArticles();
+}
+
+function tickerUrl(ticker) {
+  return `randys-money.html#stock-${ticker}`;
+}
+
+function renderArticles() {
+  const articles = activeFilter === 'all'
+    ? allArticles
+    : allArticles.filter(a => (a.analysis?.category || 'Other') === activeFilter);
+
+  const byCategory = {};
+  for (const a of articles) {
+    const cat = a.analysis?.category || 'Other';
+    if (!byCategory[cat]) byCategory[cat] = [];
+    byCategory[cat].push(a);
+  }
+
+  const main = document.getElementById('mainContent');
+  if (!articles.length) {
+    main.innerHTML = '<div class="loading" style="padding:40px 20px;"><div style="color:var(--muted);">No articles in this category.</div></div>';
+    return;
+  }
+
+  const cats = activeFilter === 'all' ? CAT_ORDER.filter(c => byCategory[c]) : [activeFilter].filter(c => byCategory[c]);
+
+  main.innerHTML = cats.map(cat => {
+    const arts = byCategory[cat] || [];
+    const cardsHtml = arts.map(a => {
+      const an = a.analysis;
+      const urgency = an?.urgency || 'low';
+      const tickers = an?.tickers || [];
+      const tickerHtml = tickers.length
+        ? `<div class="ticker-row">${tickers.map(t => `<a class="ticker-badge" href="${tickerUrl(t)}">${t}</a>`).join('')}</div>`
+        : '';
+      const rmfiHtml = an?.rmfi
+        ? `<div class="rmfi-flag"><span class="rmfi-label">🏭 RMFI:</span>${an.rmfi}</div>`
+        : '';
+      const insightHtml = an?.insight
+        ? `<div class="article-insight">${an.insight}</div>`
+        : (a.summary ? `<div class="article-insight" style="color:var(--muted);">${a.summary}</div>` : '');
+
+      return `<div class="article-card urgency-${urgency}">
+        <a class="article-title" href="${a.url || '#'}" target="_blank" rel="noopener">${a.title}</a>
+        <div class="article-source">${a.source}</div>
+        ${insightHtml}
+        ${tickerHtml}
+        ${rmfiHtml}
+      </div>`;
+    }).join('');
+
+    return `<div class="section-header">
+      <h2>${CAT_ICONS[cat] || '📰'} ${cat}</h2>
+      <span class="section-count">${arts.length}</span>
+    </div>
+    ${cardsHtml}`;
+  }).join('');
+}
+
+async function loadBriefing() {
+  try {
+    const r = await fetch('/briefing.json?t=' + Date.now());
+    if (!r.ok) throw new Error('Not found');
+    const data = await r.json();
+
+    allArticles = data.articles || [];
+
+    // Date header
+    const dateStr = data.date
+      ? new Date(data.date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' })
+      : 'Today';
+    document.getElementById('heroMeta').textContent = dateStr + ' · Auto-scraped with Playwright + Claude AI';
+    document.getElementById('footerTs').textContent = data.generated ? 'Generated ' + new Date(data.generated).toLocaleTimeString() : '';
+
+    // Stats chips
+    const cats = [...new Set(allArticles.map(a => a.analysis?.category).filter(Boolean))];
+    const highUrgency = allArticles.filter(a => a.analysis?.urgency === 'high').length;
+    const rmfiLeads   = allArticles.filter(a => a.analysis?.rmfi).length;
+    document.getElementById('heroStats').innerHTML = [
+      `<span class="stat-chip">📰 ${data.articlesRead} articles read</span>`,
+      data.aiAnalyzed ? `<span class="stat-chip">🤖 ${data.aiAnalyzed} AI-analyzed</span>` : '',
+      highUrgency     ? `<span class="stat-chip" style="color:#f59e0b;">⚡ ${highUrgency} high-urgency</span>` : '',
+      rmfiLeads       ? `<span class="stat-chip">🏭 ${rmfiLeads} RMFI leads</span>` : '',
+    ].filter(Boolean).join('');
+
+    // Filter buttons
+    const filterBar = document.getElementById('filterBar');
+    const existingBtns = filterBar.querySelectorAll('[data-cat]:not([data-cat="all"])');
+    existingBtns.forEach(b => b.remove());
+    CAT_ORDER.filter(c => cats.includes(c)).forEach(cat => {
+      const btn = document.createElement('button');
+      btn.className = 'filter-btn';
+      btn.dataset.cat = cat;
+      btn.textContent = (CAT_ICONS[cat] || '') + ' ' + cat;
+      btn.onclick = () => setFilter(cat);
+      filterBar.appendChild(btn);
+    });
+
+    renderArticles();
+  } catch (e) {
+    document.getElementById('mainContent').innerHTML = `
+      <div class="loading">
+        <div style="font-size:32px;margin-bottom:12px;">📭</div>
+        <div style="color:var(--text);font-weight:700;margin-bottom:8px;">No briefing available yet</div>
+        <div style="color:var(--muted);font-size:13px;">The morning briefing runs automatically Mon–Fri at 7:30am ET via GitHub Actions.<br>Check back after the next scheduled run.</div>
+      </div>`;
+    document.getElementById('heroMeta').textContent = 'Awaiting next scheduled briefing...';
+  }
+}
+
+loadBriefing();
+</script>
+</body>
+</html>
