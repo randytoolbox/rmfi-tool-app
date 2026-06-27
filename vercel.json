@@ -13,6 +13,7 @@
     "api/positions.js":      { "maxDuration": 15 },
     "api/subcontractors.js": { "maxDuration": 40 },
     "api/buylog.js":         { "maxDuration": 10 },
-    "api/tradehistory.js":   { "maxDuration": 10 }
+    "api/tradehistory.js":   { "maxDuration": 10 },
+    "api/telegram.js":       { "maxDuration": 10 }
   }
 }

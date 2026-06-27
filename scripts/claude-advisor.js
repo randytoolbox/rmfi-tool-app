@@ -114,6 +114,11 @@ Give Randy direct, specific, actionable advice. Return ONLY valid JSON:
   console.log('Mood:', advice.marketMood);
   console.log('Top trade:', advice.topTrade?.slice(0, 80));
 
+  // Save advice back to briefing.json so Telegram /claude command can read it
+  briefing.claudeAdvice = advice;
+  fs.writeFileSync(briefingPath, JSON.stringify(briefing, null, 2));
+
+
   // ── Build email ───────────────────────────────────────────────────────────
   const moodColor  = advice.marketMood === 'bullish' ? '#4ade80' : advice.marketMood === 'cautious' ? '#f87171' : '#f59e0b';
   const watchBadges = (advice.watchTickers || []).map(t =>

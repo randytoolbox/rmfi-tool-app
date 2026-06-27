@@ -49,3 +49,9 @@ jobs:
           git add briefing.json
           git diff --staged --quiet || git commit -m "briefing: $(date -u '+%Y-%m-%d') [skip vercel]"
           git push origin main
+
+      - name: Send Telegram morning digest
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: node scripts/telegram-morning.js
