@@ -951,7 +951,8 @@ let stockWatchlist   = load('rm_stocks', DEFAULT_STOCKS);
 // Load cached stock data; discard if > 12 hours old (stale after overnight)
 let _cachedStockData = load('rm_stockData', {});
 let _cachedStockDataTs = load('rm_stockDataTs', 0);
-let stockData = (Date.now() - _cachedStockDataTs < 12 * 60 * 60 * 1000) ? _cachedStockData : {};
+// Always seed from cache (even if stale) so picks render immediately; fresh fetch overwrites individual entries
+let stockData = Object.keys(_cachedStockData).length > 0 ? _cachedStockData : {};
 let stockAlerts      = load('rm_stockAlerts', {});
 let stockTriggered   = {};
 let stockHoldings    = load('rm_stockHoldings', {}); // { SYM: { qty, cost } }
@@ -1310,7 +1311,7 @@ async function refreshAll() {
         await fetchStocks();
         renderStockGrid(); checkStockAlerts(); lastStockFetch = Date.now();
         renderMarketsStrip(); renderDailyPicks(); // re-render now that fresh stock prices are in
-      } catch(se) { console.warn('Stocks:', se); }
+      } catch(se) { console.warn('Stocks:', se); renderMarketsStrip(); renderDailyPicks(); }
     }
     setTimeout(() => fetchStockHistory(), 8000); // non-blocking, delayed to avoid racing with fetchStocks v8 calls
     setTimeout(() => fetchStock52W(), 3000);     // non-blocking, fills in 52W high/low
@@ -2818,8 +2819,8 @@ function renderMarketsStrip() {
     const valEl = document.getElementById('mktVal-' + sym);
     const chgEl = document.getElementById('mktChg-' + sym);
     if (!valEl) return;
-    if (!d?.price) return;
     valEl.classList.remove('val-loading');
+    if (!d?.price) return;
     valEl.textContent = '$' + d.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     if (chgEl && d.changePct != null) {
       const up = d.changePct >= 0;

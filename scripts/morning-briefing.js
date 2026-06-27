@@ -163,7 +163,7 @@ async function sendEmail(html) {
     method:  'POST',
     headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      from:    'Randy\'s Briefing <noreply@rmfi-tool-app.vercel.app>',
+      from:    'Randy\'s Briefing <onboarding@resend.dev>',
       to:      [TO_EMAIL],
       subject: `Morning Briefing — ${new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'America/New_York' })}`,
       html,
