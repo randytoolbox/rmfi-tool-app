@@ -5,19 +5,42 @@
 const ALPACA_BASE    = 'https://paper-api.alpaca.markets';
 const ALPACA_DATA    = 'https://data.alpaca.markets';
 const MAX_POSITIONS  = 3;
-const BUDGET_PER     = 333; // ~$333 per position
-const SIGNALS_PATH   = `${process.cwd()}/data/contract-signals.json`;
 const MIN_PRICE      = 15;  // hard floor — filters falling knives / penny stocks
 const TREND_DAYS     = 60;  // require 60-day uptrend (mirrors SA's 75-day sustained signal)
+const CONGRESS_BOOST = 15;  // bonus points when congress members recently bought
 
+// Expanded universe — bot scores all of these, picks the best each morning
 const WATCHLIST = [
+  // Broad market
   'SPY','QQQ','DIA','IWM',
-  'LMT','RTX','PLTR','CAT','XLE','BE','LUMN',
+  // Defense / Gov't IT
+  'LMT','RTX','PLTR','NOC','GD','BAH','SAIC','LDOS',
+  // Energy & Industrials
+  'CAT','XLE','OXY','CVX','HAL','MRO','WMB','DE','GE',
+  // Nuclear & Data Center infrastructure
+  'CEG','VST','CCJ','BWXT','EQIX','DLR','VRT','ETN',
+  // Mega-cap tech
   'NVDA','MSFT','AAPL','TSLA','AMZN','META','GOOGL',
-  'AMD','AVGO','IBM','DELL','CRWD','FLEX','MTSI',
-  'OXY','CVX','HAL','MRO','WMB',
-  'GLD','SLV','TLT','PYPL','BRK.B',
+  // Semiconductors / Hardware
+  'AMD','AVGO','IBM','DELL','CRWD','FLEX','MTSI','QCOM','AMAT',
+  // Enterprise software
+  'ORCL','CRM','PANW','SNOW',
+  // Financials
+  'JPM','GS','V','MA','PYPL','COIN','BRK.B',
+  // Healthcare
+  'UNH','ABBV',
+  // Commodities / Fixed income
+  'GLD','SLV','TLT',
+  // Misc
+  'BE','LUMN',
 ];
+
+const WATCHLIST_SET    = new Set(WATCHLIST);
+const TICKER_BLOCKLIST = new Set([
+  'THE','AND','FOR','BUY','SELL','STOCK','SHARES','ACT',
+  'THAT','WITH','FROM','THIS','THEY','HAVE','BEEN','WILL',
+  'WERE','THEN','THAN','WHEN','WHAT','ALSO','INTO','OVER',
+]);
 
 const UA = 'Mozilla/5.0 (compatible; randy-money/1.0)';
 
@@ -25,7 +48,7 @@ const UA = 'Mozilla/5.0 (compatible; randy-money/1.0)';
 function loadContractSignals() {
   try {
     const fs   = require('fs');
-    const raw  = fs.readFileSync(SIGNALS_PATH, 'utf8');
+    const raw  = fs.readFileSync(`${process.cwd()}/data/contract-signals.json`, 'utf8');
     const data = JSON.parse(raw);
     const today     = new Date().toISOString().slice(0, 10);
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
@@ -52,7 +75,7 @@ async function alpaca(path, options = {}) {
   return data;
 }
 
-// Batch fetch price + 52W range + EPS in a single call
+// Batch fetch EPS data for all candidates
 async function fetchAllFundamentals(symbols) {
   try {
     const r = await fetch(
@@ -124,8 +147,40 @@ async function fetchStock(sym) {
   } catch { return null; }
 }
 
+// Scale position size to conviction — let high-score picks go bigger
+function budgetForScore(s) {
+  if (s >= 45) return 500;
+  if (s >= 30) return 400;
+  if (s >= 15) return 275;
+  return 200;
+}
+
+// Pull tickers recently bought by congress members (last 30 days)
+async function fetchCongressBuys() {
+  try {
+    const r = await fetch('https://rmfi-tool-app.vercel.app/api/congress', {
+      signal: AbortSignal.timeout(25000),
+      headers: { 'User-Agent': UA },
+    });
+    if (!r.ok) return new Set();
+    const data  = await r.json();
+    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const buys  = new Set();
+    for (const trade of (data.trades || [])) {
+      if (trade.ts >= cutoff && trade.sym && trade.sym !== '?' && /^[A-Z.]{2,6}$/.test(trade.sym)) {
+        buys.add(trade.sym);
+      }
+    }
+    if (buys.size) console.log(`Congress recently bought: ${[...buys].join(', ')}`);
+    return buys;
+  } catch (e) {
+    console.warn('Congress fetch failed (non-fatal):', e.message);
+    return new Set();
+  }
+}
+
 // Returns { total, breakdown } — breakdown is shown in the UI and emailed
-function score(d, contractSignals, barsMap, fundamentals, spyTrend) {
+function score(d, contractSignals, barsMap, fundamentals, spyTrend, congressBuys) {
   const FAIL = { total: -1, breakdown: null };
   if (!d?.price) return FAIL;
   if (d.price < MIN_PRICE) return FAIL;
@@ -144,7 +199,10 @@ function score(d, contractSignals, barsMap, fundamentals, spyTrend) {
   if (trend5    !== null && trend5    <= 0) return FAIL;
 
   let s = 0;
-  const bd = { fromHighPts: 0, momentumPts: 0, epsPts: 0, relStrengthPts: 0, volPts: 0, contractPts: 0 };
+  const bd = {
+    fromHighPts: 0, momentumPts: 0, epsPts: 0,
+    relStrengthPts: 0, volPts: 0, contractPts: 0, congressPts: 0,
+  };
 
   const fromHigh = d.high52 ? (d.price - d.high52) / d.high52 * 100 : null;
   bd.fromHighPct = fromHigh;
@@ -196,6 +254,11 @@ function score(d, contractSignals, barsMap, fundamentals, spyTrend) {
     s += signal.boost;
   }
 
+  if (congressBuys?.has(d.symbol)) {
+    bd.congressPts = CONGRESS_BOOST;
+    s += CONGRESS_BOOST;
+  }
+
   return { total: s, breakdown: bd };
 }
 
@@ -215,12 +278,21 @@ async function main() {
     console.log('Portfolio full:', [...heldSymbols].join(', ')); return;
   }
 
-  // Fetch recent daily bars for all symbols + SPY in one API call (70 days for 60-day trend)
-  const allSymbols = [...new Set(['SPY', ...WATCHLIST])];
-  console.log('Fetching recent bars + fundamentals...');
+  // Fetch congress buys first — lets us add their picks to the candidate pool
+  const congressBuys   = await fetchCongressBuys();
+  const congressExtras = [...congressBuys].filter(s =>
+    !WATCHLIST_SET.has(s) && !heldSymbols.has(s) &&
+    /^[A-Z.]{2,6}$/.test(s) && !TICKER_BLOCKLIST.has(s)
+  ).slice(0, 10);
+  if (congressExtras.length) console.log(`Congress extras added to pool: ${congressExtras.join(', ')}`);
+
+  const allCandidates = [...new Set([...WATCHLIST, ...congressExtras])];
+  const allSymbols    = [...new Set(['SPY', ...allCandidates])];
+
+  console.log(`Fetching bars + fundamentals for ${allCandidates.length} symbols...`);
   const [barsMap, fundamentals] = await Promise.all([
     fetchAllBars(allSymbols, 70),
-    fetchAllFundamentals(WATCHLIST),
+    fetchAllFundamentals(allCandidates),
   ]);
 
   // SPY regime filter — pause all buys when broad market is in downtrend
@@ -238,12 +310,12 @@ async function main() {
   }
 
   console.log(`Open slots: ${slots} — fetching stock data...`);
-  const allData = (await Promise.all(WATCHLIST.map(fetchStock))).filter(Boolean);
-  console.log(`Got data for ${allData.length}/${WATCHLIST.length} symbols`);
+  const allData = (await Promise.all(allCandidates.map(fetchStock))).filter(Boolean);
+  console.log(`Got data for ${allData.length}/${allCandidates.length} symbols`);
 
   const scored = allData
     .map(d => {
-      const { total, breakdown } = score(d, contractSignals, barsMap, fundamentals, spyTrend);
+      const { total, breakdown } = score(d, contractSignals, barsMap, fundamentals, spyTrend, congressBuys);
       return { ...d, _score: total, _breakdown: breakdown };
     })
     .filter(d => d._score >= 0 && !heldSymbols.has(d.symbol))
@@ -256,9 +328,10 @@ async function main() {
     const eps    = fundamentals?.[d.symbol];
     const epsStr = eps?.epsTrailing != null ? `  eps:$${eps.epsTrailing.toFixed(2)}→$${(eps.epsForward ?? eps.epsTrailing).toFixed(2)}` : '';
     const volStr = bd.volSurge != null ? `  vol:${bd.volSurge.toFixed(1)}x` : '';
+    const conStr = bd.congressPts > 0 ? '  🏛congress' : '';
     console.log(
       `  ${d.symbol.padEnd(6)} score:${String(d._score).padStart(3)}  $${d.price.toFixed(2).padStart(8)}` +
-      `  fromHigh:${fh}%  t${TREND_DAYS}:${bd.trendLong !== null && bd.trendLong !== undefined ? (bd.trendLong*100).toFixed(1)+'%' : 'n/a'}${epsStr}${volStr}`
+      `  fromHigh:${fh}%  t${TREND_DAYS}:${bd.trendLong !== null && bd.trendLong !== undefined ? (bd.trendLong*100).toFixed(1)+'%' : 'n/a'}${epsStr}${volStr}${conStr}`
     );
   }
 
@@ -270,7 +343,8 @@ async function main() {
 
   const executed = [];
   for (const pick of picks) {
-    const qty = Math.max(1, Math.floor(BUDGET_PER / pick.price));
+    const notional = budgetForScore(pick._score);
+    const qty = Math.max(1, Math.floor(notional / pick.price));
     try {
       await alpaca('/v2/orders', {
         method: 'POST',
@@ -283,9 +357,9 @@ async function main() {
           client_order_id: `randy-${pick.symbol}-${today}`,
         }),
       });
-      console.log(`BUY ${qty} x ${pick.symbol} @ ~$${pick.price.toFixed(2)} = ~$${(qty * pick.price).toFixed(2)}`);
+      console.log(`BUY ${qty} x ${pick.symbol} @ ~$${pick.price.toFixed(2)} = ~$${(qty * pick.price).toFixed(2)} (score ${pick._score} → $${notional} budget)`);
       executed.push({ symbol: pick.symbol, name: pick.name, qty, price: pick.price,
-                      value: qty * pick.price, score: pick._score, breakdown: pick._breakdown });
+                      value: qty * pick.price, notional, score: pick._score, breakdown: pick._breakdown });
     } catch (e) {
       console.error(`Order failed for ${pick.symbol}:`, e.message);
     }
@@ -305,12 +379,12 @@ async function main() {
       score:       d._score,
       price:       d.price,
       fromHighPct: d._breakdown?.fromHighPct != null ? parseFloat(d._breakdown.fromHighPct.toFixed(1)) : null,
+      congressBuy: (d._breakdown?.congressPts ?? 0) > 0,
     })),
   };
   writeFileSync(logPath, JSON.stringify(buyLog, null, 2));
   console.log(`Buy log saved → data/buy-log.json (${executed.length} trades)`);
 
-  // Email notification when trades execute
   if (executed.length && process.env.RESEND_API_KEY) {
     await sendTradeEmail(executed, today);
   }
@@ -325,6 +399,7 @@ function buildTradeReason(bd) {
   if (bd.epsPts       > 0)   parts.push(`EPS est +${bd.epsRevision != null ? (bd.epsRevision*100).toFixed(0)+'%' : '?'} (+${bd.epsPts}pts)`);
   if (bd.relStrengthPts > 0) parts.push(`beating SPY (+${bd.relStrengthPts}pts)`);
   if (bd.contractPts  > 0)   parts.push(`govt contract ${bd.contractAgency||''} (+${bd.contractPts}pts)`);
+  if (bd.congressPts  > 0)   parts.push(`🏛 congress recently bought (+${bd.congressPts}pts)`);
   return parts.join(' · ') || 'score criteria met';
 }
 
@@ -334,7 +409,7 @@ async function sendTradeEmail(trades, date) {
       <div style="background:#0a1a2e;border-radius:8px;padding:14px 16px;margin-bottom:12px;border-left:4px solid #4ade80;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
           <span style="color:#4ade80;font-weight:800;font-size:16px;">${t.symbol}</span>
-          <span style="color:#a78bfa;font-size:11px;font-weight:700;">SCORE: ${t.score}</span>
+          <span style="color:#a78bfa;font-size:11px;font-weight:700;">SCORE: ${t.score} · $${t.notional} budget</span>
         </div>
         <div style="color:#e0d7ff;font-size:13px;margin-bottom:4px;">${t.qty} shares @ $${t.price.toFixed(2)} = <strong>$${t.value.toFixed(2)}</strong></div>
         <div style="color:#7a9cc0;font-size:11px;">WHY: ${buildTradeReason(t.breakdown)}</div>

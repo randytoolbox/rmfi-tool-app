@@ -1,20 +1,24 @@
 #!/usr/bin/env node
 // Runs via GitHub Actions at 3:45pm ET (19:45 UTC) Mon-Fri.
-// Stocks: sell at +5%, −3%, or after 5 trading days.
-// Crypto: sell at +10%, −5%, or after 7 calendar days.
+// Stocks: trailing stop (2.5% from peak after 3% gain) or −3% hard stop or 5 trading days.
+// Crypto: +10%, −5%, or after 7 calendar days.
 // Sends daily portfolio report email via Resend.
 
 const ALPACA_BASE = 'https://paper-api.alpaca.markets';
 
-// Stock rules
-const STOCK_TAKE_PROFIT = 0.05;
-const STOCK_STOP_LOSS   = -0.03;
-const STOCK_MAX_DAYS    = 5;
+// Stock rules — trailing stop is the primary exit for winners
+const STOCK_TAKE_PROFIT    = 0.15;  // safety net only (parabolic moves)
+const STOCK_STOP_LOSS      = -0.03;
+const STOCK_MAX_DAYS       = 5;
+const STOCK_TRAIL_TRIGGER  = 0.03;  // start trailing after 3% gain from entry
+const STOCK_TRAIL_PCT      = 0.025; // exit if current drops 2.5% from peak
 
 // Crypto rules (more volatile — wider thresholds)
-const CRYPTO_TAKE_PROFIT = 0.10;
-const CRYPTO_STOP_LOSS   = -0.05;
-const CRYPTO_MAX_DAYS    = 7;
+const CRYPTO_TAKE_PROFIT   = 0.10;
+const CRYPTO_STOP_LOSS     = -0.05;
+const CRYPTO_MAX_DAYS      = 7;
+const CRYPTO_TRAIL_TRIGGER = 0.06;  // start trailing after 6% gain from entry
+const CRYPTO_TRAIL_PCT     = 0.04;  // exit if current drops 4% from peak
 
 async function alpaca(path, options = {}) {
   const r = await fetch(`${ALPACA_BASE}${path}`, {
@@ -49,6 +53,24 @@ function calendarDaysSince(dateStr) {
   const start = new Date(dateStr + 'T00:00:00Z');
   const now   = new Date();
   return Math.floor((now - start) / (24 * 60 * 60 * 1000));
+}
+
+// Peak price tracking — lets winners run with a trailing stop instead of hard cap
+function loadPeaks() {
+  try {
+    const { readFileSync, existsSync } = require('fs');
+    const file = `${process.cwd()}/data/position-peaks.json`;
+    if (existsSync(file)) return JSON.parse(readFileSync(file, 'utf8'));
+  } catch {}
+  return {};
+}
+
+function savePeaks(peaks) {
+  try {
+    const { mkdirSync, writeFileSync } = require('fs');
+    mkdirSync(`${process.cwd()}/data`, { recursive: true });
+    writeFileSync(`${process.cwd()}/data/position-peaks.json`, JSON.stringify(peaks, null, 2));
+  } catch (e) { console.warn('peaks save failed:', e.message); }
 }
 
 function appendTradeHistory(trade) {
@@ -161,7 +183,7 @@ function buildEmail(stockPositions, cryptoPositions, sold, account, dateStr) {
     ${soldSection}
     <div style="font-size:11px;color:#9ca3af;text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid #f3f4f6;">
       Paper trading only — no real money.<br>
-      Stocks: +5% / −3% / 5 days &nbsp;·&nbsp; Crypto: +10% / −5% / 7 days<br><br>
+      Stocks: trailing stop / −3% / 5 days &nbsp;·&nbsp; Crypto: +10% / −5% / 7 days<br><br>
       <a href="https://rmfi-tool-app.vercel.app/randys-money.html" style="color:#3b82f6;">Open full app →</a>
     </div>
   </div>
@@ -180,26 +202,44 @@ async function main() {
     alpaca('/v2/account'),
   ]);
 
+  const peaks = loadPeaks();
   console.log(`Open positions: ${positions.length}`);
 
   const sold = [];
 
   for (const pos of positions) {
-    const plpc   = Number(pos.unrealized_plpc);
-    const crypto = isCrypto(pos);
+    const plpc         = Number(pos.unrealized_plpc);
+    const currentPrice = Number(pos.current_price);
+    const entry        = Number(pos.avg_entry_price);
+    const crypto       = isCrypto(pos);
 
-    const takeProfit = crypto ? CRYPTO_TAKE_PROFIT : STOCK_TAKE_PROFIT;
-    const stopLoss   = crypto ? CRYPTO_STOP_LOSS   : STOCK_STOP_LOSS;
+    const takeProfit = crypto ? CRYPTO_TAKE_PROFIT  : STOCK_TAKE_PROFIT;
+    const stopLoss   = crypto ? CRYPTO_STOP_LOSS    : STOCK_STOP_LOSS;
     const maxDays    = crypto ? CRYPTO_MAX_DAYS     : STOCK_MAX_DAYS;
+    const trailTrig  = crypto ? CRYPTO_TRAIL_TRIGGER : STOCK_TRAIL_TRIGGER;
+    const trailPct   = crypto ? CRYPTO_TRAIL_PCT    : STOCK_TRAIL_PCT;
+
+    // Update high-water mark for this position
+    if (!peaks[pos.symbol]) peaks[pos.symbol] = { peak: currentPrice };
+    if (currentPrice > peaks[pos.symbol].peak) peaks[pos.symbol].peak = currentPrice;
+    const peak           = peaks[pos.symbol].peak;
+    const peakGainPct    = (peak - entry) / entry;
+    const pullbackFromPeak = (currentPrice - peak) / peak;
 
     const daysHeld = buyDates[pos.symbol]
       ? (crypto ? calendarDaysSince(buyDates[pos.symbol]) : tradingDaysSince(buyDates[pos.symbol]))
       : 0;
 
     let reason = null;
-    if (plpc >= takeProfit)       reason = `Take profit at ${(plpc*100).toFixed(2)}% ✅`;
-    else if (plpc <= stopLoss)    reason = `Stop loss at ${(plpc*100).toFixed(2)}% 🛑`;
-    else if (daysHeld >= maxDays) reason = `${daysHeld} ${crypto?'calendar':'trading'} days — time's up ⏱`;
+    if (plpc >= takeProfit) {
+      reason = `Take profit at ${(plpc*100).toFixed(2)}% ✅`;
+    } else if (peakGainPct >= trailTrig && pullbackFromPeak <= -trailPct) {
+      reason = `Trailing stop: peaked +${(peakGainPct*100).toFixed(1)}%, pulled back ${(pullbackFromPeak*100).toFixed(1)}% from peak 📉`;
+    } else if (plpc <= stopLoss) {
+      reason = `Stop loss at ${(plpc*100).toFixed(2)}% 🛑`;
+    } else if (daysHeld >= maxDays) {
+      reason = `${daysHeld} ${crypto?'calendar':'trading'} days — time's up ⏱`;
+    }
 
     if (reason) {
       try {
@@ -208,13 +248,17 @@ async function main() {
         sold.push({ symbol: pos.symbol, reason, pl: plAmt });
         console.log(`SELL ${pos.symbol}: ${reason}`);
         appendTradeHistory({ symbol: pos.symbol, pl: plAmt, plPct: plpc * 100, reason, type: crypto ? 'crypto' : 'stock', daysHeld });
+        delete peaks[pos.symbol];
       } catch (e) {
         console.error(`Failed to sell ${pos.symbol}:`, e.message);
       }
     } else {
-      console.log(`HOLD ${pos.symbol}: ${(plpc*100).toFixed(2)}%, day ${daysHeld} (${crypto?'crypto':'stock'})`);
+      const peakStr = peakGainPct >= trailTrig ? ` [peak:+${(peakGainPct*100).toFixed(1)}%]` : '';
+      console.log(`HOLD ${pos.symbol}: ${(plpc*100).toFixed(2)}%, day ${daysHeld} (${crypto?'crypto':'stock'})${peakStr}`);
     }
   }
+
+  savePeaks(peaks);
 
   const remaining  = await alpaca('/v2/positions');
   const stockPos   = remaining.filter(p => !isCrypto(p));

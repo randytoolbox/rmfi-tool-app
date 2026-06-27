@@ -26,6 +26,6 @@ jobs:
         run: |
           git config user.email "noreply@github.com"
           git config user.name "GitHub Actions"
-          git add data/trade-history.json || true
+          git add data/trade-history.json data/position-peaks.json || true
           git diff --staged --quiet || git commit -m "trade-history: $(date -u '+%Y-%m-%d') [skip vercel]"
           git push origin main || true
