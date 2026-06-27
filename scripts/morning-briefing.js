@@ -19,12 +19,12 @@ const SOURCES = [
   { rss:true,  name:'Decrypt',             scrape:()=>scrapeRSS('https://decrypt.co/feed',5) },
   { rss:true,  name:'The Block',           scrape:()=>scrapeRSS('https://www.theblock.co/rss.xml',5) },
   // ── Markets ──────────────────────────────────────────────────────────────
-  { rss:true,  name:'Reuters Business',    scrape:()=>scrapeRSS('https://feeds.reuters.com/reuters/businessNews',6) },
+  { rss:true,  name:'Reuters Business',    scrape:()=>scrapeRSS('https://news.google.com/rss/search?q=site:reuters.com+business+markets+economy&hl=en-US&gl=US&ceid=US:en',6) },
   { rss:true,  name:'CNBC',               scrape:()=>scrapeRSS('https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114',6) },
   { rss:true,  name:'MarketWatch',         scrape:()=>scrapeRSS('https://feeds.content.dowjones.io/public/rss/mw_topstories',5) },
   // ── Defense / Manufacturing ───────────────────────────────────────────────
   { rss:true,  name:'Breaking Defense',    scrape:()=>scrapeRSS('https://breakingdefense.com/feed/',6) },
-  { rss:true,  name:'National Defense',    scrape:()=>scrapeRSS('https://www.nationaldefensemagazine.org/rss/articles',5) },
+  { rss:true,  name:'National Defense',    scrape:()=>scrapeRSS('https://www.nationaldefensemagazine.org/rss',5) },
   { rss:true,  name:'GovConWire',          scrape:()=>scrapeRSS('https://www.govconwire.com/feed/',5) },
   // ── Data Center / Infrastructure ─────────────────────────────────────────
   { rss:true,  name:'Data Center Dynamics',  scrape:()=>scrapeRSS('https://www.datacenterdynamics.com/en/rss/',6) },
@@ -44,7 +44,7 @@ const SOURCES = [
   { rss:true,  name:'Google News — DC Southeast',     scrape:()=>scrapeRSS('https://news.google.com/rss/search?q=data+center+construction+permit+Georgia+Ohio+North+Carolina+Nevada&hl=en-US&gl=US&ceid=US:en',4) },
   { rss:true,  name:'Google News — Nuclear Permit',   scrape:()=>scrapeRSS('https://news.google.com/rss/search?q=nuclear+reactor+permit+NRC+license+approval+county+site+SMR+2025+2026&hl=en-US&gl=US&ceid=US:en',4) },
   // ── Playwright sources (bypass bot protection) ────────────────────────────
-  { rss:false, name:'Intellectia — AI Finance', scrape:scrapeIntellectia },
+  { rss:true,  name:'Seeking Alpha — Markets',  scrape:()=>scrapeRSS('https://news.google.com/rss/search?q=stock+market+earnings+earnings+beat+wall+street&hl=en-US&gl=US&ceid=US:en',5) },
   { rss:false, name:'Defense News',             scrape:scrapeDefenseNews  },
   { rss:false, name:'Federal Times',            scrape:scrapeFederalTimes },
   { rss:false, name:'DoD Contract Awards',      scrape:scrapeDoD          },
@@ -82,26 +82,6 @@ async function scrapeRSS(url, maxItems = 8) {
 
 // ── Playwright scrapers ───────────────────────────────────────────────────────
 
-async function scrapeIntellectia(page) {
-  await page.goto('https://intellectia.ai/blog', { waitUntil: 'domcontentloaded', timeout: 20000 });
-  await page.waitForTimeout(3000);
-  return page.evaluate(() => {
-    const items = [];
-    document.querySelectorAll('article, [class*="blog"], [class*="post"], [class*="card"]').forEach(card => {
-      const titleEl   = card.querySelector('h1,h2,h3,h4');
-      const linkEl    = card.querySelector('a[href]');
-      const summaryEl = card.querySelector('p');
-      if (titleEl && titleEl.textContent.trim().length > 10) {
-        items.push({
-          title:   titleEl.textContent.trim(),
-          url:     linkEl ? (linkEl.href.startsWith('http') ? linkEl.href : 'https://intellectia.ai' + linkEl.getAttribute('href')) : '',
-          summary: summaryEl ? summaryEl.textContent.trim().slice(0, 200) : '',
-        });
-      }
-    });
-    return items.slice(0, 8);
-  });
-}
 
 async function scrapeDefenseNews(page) {
   await page.goto('https://www.defensenews.com/', { waitUntil: 'domcontentloaded', timeout: 20000 });
@@ -134,16 +114,26 @@ async function scrapeFederalTimes(page) {
 
 async function scrapeDoD(page) {
   await page.goto('https://www.defense.gov/News/Contracts/', { waitUntil: 'domcontentloaded', timeout: 20000 });
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(3000);
   return page.evaluate(() => {
     const items = [];
-    document.querySelectorAll('.news-item, article, li').forEach(el => {
-      const titleEl = el.querySelector('h3,h4,h2,a,.title');
-      const linkEl  = el.querySelector('a');
-      const title   = titleEl?.textContent.trim() || linkEl?.textContent.trim();
-      const summary = el.querySelector('p')?.textContent.trim().slice(0, 250) || '';
-      if (title && title.length > 20 && linkEl?.href) items.push({ title, url: linkEl.href, summary });
+    // DoD contracts page lists contracts as links with date prefixes
+    document.querySelectorAll('a[href*="/News/Contracts/Contract/"]').forEach(el => {
+      const title = el.textContent.trim();
+      if (title && title.length > 20) {
+        items.push({ title, url: el.href.startsWith('http') ? el.href : 'https://www.defense.gov' + el.getAttribute('href'), summary: '' });
+      }
     });
+    // Fallback: grab any substantial links on the page
+    if (items.length === 0) {
+      document.querySelectorAll('a[href]').forEach(el => {
+        const title = el.textContent.trim();
+        const href  = el.href || '';
+        if (title.length > 30 && href.includes('defense.gov') && !href.includes('#')) {
+          items.push({ title, url: href, summary: '' });
+        }
+      });
+    }
     return [...new Map(items.map(i => [i.title, i])).values()].slice(0, 6);
   });
 }
