@@ -2,7 +2,7 @@ name: Morning Briefing Email
 
 on:
   schedule:
-    - cron: '30 11 * * 1-5'   # 7:30am ET (11:30 UTC) Mon–Fri
+    - cron: '30 11 * * *'     # 7:30am ET (11:30 UTC) every day
   workflow_dispatch:            # manual trigger from GitHub Actions tab
 
 permissions:
@@ -34,5 +34,5 @@ jobs:
           git config user.email "noreply@github.com"
           git config user.name "GitHub Actions"
           git add briefing.json
-          git diff --staged --quiet || git commit -m "briefing: $(date -u '+%Y-%m-%d')"
+          git diff --staged --quiet || git commit -m "briefing: $(date -u '+%Y-%m-%d') [skip vercel]"
           git push origin main

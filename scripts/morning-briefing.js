@@ -1,5 +1,5 @@
 // Morning Briefing — Playwright scraper + Claude AI analysis + email via Resend
-// Runs in GitHub Actions (Mon–Fri 7:30am ET). Scrapes sites, reads full articles,
+// Runs in GitHub Actions (7:30am ET daily). Scrapes sites, reads full articles,
 // asks Claude to analyze each one, saves briefing.json, sends email digest.
 
 const { chromium } = require('playwright');
@@ -11,13 +11,46 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const TO_EMAIL          = 'randybarclay1@gmail.com';
 
 const SOURCES = [
-  { name: 'Intellectia — AI Finance',    url: 'https://intellectia.ai/blog',         scrape: scrapeIntellectia  },
-  { name: 'Defense News',                url: 'https://www.defensenews.com/',         scrape: scrapeDefenseNews  },
-  { name: 'Federal Times',               url: 'https://www.federaltimes.com/',        scrape: scrapeFederalTimes },
-  { name: 'DoD Contract Awards',         url: 'https://www.defense.gov/News/Contracts/', scrape: scrapeDoD       },
+  // Crypto — RSS feeds (no bot protection, no Playwright needed)
+  { name: 'CoinDesk',                    url: 'https://www.coindesk.com/arc/outboundfeeds/rss/',  scrape: () => scrapeRSS('https://www.coindesk.com/arc/outboundfeeds/rss/', 8)  },
+  { name: 'CoinTelegraph',               url: 'https://cointelegraph.com/rss',                    scrape: () => scrapeRSS('https://cointelegraph.com/rss', 6)                   },
+  { name: 'Decrypt',                     url: 'https://decrypt.co/feed',                          scrape: () => scrapeRSS('https://decrypt.co/feed', 6)                         },
+  // Defense / Government — Playwright (bypass bot protection)
+  { name: 'Intellectia — AI Finance',    url: 'https://intellectia.ai/blog',                      scrape: scrapeIntellectia  },
+  { name: 'Defense News',                url: 'https://www.defensenews.com/',                     scrape: scrapeDefenseNews  },
+  { name: 'Federal Times',               url: 'https://www.federaltimes.com/',                    scrape: scrapeFederalTimes },
+  { name: 'DoD Contract Awards',         url: 'https://www.defense.gov/News/Contracts/',          scrape: scrapeDoD          },
 ];
 
 // ── Scrapers ────────────────────────────────────────────────────────────────────
+
+async function scrapeRSS(url, maxItems = 8) {
+  try {
+    const r = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; randy-briefing/1.0)' },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!r.ok) { console.warn(`  RSS ${r.status} from ${url}`); return []; }
+    const xml   = await r.text();
+    const items = [];
+    for (const m of xml.matchAll(/<item>([\s\S]*?)<\/item>/g)) {
+      const x      = m[1];
+      const decode = s => (s || '').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#039;/g,"'").trim();
+      const grab   = tag => { const r = x.match(new RegExp(`<${tag}[^>]*>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?<\\/${tag}>`, 's')); return r ? decode(r[1]) : ''; };
+      const title  = grab('title');
+      const link   = grab('link') || grab('guid');
+      const desc   = grab('description').replace(/<[^>]+>/g, '').slice(0, 200);
+      if (title && link && link.startsWith('http') && title.length > 10) {
+        items.push({ title, url: link, summary: desc });
+        if (items.length >= maxItems) break;
+      }
+    }
+    return items;
+  } catch (e) {
+    console.warn(`  RSS error (${url}):`, e.message);
+    return [];
+  }
+}
 
 async function scrapeIntellectia(page) {
   await page.goto('https://intellectia.ai/blog', { waitUntil: 'domcontentloaded', timeout: 20000 });
