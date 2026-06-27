@@ -547,6 +547,21 @@
     <span class="hint">Supported: BTC, ETH, SOL, ADA, DOT, LINK, LTC, MATIC, TRX, XLM, and more</span>
   </div>
 
+  <!-- POPULAR CRYPTOS BROWSER -->
+  <div style="margin:10px 0 6px;">
+    <span style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Popular Cryptos</span>
+    <span style="font-size:11px;color:#444;margin-left:8px;">— top coins by market cap</span>
+    <button class="btn btn-sm" id="popularToggleBtn" onclick="togglePopularCoins()"
+      style="margin-left:12px;background:#0d2035;border:1px solid var(--border);color:#6aaeff;font-size:11px;padding:3px 12px;">
+      Show
+    </button>
+  </div>
+  <div id="popularCoinsSection" style="display:none;margin-bottom:14px;">
+    <div id="popularCoinsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:8px;">
+      <div style="color:var(--muted);font-size:12px;padding:10px;">Loading…</div>
+    </div>
+  </div>
+
   <!-- STOCK WATCHLIST -->
   <div id="sec-stocks" class="section-label" style="margin-top:10px;">
     US Stock Market — Research Watchlist
@@ -772,6 +787,12 @@ const COINS = {
   TON:'toncoin', TRX:'tron', XLM:'stellar', HBAR:'hedera-hashgraph',
   VET:'vechain', ALGO:'algorand', ETC:'ethereum-classic', BCH:'bitcoin-cash',
   QNT:'quant-network', XDC:'xdc-network',
+  RNDR:'render-token', KAS:'kaspa', FET:'fetch-ai',
+  JASMY:'jasmycoin', FLOKI:'floki', PEPE:'pepe',
+  WLD:'worldcoin', IMX:'immutable-x', GRT:'the-graph',
+  AAVE:'aave', MKR:'maker', CRV:'curve-dao-token',
+  OP:'optimism', ARB:'arbitrum', MANA:'decentraland',
+  SAND:'the-sandbox', AXS:'axie-infinity',
 };
 
 const NAMES = {
@@ -1398,6 +1419,68 @@ function removeCoin(sym) {
   portfolio = portfolio.filter(s => s !== sym);
   save('rm_portfolio', portfolio);
   renderGrid();
+}
+
+// ── Popular Coins Browser ─────────────────────────────────────────────────────
+let popularVisible = false;
+function togglePopularCoins() {
+  popularVisible = !popularVisible;
+  const sec = document.getElementById('popularCoinsSection');
+  const btn = document.getElementById('popularToggleBtn');
+  sec.style.display = popularVisible ? 'block' : 'none';
+  btn.textContent = popularVisible ? 'Hide' : 'Show';
+  if (popularVisible) renderPopularCoins();
+}
+
+async function renderPopularCoins() {
+  const grid = document.getElementById('popularCoinsGrid');
+  if (!marketRows.length) {
+    grid.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:10px;">Loading market data…</div>';
+    try {
+      const r = await fetch('/api/scan');
+      const j = await r.json();
+      const coins = j.data || [];
+      marketRows = coins.map((c, i) => ({
+        rank: i + 1, id: c.id, symbol: c.symbol || c.id.toUpperCase(),
+        name: c.name || c.id, price: parseFloat(c.priceUsd) || 0,
+        change24h: parseFloat(c.changePercent24Hr) || 0, change1y: null,
+        marketCap: parseFloat(c.marketCapUsd) || 0,
+        volume: parseFloat(c.volumeUsd24Hr) || 0,
+      }));
+    } catch(e) {
+      grid.innerHTML = `<div style="color:var(--bad);font-size:12px;padding:10px;">Failed: ${e.message}</div>`;
+      return;
+    }
+  }
+  const rows = marketRows.slice(0, 40);
+  grid.innerHTML = rows.map(c => {
+    const inPort = portfolio.includes(c.symbol);
+    const chgClr = c.change24h >= 0 ? 'var(--good)' : 'var(--bad)';
+    // register unknown coins so addCoin() works
+    if (!COINS[c.symbol]) COINS[c.symbol] = c.id;
+    return `<div style="background:#07131f;border:1px solid ${inPort ? '#4ade80' : 'var(--border)'};border-radius:10px;padding:10px 10px 8px;cursor:default;">
+      <div style="font-size:14px;font-weight:800;color:#fff;">${c.symbol}</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name}</div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:3px;">${fmtPrice(c.price)}</div>
+      <div style="font-size:11px;color:${chgClr};margin-bottom:6px;">${fmtPct(c.change24h)} 24h</div>
+      <div style="font-size:10px;color:#444;margin-bottom:6px;">${fmtBig(c.marketCap)}</div>
+      <button onclick="addPopularCoin('${c.symbol}','${c.id}')"
+        style="width:100%;padding:4px 0;font-size:11px;font-weight:700;border-radius:6px;border:1px solid ${inPort ? '#4ade80' : 'var(--border)'};
+          background:${inPort ? '#0d2a1a' : '#0d1f3a'};color:${inPort ? '#4ade80' : '#6aaeff'};cursor:pointer;"
+      >${inPort ? '✓ Added' : '+ Add'}</button>
+    </div>`;
+  }).join('');
+}
+
+function addPopularCoin(sym, coinId) {
+  if (!COINS[sym]) COINS[sym] = coinId;
+  if (!portfolio.includes(sym)) {
+    portfolio.push(sym);
+    save('rm_portfolio', portfolio);
+    renderGrid();
+    fetchLive().then(() => { fetchHistory(sym).then(() => renderGrid()); });
+  }
+  renderPopularCoins();
 }
 
 // ── Fetch full article text through CORS proxy ────────────────────────────────

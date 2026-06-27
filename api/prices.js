@@ -9,7 +9,8 @@ const CC_TO_YAHOO = {
   'pepe':'PEPE-USD','shiba-inu':'SHIB-USD','toncoin':'TON-USD','tron':'TRX-USD',
   'stellar':'XLM-USD','hedera-hashgraph':'HBAR-USD','vechain':'VET-USD',
   'algorand':'ALGO-USD','ethereum-classic':'ETC-USD','bitcoin-cash':'BCH-USD',
-  'quant-network':'QNT-USD',
+  'quant-network':'QNT-USD','xdc-network':'XDC-USD',
+  'render-token':'RNDR-USD','kaspa':'KAS-USD','fetch-ai':'FET-USD',
 };
 const YAHOO_TO_CC = Object.fromEntries(Object.entries(CC_TO_YAHOO).map(([cc,y])=>[y,cc]));
 

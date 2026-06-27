@@ -8,6 +8,8 @@ const CC_TO_YAHOO = {
   'sui':'SUI-USD','toncoin':'TON-USD','tron':'TRX-USD',
   'stellar':'XLM-USD','hedera-hashgraph':'HBAR-USD','vechain':'VET-USD',
   'algorand':'ALGO-USD','ethereum-classic':'ETC-USD','bitcoin-cash':'BCH-USD',
+  'quant-network':'QNT-USD','xdc-network':'XDC-USD',
+  'render-token':'RNDR-USD','kaspa':'KAS-USD','fetch-ai':'FET-USD',
 };
 
 module.exports = async function handler(req, res) {
