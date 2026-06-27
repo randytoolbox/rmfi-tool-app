@@ -5,6 +5,9 @@ on:
     - cron: '35 13 * * 1-5'   # 9:35am ET (13:35 UTC) Mon–Fri
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   buy:
     runs-on: ubuntu-latest
@@ -17,4 +20,12 @@ jobs:
         env:
           ALPACA_KEY_ID:     ${{ secrets.ALPACA_KEY_ID }}
           ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+          RESEND_API_KEY:    ${{ secrets.RESEND_API_KEY }}
         run: node scripts/alpaca-buy.js
+      - name: Commit buy log
+        run: |
+          git config user.email "noreply@github.com"
+          git config user.name "GitHub Actions"
+          git add data/buy-log.json || true
+          git diff --staged --quiet || git commit -m "buy-log: $(date -u '+%Y-%m-%d') [skip vercel]"
+          git push origin main || true

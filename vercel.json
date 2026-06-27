@@ -11,6 +11,8 @@
     "api/prices.js":         { "maxDuration": 15 },
     "api/earnings.js":       { "maxDuration": 15 },
     "api/positions.js":      { "maxDuration": 15 },
-    "api/subcontractors.js": { "maxDuration": 40 }
+    "api/subcontractors.js": { "maxDuration": 40 },
+    "api/buylog.js":         { "maxDuration": 10 },
+    "api/tradehistory.js":   { "maxDuration": 10 }
   }
 }

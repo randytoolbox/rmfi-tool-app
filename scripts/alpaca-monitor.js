@@ -51,6 +51,29 @@ function calendarDaysSince(dateStr) {
   return Math.floor((now - start) / (24 * 60 * 60 * 1000));
 }
 
+function appendTradeHistory(trade) {
+  try {
+    const { mkdirSync, readFileSync, writeFileSync, existsSync } = require('fs');
+    const { join } = require('path');
+    const file = join(process.cwd(), 'data', 'trade-history.json');
+    mkdirSync(join(process.cwd(), 'data'), { recursive: true });
+    let hist = { trades: [] };
+    if (existsSync(file)) hist = JSON.parse(readFileSync(file, 'utf8'));
+    hist.trades.push({ date: new Date().toISOString().slice(0, 10), ...trade });
+    const wins   = hist.trades.filter(t => t.pl > 0).length;
+    const losses = hist.trades.filter(t => t.pl <= 0).length;
+    hist.summary = {
+      totalTrades: hist.trades.length,
+      wins, losses,
+      winRate:  hist.trades.length ? parseFloat((wins / hist.trades.length * 100).toFixed(1)) : 0,
+      totalPL:  parseFloat(hist.trades.reduce((s, t) => s + t.pl, 0).toFixed(2)),
+    };
+    writeFileSync(file, JSON.stringify(hist, null, 2));
+  } catch (e) {
+    console.warn('trade-history write failed:', e.message);
+  }
+}
+
 async function getBuyDates() {
   const orders   = await alpaca('/v2/orders?status=filled&direction=desc&limit=200');
   const buyDates = {};
@@ -181,8 +204,10 @@ async function main() {
     if (reason) {
       try {
         await alpaca(`/v2/positions/${encodeURIComponent(pos.symbol)}`, { method: 'DELETE' });
-        sold.push({ symbol: pos.symbol, reason, pl: Number(pos.unrealized_pl) });
+        const plAmt = Number(pos.unrealized_pl);
+        sold.push({ symbol: pos.symbol, reason, pl: plAmt });
         console.log(`SELL ${pos.symbol}: ${reason}`);
+        appendTradeHistory({ symbol: pos.symbol, pl: plAmt, plPct: plpc * 100, reason, type: crypto ? 'crypto' : 'stock', daysHeld });
       } catch (e) {
         console.error(`Failed to sell ${pos.symbol}:`, e.message);
       }

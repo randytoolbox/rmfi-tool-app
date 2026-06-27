@@ -467,18 +467,32 @@
 
 <div class="main">
 
-  <!-- TODAY'S TOP PICKS -->
-  <div id="sec-picks" style="margin-bottom:20px;">
-    <div class="section-label">
-      ⭐ Today's Top Picks <span style="font-size:10px;color:var(--muted);font-weight:400;">— auto-scored · updates every 2 min</span>
+  <!-- TLDR STRIP -->
+  <div id="tldrStrip" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;">
+    <div style="flex:1;min-width:130px;background:#071a07;border:1px solid #2d5a2d;border-radius:10px;padding:10px 14px;text-align:center;">
+      <div style="font-size:9px;color:#4ade80;font-weight:800;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">🏆 Best Pick</div>
+      <div id="tldrBestPick" style="font-size:20px;font-weight:800;color:#fff;">--</div>
+      <div id="tldrBestScore" style="font-size:10px;color:#7a9cc0;margin-top:1px;">score --</div>
     </div>
-    <div id="picksList" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap:12px; margin-top:8px;">
-      <div style="color:var(--muted);font-size:12px;padding:12px 0;">Loading picks…</div>
+    <div style="flex:1;min-width:130px;background:#0d0d2e;border:1px solid #4c3a7a;border-radius:10px;padding:10px 14px;text-align:center;">
+      <div style="font-size:9px;color:#a78bfa;font-weight:800;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">🤖 Robot P&amp;L</div>
+      <div id="tldrRobotPL" style="font-size:20px;font-weight:800;color:#fff;">--</div>
+      <div id="tldrRobotPos" style="font-size:10px;color:#7a9cc0;margin-top:1px;">-- positions</div>
+    </div>
+    <div style="flex:1;min-width:130px;background:#0a1a2e;border:1px solid #1a3a5c;border-radius:10px;padding:10px 14px;text-align:center;">
+      <div style="font-size:9px;color:#6aaeff;font-weight:800;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">📊 Market Regime</div>
+      <div id="tldrRegime" style="font-size:18px;font-weight:800;color:#fff;">--</div>
+      <div id="tldrSpyTrend" style="font-size:10px;color:#7a9cc0;margin-top:1px;">SPY 60-day trend</div>
+    </div>
+    <div style="flex:1;min-width:130px;background:#1a0f00;border:1px solid #5a3d00;border-radius:10px;padding:10px 14px;text-align:center;">
+      <div style="font-size:9px;color:#f59e0b;font-weight:800;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">🏆 Win Rate</div>
+      <div id="tldrWinRate" style="font-size:20px;font-weight:800;color:#fff;">--</div>
+      <div id="tldrTotalPL" style="font-size:10px;color:#7a9cc0;margin-top:1px;">-- closed trades</div>
     </div>
   </div>
 
   <!-- ROBOT PAPER PORTFOLIO -->
-  <div id="sec-robot" style="margin-top:24px; margin-bottom:20px;">
+  <div id="sec-robot" style="margin-bottom:20px;">
     <div class="section-label" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
       <span>🤖 Robot's Paper Trades <span style="font-size:10px;color:var(--muted);font-weight:400;">— live Alpaca paper account · auto-bought every weekday 9:40am ET</span></span>
       <button class="btn btn-sm" onclick="fetchRobotPositions(true)" style="background:#1a1a2e;color:#a78bfa;border:1px solid #4c3a7a;">↻ Refresh</button>
@@ -503,6 +517,16 @@
     </div>
     <div id="robotPositions" style="margin-top:8px;">
       <div style="color:var(--muted);font-size:13px;padding:12px 0;">Loading robot trades…</div>
+    </div>
+  </div>
+
+  <!-- TODAY'S TOP PICKS -->
+  <div id="sec-picks" style="margin-bottom:20px;">
+    <div class="section-label">
+      ⭐ Today's Top Picks <span style="font-size:10px;color:var(--muted);font-weight:400;">— auto-scored · updates every 2 min</span>
+    </div>
+    <div id="picksList" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap:12px; margin-top:8px;">
+      <div style="color:var(--muted);font-size:12px;padding:12px 0;">Loading picks…</div>
     </div>
   </div>
 
@@ -1324,6 +1348,8 @@ async function refreshAll() {
     fetchTrumpPosts();        // throttled — 5 min (Trump Truth Social direct)
     fetchPolicyNews();        // throttled — 15 min (Trump/tariff/policy alerts)
     fetchRobotPositions();    // throttled — 1 min (Alpaca paper account positions)
+    fetchBuyLog();            // buy-log.json — why the bot bought, SPY trend for TLDR
+    fetchTradeHistory();      // trade-history.json — all-time win rate for TLDR
     setTimeout(() => runScreener(), 5000); // throttled — 6 hours; delayed 5s so stock data is ready
     document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
     setStatus('ok', 'All data loaded — ' + now);
@@ -2854,6 +2880,8 @@ function renderDailyPicks() {
     .sort((a, b) => b.score - a.score)
     .slice(0, 3);
 
+  if (top3.length) updateTLDRFromPicks(top3.map(t => ({ symbol: t.sym, score: t.score })));
+
   const medals = ['🥇', '🥈', '🥉'];
   const gradeColor = { A: '#7fff7f', B: '#90caf9', C: '#ffe082', D: '#ff8a65' };
 
@@ -3228,6 +3256,86 @@ function renderCongressBuys() {
   }</div><div style="font-size:10px;color:var(--muted);padding:6px 0;">Based on STOCK Act purchase disclosures and congressional trade news. ×N = times mentioned in recent filings.</div>`;
 }
 
+// ── Buy Log (why the bot bought) ─────────────────────────────────────────────
+let buyLogData = null;
+let tradeHistData = null;
+
+async function fetchBuyLog() {
+  try {
+    const r = await fetch('/api/buylog');
+    if (r.ok) {
+      buyLogData = await r.json();
+      updateTLDRFromBuyLog();
+    }
+  } catch(e) { /* silent */ }
+}
+
+async function fetchTradeHistory() {
+  try {
+    const r = await fetch('/api/tradehistory');
+    if (r.ok) {
+      tradeHistData = await r.json();
+      updateTLDRFromHistory();
+    }
+  } catch(e) { /* silent */ }
+}
+
+function buildWhyStr(symbol) {
+  const trade = buyLogData?.trades?.find(t => t.symbol === symbol);
+  if (!trade?.breakdown) return '';
+  const bd = trade.breakdown;
+  const parts = [];
+  if (bd.fromHighPct != null && bd.fromHighPts > 0) parts.push(`${Math.abs(bd.fromHighPct).toFixed(0)}% off 52W high`);
+  if (bd.momentumPts > 0)    parts.push(`momentum`);
+  if (bd.volPts > 0)         parts.push(`vol surge ${bd.volSurge?.toFixed(1)}x`);
+  if (bd.relStrengthPts > 0) parts.push(`↑ vs SPY`);
+  if (bd.epsPts > 0)         parts.push(`EPS growing`);
+  if (bd.contractPts > 0)    parts.push(`govt contract`);
+  if (!parts.length) return '';
+  return `<div style="font-size:9px;color:#6aaeff;margin-top:5px;line-height:1.4;border-top:1px solid #1a2a3a;padding-top:4px;">WHY score ${trade.score}: ${parts.join(' · ')}</div>`;
+}
+
+function updateTLDRFromBuyLog() {
+  if (!buyLogData) return;
+  if (buyLogData.spyTrend != null) {
+    const t = buyLogData.spyTrend;
+    const el = document.getElementById('tldrRegime');
+    const sub = document.getElementById('tldrSpyTrend');
+    if (el)  { el.textContent = t > 2 ? '📈 Bull' : t > 0 ? '📈 Mild' : '📉 Bear'; el.style.color = t > 0 ? '#4ade80' : '#f87171'; }
+    if (sub) sub.textContent = `SPY ${t > 0 ? '+' : ''}${t.toFixed(1)}% (60-day)`;
+  }
+}
+
+function updateTLDRFromHistory() {
+  if (!tradeHistData?.summary) return;
+  const s = tradeHistData.summary;
+  const wr = document.getElementById('tldrWinRate');
+  const pl = document.getElementById('tldrTotalPL');
+  if (wr) { wr.textContent = s.totalTrades ? s.winRate + '%' : '--'; wr.style.color = s.winRate >= 50 ? '#4ade80' : '#f87171'; }
+  if (pl) pl.textContent = `${s.totalPL >= 0 ? '+' : ''}$${s.totalPL.toFixed(0)} · ${s.totalTrades} trades`;
+}
+
+function updateTLDRFromPicks(picks) {
+  if (!picks?.length) return;
+  const best = picks[0];
+  const bp = document.getElementById('tldrBestPick');
+  const bs = document.getElementById('tldrBestScore');
+  if (bp) bp.textContent = best.symbol;
+  if (bs) bs.textContent = `score ${best.score ?? '--'}`;
+}
+
+function updateTLDRFromRobot() {
+  if (!robotData?.positions) return;
+  const totalPL = robotData.positions.reduce((s, p) => s + p.pl, 0);
+  const plEl  = document.getElementById('tldrRobotPL');
+  const posEl = document.getElementById('tldrRobotPos');
+  if (plEl) {
+    plEl.textContent = (totalPL >= 0 ? '+' : '') + '$' + Math.abs(totalPL).toFixed(2);
+    plEl.style.color = totalPL >= 0 ? '#4ade80' : '#f87171';
+  }
+  if (posEl) posEl.textContent = `${robotData.positions.length} position${robotData.positions.length !== 1 ? 's' : ''}`;
+}
+
 // ── Robot Paper Portfolio ─────────────────────────────────────────────────────
 let robotData = null;
 let lastRobotFetch = 0;
@@ -3247,6 +3355,7 @@ async function fetchRobotPositions(force = false) {
     robotData = await r.json();
     lastRobotFetch = Date.now();
     renderRobotPositions();
+    updateTLDRFromRobot();
   } catch(e) {
     if (posEl) posEl.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:12px 0;">⚠ Alpaca error: ${e.message}</div>`;
   }
@@ -3299,6 +3408,7 @@ function renderRobotPositions() {
       <div style="font-size:12px;color:var(--muted);">Now: <b style="color:var(--text);">$${p.price.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:4})}</b></div>
       <div style="font-size:13px;font-weight:700;margin-top:2px;color:${plColor};">${plSign}$${Math.abs(p.pl).toFixed(2)} <span style="font-size:11px;">(${pctSign}${p.plPct.toFixed(2)}%)</span></div>
       <div style="font-size:10px;color:var(--muted);">Value: $${p.value.toFixed(2)}</div>
+      ${buildWhyStr(p.symbol)}
     </div>`;
   }
 

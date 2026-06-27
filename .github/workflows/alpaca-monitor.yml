@@ -5,6 +5,9 @@ on:
     - cron: '45 19 * * 1-5'   # 3:45pm ET (19:45 UTC) Mon–Fri
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   monitor:
     runs-on: ubuntu-latest
@@ -19,3 +22,10 @@ jobs:
           ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
           RESEND_API_KEY:    ${{ secrets.RESEND_API_KEY }}
         run: node scripts/alpaca-monitor.js
+      - name: Commit trade history
+        run: |
+          git config user.email "noreply@github.com"
+          git config user.name "GitHub Actions"
+          git add data/trade-history.json || true
+          git diff --staged --quiet || git commit -m "trade-history: $(date -u '+%Y-%m-%d') [skip vercel]"
+          git push origin main || true
