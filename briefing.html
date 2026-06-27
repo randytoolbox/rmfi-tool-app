@@ -96,6 +96,28 @@
   <div class="stats" id="heroStats"></div>
 </div>
 
+<div class="takeaways-wrap" id="takeawaysWrap" style="display:none;">
+  <div style="max-width:900px;margin:0 auto;padding:16px 16px 0;">
+    <div style="background:#071a07;border:1px solid #2d5a2d;border-radius:10px;padding:16px 18px;">
+      <div style="color:#4ade80;font-weight:800;font-size:12px;letter-spacing:.8px;margin-bottom:12px;">📋 TODAY'S TOP 3 TAKEAWAYS</div>
+      <div style="display:grid;gap:10px;">
+        <div style="background:#040d04;border-radius:6px;padding:10px 12px;border-left:3px solid #4ade80;">
+          <div style="color:#4ade80;font-size:10px;font-weight:900;margin-bottom:4px;">📈 TRADER</div>
+          <div style="color:#c8e8c8;font-size:13px;line-height:1.5;" id="takeawayTrader"></div>
+        </div>
+        <div style="background:#040d04;border-radius:6px;padding:10px 12px;border-left:3px solid #f59e0b;">
+          <div style="color:#f59e0b;font-size:10px;font-weight:900;margin-bottom:4px;">🏭 RMFI LEAD</div>
+          <div style="color:#c8e8c8;font-size:13px;line-height:1.5;" id="takeawayRmfi"></div>
+        </div>
+        <div style="background:#040d04;border-radius:6px;padding:10px 12px;border-left:3px solid #4aaeff;">
+          <div style="color:#4aaeff;font-size:10px;font-weight:900;margin-bottom:4px;">🎯 WILDCARD</div>
+          <div style="color:#c8e8c8;font-size:13px;line-height:1.5;" id="takeawayWildcard"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="filter-bar" id="filterBar">
   <span style="font-size:11px;color:var(--muted);font-weight:700;">FILTER:</span>
   <button class="filter-btn active" data-cat="all" onclick="setFilter('all')">All</button>
@@ -195,11 +217,21 @@ async function loadBriefing() {
     document.getElementById('heroMeta').textContent = dateStr + ' · Auto-scraped with Playwright + Claude AI';
     document.getElementById('footerTs').textContent = data.generated ? 'Generated ' + new Date(data.generated).toLocaleTimeString() : '';
 
+    // Top 3 Takeaways
+    const tt = data.topTakeaways;
+    if (tt?.trader || tt?.rmfiLead || tt?.wildcard) {
+      document.getElementById('takeawayTrader').textContent   = tt.trader   || '';
+      document.getElementById('takeawayRmfi').textContent     = tt.rmfiLead || '';
+      document.getElementById('takeawayWildcard').textContent = tt.wildcard || '';
+      document.getElementById('takeawaysWrap').style.display  = 'block';
+    }
+
     // Stats chips
     const cats = [...new Set(allArticles.map(a => a.analysis?.category).filter(Boolean))];
     const highUrgency = allArticles.filter(a => a.analysis?.urgency === 'high').length;
     const rmfiLeads   = allArticles.filter(a => a.analysis?.rmfi).length;
     document.getElementById('heroStats').innerHTML = [
+      `<span class="stat-chip">📡 ${data.sourcesRead || ''} sources</span>`,
       `<span class="stat-chip">📰 ${data.articlesRead} articles read</span>`,
       data.aiAnalyzed ? `<span class="stat-chip">🤖 ${data.aiAnalyzed} AI-analyzed</span>` : '',
       highUrgency     ? `<span class="stat-chip" style="color:#f59e0b;">⚡ ${highUrgency} high-urgency</span>` : '',
