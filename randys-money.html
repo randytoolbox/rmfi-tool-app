@@ -1241,7 +1241,7 @@ function renderMacro() {
 
 async function fetchMacro() {
   try {
-    const r = await fetch('/api/macro');
+    const r = await fetch('/api/prices?macro=true');
     if (r.ok) {
       const d = await r.json();
       if (d.btcDominance != null) macroData.btcDominance    = d.btcDominance;
@@ -3002,7 +3002,7 @@ async function fetchStock52W() {
   for (let i = 0; i < allSyms.length; i += BATCH) batches.push(allSyms.slice(i, i + BATCH));
   await Promise.all(batches.map(async batch => {
     try {
-      const r = await fetch(`/api/quote?syms=${encodeURIComponent(batch.join(','))}`, { signal: AbortSignal.timeout(15000) });
+      const r = await fetch(`/api/stock?syms=${encodeURIComponent(batch.join(','))}`, { signal: AbortSignal.timeout(15000) });
       if (!r.ok) return;
       const results = (await r.json())?.quoteResponse?.result || [];
       for (const q of results) {
@@ -3289,7 +3289,7 @@ async function fetchCongressBuys(force = false) {
   // Fetch prices for congress buy tickers not yet in stockData
   const missing = cBuysData.filter(d => !stockData[d.sym]?.price).map(d => d.sym);
   if (missing.length) {
-    fetch(`/api/quote?syms=${encodeURIComponent(missing.slice(0, 20).join(','))}`, { signal: AbortSignal.timeout(10000) })
+    fetch(`/api/stock?syms=${encodeURIComponent(missing.slice(0, 20).join(','))}`, { signal: AbortSignal.timeout(10000) })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         const results = data?.quoteResponse?.result || [];
@@ -3355,7 +3355,7 @@ async function fetchBuyLog() {
 
 async function fetchTradeHistory() {
   try {
-    const r = await fetch('/api/tradehistory');
+    const r = await fetch('/api/buylog?type=history');
     if (r.ok) {
       tradeHistData = await r.json();
       updateTLDRFromHistory();
@@ -3430,7 +3430,7 @@ async function fetchRobotPositions(force = false) {
   if (posEl) posEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px 0;">Loading robot trades…</div>';
 
   try {
-    const r = await fetch('/api/positions', { signal: AbortSignal.timeout(14000) });
+    const r = await fetch('/api/stock?positions=true', { signal: AbortSignal.timeout(14000) });
     if (!r.ok) {
       const errBody = await r.json().catch(() => ({}));
       throw new Error(errBody.error || `HTTP ${r.status}`);

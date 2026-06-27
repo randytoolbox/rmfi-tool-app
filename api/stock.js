@@ -1,24 +1,85 @@
-module.exports = async function handler(req, res) {
-  const { sym } = req.query;
-  if (!sym) return res.status(400).json({ error: 'sym required' });
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
+const ALPACA_BASE = 'https://paper-api.alpaca.markets';
 
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
 
   const keyId     = process.env.ALPACA_KEY_ID;
   const secretKey = process.env.ALPACA_SECRET_KEY;
+  const alpacaHeaders = {
+    'APCA-API-KEY-ID':     keyId,
+    'APCA-API-SECRET-KEY': secretKey,
+  };
+
+  // ── Alpaca positions + account (was api/positions.js) ────────────────────
+  if (req.query.positions) {
+    if (!keyId || !secretKey) return res.status(500).json({ error: 'Alpaca credentials not configured' });
+    try {
+      const [posRes, acctRes] = await Promise.all([
+        fetch(`${ALPACA_BASE}/v2/positions`, { headers: alpacaHeaders, signal: AbortSignal.timeout(12000) }),
+        fetch(`${ALPACA_BASE}/v2/account`,   { headers: alpacaHeaders, signal: AbortSignal.timeout(12000) }),
+      ]);
+      if (!posRes.ok)  throw new Error(`positions ${posRes.status}`);
+      if (!acctRes.ok) throw new Error(`account ${acctRes.status}`);
+      const positions = await posRes.json();
+      const account   = await acctRes.json();
+      res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
+      return res.json({
+        positions: positions.map(p => ({
+          symbol: p.symbol, qty: parseFloat(p.qty),
+          entry:  parseFloat(p.avg_entry_price), price: parseFloat(p.current_price),
+          value:  parseFloat(p.market_value),    cost:  parseFloat(p.cost_basis),
+          pl:     parseFloat(p.unrealized_pl),   plPct: parseFloat(p.unrealized_plpc) * 100,
+          side:   p.side,
+        })),
+        account: {
+          equity: parseFloat(account.equity), cash: parseFloat(account.cash),
+          buyingPower: parseFloat(account.buying_power), portfolioVal: parseFloat(account.portfolio_value),
+        },
+      });
+    } catch (e) { return res.status(502).json({ error: e.message }); }
+  }
+
+  // ── Batch quote (was api/quote.js) ───────────────────────────────────────
+  if (req.query.syms) {
+    const symbols = req.query.syms.split(',').map(s => s.trim()).filter(Boolean);
+    const results = await Promise.all(symbols.map(async sym => {
+      try {
+        const r = await fetch(
+          `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=1y&interval=1mo`,
+          { headers: { 'User-Agent': UA } }
+        );
+        if (!r.ok) return null;
+        const data = await r.json();
+        const meta   = data?.chart?.result?.[0]?.meta;
+        if (!meta) return null;
+        const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(v => v != null) || [];
+        return {
+          symbol:                     meta.symbol || sym,
+          fiftyTwoWeekHigh:           meta.fiftyTwoWeekHigh ?? (closes.length ? Math.max(...closes) : null),
+          fiftyTwoWeekLow:            meta.fiftyTwoWeekLow  ?? (closes.length ? Math.min(...closes) : null),
+          regularMarketPrice:         meta.regularMarketPrice,
+          regularMarketChangePercent: meta.regularMarketChangePercent,
+          shortName:                  meta.shortName || sym,
+        };
+      } catch { return null; }
+    }));
+    res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+    return res.json({ quoteResponse: { result: results.filter(Boolean), error: null } });
+  }
+
+  // ── Single symbol price ───────────────────────────────────────────────────
+  const { sym } = req.query;
+  if (!sym) return res.status(400).json({ error: 'sym, syms, or positions required' });
+
+  res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
 
   let price = null, prevClose = null, changePct = null;
 
-  // Try Alpaca first (works for stocks; IEX may miss some ETFs)
   if (keyId && secretKey) {
     try {
       const r = await fetch(`https://data.alpaca.markets/v2/stocks/snapshots?symbols=${encodeURIComponent(sym)}&feed=iex`, {
-        headers: {
-          'APCA-API-KEY-ID':     keyId,
-          'APCA-API-SECRET-KEY': secretKey,
-        },
-        signal: AbortSignal.timeout(8000),
+        headers: alpacaHeaders, signal: AbortSignal.timeout(8000),
       });
       if (r.ok) {
         const data = await r.json();
@@ -32,12 +93,10 @@ module.exports = async function handler(req, res) {
     } catch (_) {}
   }
 
-  // Fall back to Yahoo Finance when Alpaca has no price (e.g. commodity ETFs on IEX)
   if (!price) {
     try {
       const yf = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-        signal: AbortSignal.timeout(8000),
+        headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000),
       });
       if (yf.ok) {
         const yfData = await yf.json();
@@ -54,17 +113,10 @@ module.exports = async function handler(req, res) {
   if (!price) return res.status(404).json({ error: 'Price unavailable' });
 
   return res.json({
-    chart: {
-      result: [{
-        meta: {
-          regularMarketPrice:         price,
-          previousClose:              prevClose,
-          regularMarketChangePercent: changePct,
-          fiftyTwoWeekHigh:           null,
-          fiftyTwoWeekLow:            null,
-          shortName:                  sym,
-        }
-      }]
-    }
+    chart: { result: [{ meta: {
+      regularMarketPrice: price, previousClose: prevClose,
+      regularMarketChangePercent: changePct,
+      fiftyTwoWeekHigh: null, fiftyTwoWeekLow: null, shortName: sym,
+    }}]}
   });
 };

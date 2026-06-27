@@ -6,14 +6,11 @@
     "api/stock.js":          { "maxDuration": 15 },
     "api/news.js":           { "maxDuration": 15 },
     "api/scan.js":           { "maxDuration": 30 },
-    "api/macro.js":          { "maxDuration": 15 },
     "api/history.js":        { "maxDuration": 20 },
     "api/prices.js":         { "maxDuration": 15 },
     "api/earnings.js":       { "maxDuration": 15 },
-    "api/positions.js":      { "maxDuration": 15 },
     "api/subcontractors.js": { "maxDuration": 40 },
     "api/buylog.js":         { "maxDuration": 10 },
-    "api/tradehistory.js":   { "maxDuration": 10 },
     "api/telegram.js":       { "maxDuration": 10 }
   }
 }
