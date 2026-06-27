@@ -33,6 +33,18 @@ const RECIPIENT_MAP = {
   'MRO':   ['MARATHON OIL'],
   'WMB':   ['WILLIAMS COMPANIES'],
   'PYPL':  ['PAYPAL'],
+  // ── Nuclear / Energy ─────────────────────────────────────────────────────
+  'BWXT':  ['BWX TECHNOLOGIES'],            // machines nuclear reactor components
+  'CCJ':   ['CAMECO'],                       // uranium
+  'LEU':   ['CENTRUS ENERGY'],              // uranium enrichment
+  'CEG':   ['CONSTELLATION ENERGY'],        // nuclear power operator
+  'VST':   ['VISTRA'],                       // nuclear + power gen
+  // ── Data Center Infrastructure ────────────────────────────────────────────
+  'VRT':   ['VERTIV'],                       // data center cooling/power
+  'ETN':   ['EATON CORPORATION'],           // power management
+  'EQIX':  ['EQUINIX'],                     // data center REIT
+  'DLR':   ['DIGITAL REALTY'],              // data center REIT
+  'NVT':   ['NVENT ELECTRIC'],              // enclosures / data center hardware
 };
 
 // Maps prime contractor ticker → downstream supplier tickers that benefit
@@ -41,8 +53,17 @@ const DOWNSTREAM_MAP = {
   'MSFT':  ['NVDA', 'DELL', 'AVGO'],
   'AMZN':  ['NVDA', 'DELL', 'AVGO'],
   'GOOGL': ['NVDA', 'DELL'],
-  'LMT':   ['RTX', 'CAT', 'AVGO', 'MTSI'],
-  'RTX':   ['LMT', 'AVGO', 'MTSI', 'FLEX'],
+  'LMT':   ['RTX', 'CAT', 'AVGO', 'MTSI', 'BWXT'],
+  'RTX':   ['LMT', 'AVGO', 'MTSI', 'FLEX', 'BWXT'],
+  // nuclear: when DOE/NRC awards to nuclear operators, suppliers benefit
+  'CEG':   ['BWXT', 'CCJ', 'LEU', 'VRT'],
+  'VST':   ['BWXT', 'CCJ', 'LEU'],
+  'BWXT':  ['CCJ', 'LEU'],
+  // data center: hyperscaler contracts → infrastructure suppliers benefit
+  'MSFT':  ['NVDA', 'DELL', 'AVGO', 'VRT', 'ETN'],
+  'AMZN':  ['NVDA', 'DELL', 'AVGO', 'VRT', 'ETN'],
+  'GOOGL': ['NVDA', 'DELL', 'VRT', 'ETN'],
+  'META':  ['NVDA', 'AVGO', 'VRT', 'ETN'],
   'PLTR':  ['IBM', 'DELL', 'CRWD'],
   'CAT':   ['OXY', 'HAL', 'WMB'],
   'CVX':   ['HAL', 'MRO', 'OXY'],

@@ -26,10 +26,18 @@ const SOURCES = [
   { rss:true,  name:'Breaking Defense',    scrape:()=>scrapeRSS('https://breakingdefense.com/feed/',6) },
   { rss:true,  name:'National Defense',    scrape:()=>scrapeRSS('https://www.nationaldefensemagazine.org/rss/articles',5) },
   { rss:true,  name:'GovConWire',          scrape:()=>scrapeRSS('https://www.govconwire.com/feed/',5) },
-  // ── Google News custom searches (precision machining / defense contracts) ─
-  { rss:true,  name:'Google News — Machining',    scrape:()=>scrapeRSS('https://news.google.com/rss/search?q=precision+machining+defense+contract+aerospace&hl=en-US&gl=US&ceid=US:en',5) },
-  { rss:true,  name:'Google News — Defense Mfg',  scrape:()=>scrapeRSS('https://news.google.com/rss/search?q=defense+contract+award+manufacturing+supplier&hl=en-US&gl=US&ceid=US:en',5) },
-  { rss:true,  name:'Google News — Crypto',        scrape:()=>scrapeRSS('https://news.google.com/rss/search?q=bitcoin+ethereum+crypto+market+today&hl=en-US&gl=US&ceid=US:en',5) },
+  // ── Data Center / Infrastructure ─────────────────────────────────────────
+  { rss:true,  name:'Data Center Dynamics',  scrape:()=>scrapeRSS('https://www.datacenterdynamics.com/en/rss/',6) },
+  { rss:true,  name:'Data Center Knowledge', scrape:()=>scrapeRSS('https://www.datacenterknowledge.com/rss.xml',5) },
+  // ── Nuclear / Energy ─────────────────────────────────────────────────────
+  { rss:true,  name:'World Nuclear News',    scrape:()=>scrapeRSS('https://world-nuclear-news.org/rss',5) },
+  // ── Google News custom searches ───────────────────────────────────────────
+  { rss:true,  name:'Google News — Machining',        scrape:()=>scrapeRSS('https://news.google.com/rss/search?q=precision+machining+defense+contract+aerospace&hl=en-US&gl=US&ceid=US:en',5) },
+  { rss:true,  name:'Google News — Defense Mfg',      scrape:()=>scrapeRSS('https://news.google.com/rss/search?q=defense+contract+award+manufacturing+supplier&hl=en-US&gl=US&ceid=US:en',5) },
+  { rss:true,  name:'Google News — Crypto',            scrape:()=>scrapeRSS('https://news.google.com/rss/search?q=bitcoin+ethereum+crypto+market+today&hl=en-US&gl=US&ceid=US:en',5) },
+  { rss:true,  name:'Google News — Data Centers',      scrape:()=>scrapeRSS('https://news.google.com/rss/search?q=data+center+construction+permit+%22breaking+ground%22&hl=en-US&gl=US&ceid=US:en',5) },
+  { rss:true,  name:'Google News — SMR Nuclear',       scrape:()=>scrapeRSS('https://news.google.com/rss/search?q=%22small+modular+reactor%22+OR+SMR+construction+permit+license+nuclear&hl=en-US&gl=US&ceid=US:en',5) },
+  { rss:true,  name:'Google News — Nuclear+DataCenter',scrape:()=>scrapeRSS('https://news.google.com/rss/search?q=nuclear+power+data+center+hyperscaler+energy+agreement&hl=en-US&gl=US&ceid=US:en',5) },
   // ── Playwright sources (bypass bot protection) ────────────────────────────
   { rss:false, name:'Intellectia — AI Finance', scrape:scrapeIntellectia },
   { rss:false, name:'Defense News',             scrape:scrapeDefenseNews  },
@@ -167,14 +175,17 @@ Return ONLY valid JSON:
 {
   "insight": "1-2 sentence key takeaway — what happened and why it matters for investors or defense manufacturers",
   "tickers": ["TICK1","TICK2"],
-  "rmfi": "one sentence on any sales lead or opportunity for a precision machining company, or null if not relevant",
+  "rmfi": "one sentence on any sales lead or opportunity for a precision machining company — include data center cooling/power components, nuclear SMR reactor components, and defense parts, or null if not relevant",
   "category": "AI/Tech",
   "urgency": "high"
 }
 
-category must be one of: AI/Tech, Defense, Government, Markets, Crypto, Other
+category must be one of: AI/Tech, Defense, Government, Markets, Crypto, Infrastructure, Energy, Other
+  Infrastructure = data centers, construction, real estate, telecom buildout
+  Energy = nuclear, SMR, power grids, oil/gas, renewables
 urgency must be one of: high, medium, low
-tickers: only clearly relevant publicly-traded US tickers, max 4, empty array if none`;
+tickers: only clearly relevant publicly-traded US tickers, max 4, empty array if none
+  Key tickers to consider: NVDA MSFT AMZN GOOGL META for data centers; OKLO SMR BWXT CCJ LEU VST CEG for nuclear/energy; VRT ETN EQIX DLR for infrastructure`;
 
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -246,8 +257,8 @@ function buildEmail(allArticles, briefingDate, topTakeaways) {
     byCategory[cat].push(a);
   }
 
-  const catOrder = ['AI/Tech','Defense','Government','Markets','Crypto','Other'];
-  const catIcons = { 'AI/Tech':'🤖','Defense':'🛡️','Government':'🏛️','Markets':'📈','Crypto':'₿','Other':'📰' };
+  const catOrder = ['AI/Tech','Infrastructure','Energy','Defense','Government','Markets','Crypto','Other'];
+  const catIcons = { 'AI/Tech':'🤖','Infrastructure':'🏗️','Energy':'⚡','Defense':'🛡️','Government':'🏛️','Markets':'📈','Crypto':'₿','Other':'📰' };
 
   const summaryHtml = topTakeaways ? `
   <div style="background:#0a1f0a;border:1px solid #2d5a2d;border-radius:10px;padding:20px 22px;margin-bottom:24px;">
