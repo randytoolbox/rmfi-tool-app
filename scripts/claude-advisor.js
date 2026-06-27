@@ -44,6 +44,13 @@ async function main() {
     `[${a.analysis.category} | ${a.analysis.urgency}] ${a.title}\n  → ${a.analysis.insight}\n  Tickers: ${(a.analysis.tickers||[]).join(', ')||'none'}\n  RMFI: ${a.analysis.rmfi || 'none'}`
   ).join('\n\n');
 
+  // Gmail section (added by gmail-reader.js)
+  const gmailData    = briefing.gmail;
+  const gmailDigest  = gmailData?.messages?.length
+    ? `\nRANDY'S INBOX (${gmailData.messages.length} relevant emails from last 24h):\n` +
+      gmailData.messages.map(m => `  • [${m.from.replace(/<.*>/, '').trim()}] ${m.subject}\n    ${m.snippet?.slice(0, 120)}`).join('\n')
+    : '';
+
   const botContext = buyLog ? `
 Bot's last run (${buyLog.date}):
 - SPY trend: ${buyLog.spyTrend !== null ? buyLog.spyTrend + '%' : 'unknown'}
@@ -66,7 +73,7 @@ ${histContext}
 
 TODAY'S NEWS (${allAnalyzed.length} articles):
 ${articleDigest}
-
+${gmailDigest}
 Give Randy direct, specific, actionable advice. Return ONLY valid JSON:
 {
   "topTrade": "The single most important stock to watch or consider this week — name a specific ticker, the specific catalyst from today's news, and exactly what to watch for. Be direct, not generic.",
@@ -152,6 +159,17 @@ Give Randy direct, specific, actionable advice. Return ONLY valid JSON:
   <div style="background:#0a1a2e;border-radius:10px;padding:14px 18px;margin-bottom:14px;">
     <div style="color:#6aaeff;font-size:10px;font-weight:900;letter-spacing:.5px;margin-bottom:8px;">👀 TICKERS TO WATCH</div>
     ${watchBadges}
+  </div>` : ''}
+
+  ${gmailData?.messages?.length ? `
+  <div style="background:#0a1a2e;border-radius:10px;padding:16px 18px;margin-bottom:14px;border-left:4px solid #38bdf8;">
+    <div style="color:#38bdf8;font-size:10px;font-weight:900;letter-spacing:.5px;margin-bottom:10px;">📬 YOUR INBOX (${gmailData.messages.length} relevant emails)</div>
+    ${gmailData.messages.slice(0,8).map(m => `
+    <div style="padding:8px 0;border-bottom:1px solid #0f2540;">
+      <div style="color:#94a3b8;font-size:11px;">${m.from.replace(/<.*>/, '').trim()}</div>
+      <div style="color:#e0e7ff;font-size:12px;font-weight:600;margin:2px 0;">${m.subject}</div>
+      <div style="color:#64748b;font-size:11px;">${(m.snippet||'').slice(0,100)}</div>
+    </div>`).join('')}
   </div>` : ''}
 
   ${buyLog ? `

@@ -29,6 +29,13 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: node scripts/morning-briefing.js
 
+      - name: Read Gmail inbox
+        env:
+          GMAIL_CLIENT_ID:     ${{ secrets.GMAIL_CLIENT_ID }}
+          GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
+          GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
+        run: node scripts/gmail-reader.js
+
       - name: Run Claude advisor
         env:
           RESEND_API_KEY:    ${{ secrets.RESEND_API_KEY }}
