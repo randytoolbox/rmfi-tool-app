@@ -124,78 +124,79 @@ async function fetchStock(sym) {
   } catch { return null; }
 }
 
+// Returns { total, breakdown } — breakdown is shown in the UI and emailed
 function score(d, contractSignals, barsMap, fundamentals, spyTrend) {
-  if (!d?.price) return -1;
-
-  // Hard filter 1: price floor
-  if (d.price < MIN_PRICE) return -1;
+  const FAIL = { total: -1, breakdown: null };
+  if (!d?.price) return FAIL;
+  if (d.price < MIN_PRICE) return FAIL;
 
   const eps = fundamentals?.[d.symbol];
-
-  // Hard filter 2: profitability — ETFs have null EPS and pass through
-  if (eps?.epsTrailing !== null && eps?.epsTrailing !== undefined && eps.epsTrailing <= 0) return -1;
-
-  // Hard filter 3: earnings must be GROWING (consensus: SA + CANSLIM + Fool + Magic Formula)
-  // If analysts expect >5% earnings decline, skip — declining earnings = losing company
+  if (eps?.epsTrailing !== null && eps?.epsTrailing !== undefined && eps.epsTrailing <= 0) return FAIL;
   if (eps?.epsForward !== null && eps?.epsForward !== undefined &&
       eps?.epsTrailing !== null && eps?.epsTrailing !== undefined && eps.epsTrailing > 0) {
-    if (eps.epsForward < eps.epsTrailing * 0.95) return -1;
+    if (eps.epsForward < eps.epsTrailing * 0.95) return FAIL;
   }
 
-  // Hard filter 4: trend — must be in sustained uptrend on both timeframes
   const bars      = barsMap[d.symbol] || [];
   const trendLong = calcTrend(bars, TREND_DAYS);
   const trend5    = calcTrend(bars, 5);
-  if (trendLong !== null && trendLong <= 0) return -1;
-  if (trend5    !== null && trend5    <= 0) return -1;
+  if (trendLong !== null && trendLong <= 0) return FAIL;
+  if (trend5    !== null && trend5    <= 0) return FAIL;
 
   let s = 0;
+  const bd = { fromHighPts: 0, momentumPts: 0, epsPts: 0, relStrengthPts: 0, volPts: 0, contractPts: 0 };
 
-  // Factor 1: Value — discount from 52W high
   const fromHigh = d.high52 ? (d.price - d.high52) / d.high52 * 100 : null;
+  bd.fromHighPct = fromHigh;
   if (fromHigh !== null) {
-    if (fromHigh < -30) s += 20;
-    else if (fromHigh < -20) s += 15;
-    else if (fromHigh < -10) s += 8;
-    else if (fromHigh < -5)  s += 3;
-    if (fromHigh > -2) s -= 10;
+    if (fromHigh < -30)      { bd.fromHighPts = 20; }
+    else if (fromHigh < -20) { bd.fromHighPts = 15; }
+    else if (fromHigh < -10) { bd.fromHighPts = 8;  }
+    else if (fromHigh < -5)  { bd.fromHighPts = 3;  }
+    else if (fromHigh > -2)  { bd.fromHighPts = -10; }
+    s += bd.fromHighPts;
   }
 
-  // Factor 2: Momentum — previous day % change
+  bd.changePct = d.changePct;
   if (d.changePct != null) {
-    if (d.changePct >= 0.5 && d.changePct <= 4) s += 10;
-    else if (d.changePct > 4) s += 4;
-    else if (d.changePct < -4) s -= 5;
+    if (d.changePct >= 0.5 && d.changePct <= 4)  bd.momentumPts = 10;
+    else if (d.changePct > 4)                     bd.momentumPts = 4;
+    else if (d.changePct < -4)                    bd.momentumPts = -5;
+    s += bd.momentumPts;
   }
 
-  // Factor 3: Earnings estimate revision — analysts raising forward estimates is bullish
   if (eps?.epsForward !== null && eps?.epsForward !== undefined &&
       eps?.epsTrailing !== null && eps?.epsTrailing !== undefined && eps.epsTrailing > 0) {
     const revision = (eps.epsForward - eps.epsTrailing) / eps.epsTrailing;
-    if (revision > 0.15) s += 12;       // analysts expect 15%+ EPS growth
-    else if (revision > 0.05) s += 6;   // analysts expect 5%+ EPS growth
+    bd.epsRevision = revision;
+    if (revision > 0.15)      bd.epsPts = 12;
+    else if (revision > 0.05) bd.epsPts = 6;
+    s += bd.epsPts;
   }
 
-  // Factor 4: Relative strength vs market (CANSLIM L + SA momentum — leader not laggard)
-  // Stocks outperforming SPY over same window are institutional favorites
+  bd.trendLong = trendLong;
   if (trendLong !== null && spyTrend !== null && spyTrend > 0) {
-    if (trendLong > spyTrend * 1.5) s += 12;  // crushing the market
-    else if (trendLong > spyTrend) s += 6;     // outperforming market
+    if (trendLong > spyTrend * 1.5)  bd.relStrengthPts = 12;
+    else if (trendLong > spyTrend)   bd.relStrengthPts = 6;
+    s += bd.relStrengthPts;
   }
 
-  // Factor 5: Volume surge (CANSLIM S — institutional supply/demand confirmation)
-  // A price move on heavy volume = real buying, not noise
   const volSurge = calcVolumeSurge(bars);
+  bd.volSurge = volSurge;
   if (volSurge !== null) {
-    if (volSurge > 2.0) s += 10;   // volume doubled — strong institutional accumulation
-    else if (volSurge > 1.5) s += 6;
+    if (volSurge > 2.0)      bd.volPts = 10;
+    else if (volSurge > 1.5) bd.volPts = 6;
+    s += bd.volPts;
   }
 
-  // Factor 6: Government contract catalyst
   const signal = contractSignals?.[d.symbol];
-  if (signal) s += signal.boost;
+  if (signal) {
+    bd.contractPts    = signal.boost;
+    bd.contractAgency = signal.agency;
+    s += signal.boost;
+  }
 
-  return s;
+  return { total: s, breakdown: bd };
 }
 
 async function main() {
@@ -241,22 +242,23 @@ async function main() {
   console.log(`Got data for ${allData.length}/${WATCHLIST.length} symbols`);
 
   const scored = allData
-    .map(d => ({ ...d, _score: score(d, contractSignals, barsMap, fundamentals, spyTrend) }))
+    .map(d => {
+      const { total, breakdown } = score(d, contractSignals, barsMap, fundamentals, spyTrend);
+      return { ...d, _score: total, _breakdown: breakdown };
+    })
     .filter(d => d._score >= 0 && !heldSymbols.has(d.symbol))
     .sort((a, b) => b._score - a._score);
 
   console.log('\nTop candidates after filters:');
   for (const d of scored.slice(0, 8)) {
-    const tLong = calcTrend(barsMap[d.symbol], TREND_DAYS);
-    const t5    = calcTrend(barsMap[d.symbol], 5);
-    const fh    = d.high52 ? ((d.price - d.high52) / d.high52 * 100).toFixed(1) : 'n/a';
+    const bd     = d._breakdown || {};
+    const fh     = bd.fromHighPct != null ? bd.fromHighPct.toFixed(1) : 'n/a';
     const eps    = fundamentals?.[d.symbol];
     const epsStr = eps?.epsTrailing != null ? `  eps:$${eps.epsTrailing.toFixed(2)}→$${(eps.epsForward ?? eps.epsTrailing).toFixed(2)}` : '';
-    const vol    = calcVolumeSurge(barsMap[d.symbol]);
-    const volStr = vol !== null ? `  vol:${vol.toFixed(1)}x` : '';
+    const volStr = bd.volSurge != null ? `  vol:${bd.volSurge.toFixed(1)}x` : '';
     console.log(
       `  ${d.symbol.padEnd(6)} score:${String(d._score).padStart(3)}  $${d.price.toFixed(2).padStart(8)}` +
-      `  fromHigh:${fh}%  t${TREND_DAYS}:${tLong !== null ? (tLong*100).toFixed(1)+'%' : 'n/a'}  t5:${t5 !== null ? (t5*100).toFixed(1)+'%' : 'n/a'}${epsStr}${volStr}`
+      `  fromHigh:${fh}%  t${TREND_DAYS}:${bd.trendLong !== null && bd.trendLong !== undefined ? (bd.trendLong*100).toFixed(1)+'%' : 'n/a'}${epsStr}${volStr}`
     );
   }
 
@@ -266,6 +268,7 @@ async function main() {
   const today = new Date().toISOString().slice(0, 10);
   console.log('');
 
+  const executed = [];
   for (const pick of picks) {
     const qty = Math.max(1, Math.floor(BUDGET_PER / pick.price));
     try {
@@ -281,9 +284,90 @@ async function main() {
         }),
       });
       console.log(`BUY ${qty} x ${pick.symbol} @ ~$${pick.price.toFixed(2)} = ~$${(qty * pick.price).toFixed(2)}`);
+      executed.push({ symbol: pick.symbol, name: pick.name, qty, price: pick.price,
+                      value: qty * pick.price, score: pick._score, breakdown: pick._breakdown });
     } catch (e) {
       console.error(`Order failed for ${pick.symbol}:`, e.message);
     }
+  }
+
+  // Save buy-log.json (read by randys-money.html via /api/buylog)
+  const { mkdirSync, writeFileSync } = require('fs');
+  const logPath = `${process.cwd()}/data/buy-log.json`;
+  mkdirSync(`${process.cwd()}/data`, { recursive: true });
+  const buyLog = {
+    date:          today,
+    generatedAt:   new Date().toISOString(),
+    spyTrend:      spyTrend !== null ? parseFloat((spyTrend * 100).toFixed(2)) : null,
+    trades:        executed,
+    topCandidates: scored.slice(0, 8).map(d => ({
+      symbol:      d.symbol,
+      score:       d._score,
+      price:       d.price,
+      fromHighPct: d._breakdown?.fromHighPct != null ? parseFloat(d._breakdown.fromHighPct.toFixed(1)) : null,
+    })),
+  };
+  writeFileSync(logPath, JSON.stringify(buyLog, null, 2));
+  console.log(`Buy log saved → data/buy-log.json (${executed.length} trades)`);
+
+  // Email notification when trades execute
+  if (executed.length && process.env.RESEND_API_KEY) {
+    await sendTradeEmail(executed, today);
+  }
+}
+
+function buildTradeReason(bd) {
+  if (!bd) return '';
+  const parts = [];
+  if (bd.fromHighPct != null) parts.push(`${bd.fromHighPct.toFixed(1)}% below 52W high (+${bd.fromHighPts}pts)`);
+  if (bd.momentumPts  > 0)   parts.push(`momentum +${bd.changePct?.toFixed(2)}% (+${bd.momentumPts}pts)`);
+  if (bd.volPts       > 0)   parts.push(`vol surge ${bd.volSurge?.toFixed(1)}x (+${bd.volPts}pts)`);
+  if (bd.epsPts       > 0)   parts.push(`EPS est +${bd.epsRevision != null ? (bd.epsRevision*100).toFixed(0)+'%' : '?'} (+${bd.epsPts}pts)`);
+  if (bd.relStrengthPts > 0) parts.push(`beating SPY (+${bd.relStrengthPts}pts)`);
+  if (bd.contractPts  > 0)   parts.push(`govt contract ${bd.contractAgency||''} (+${bd.contractPts}pts)`);
+  return parts.join(' · ') || 'score criteria met';
+}
+
+async function sendTradeEmail(trades, date) {
+  try {
+    const tradesHtml = trades.map(t => `
+      <div style="background:#0a1a2e;border-radius:8px;padding:14px 16px;margin-bottom:12px;border-left:4px solid #4ade80;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="color:#4ade80;font-weight:800;font-size:16px;">${t.symbol}</span>
+          <span style="color:#a78bfa;font-size:11px;font-weight:700;">SCORE: ${t.score}</span>
+        </div>
+        <div style="color:#e0d7ff;font-size:13px;margin-bottom:4px;">${t.qty} shares @ $${t.price.toFixed(2)} = <strong>$${t.value.toFixed(2)}</strong></div>
+        <div style="color:#7a9cc0;font-size:11px;">WHY: ${buildTradeReason(t.breakdown)}</div>
+      </div>`).join('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="background:#030d18;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+  <div style="background:#071a07;border:2px solid #2d5a2d;border-radius:12px;padding:20px 24px;margin-bottom:20px;">
+    <div style="font-size:22px;font-weight:800;color:#4ade80;margin-bottom:4px;">🤖 Robot Bought Today</div>
+    <div style="color:#7a9cc0;font-size:13px;">${date} · Alpaca Paper Account</div>
+  </div>
+  ${tradesHtml}
+  <div style="margin-top:20px;text-align:center;">
+    <a href="https://rmfi-tool-app.vercel.app/randys-money.html#sec-robot"
+       style="color:#4ade80;font-weight:700;text-decoration:none;">View in Randy's Money →</a>
+  </div>
+  <p style="color:#333;font-size:11px;text-align:center;margin-top:16px;">Paper trading · not real money</p>
+</body></html>`;
+
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from:    "Randy's Robot <onboarding@resend.dev>",
+        to:      ['randybarclay1@gmail.com'],
+        subject: `🤖 Robot bought ${trades.map(t => t.symbol).join(', ')} — ${date}`,
+        html,
+      }),
+    });
+    if (r.ok) console.log('Trade notification sent');
+    else console.warn('Email send failed:', r.status);
+  } catch (e) {
+    console.warn('Trade email error:', e.message);
   }
 }
 

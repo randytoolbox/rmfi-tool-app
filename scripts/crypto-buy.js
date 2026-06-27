@@ -108,7 +108,10 @@ async function main() {
   const results = [];
   for (const w of WATCHLIST) {
     const d = await fetchCryptoData(w);
-    if (d) results.push({ ...d, _score: score(d) });
+    if (d) {
+      const fromHighPct = d.high52 ? (d.price - d.high52) / d.high52 * 100 : null;
+      results.push({ ...d, _score: score(d), _fromHighPct: fromHighPct });
+    }
     await new Promise(r => setTimeout(r, 250)); // CoinCap rate limit
   }
   console.log(`Got data for ${results.length}/${WATCHLIST.length} assets`);
@@ -122,6 +125,7 @@ async function main() {
 
   const today = new Date().toISOString().slice(0, 10);
 
+  const executed = [];
   for (const pick of picks) {
     try {
       await alpaca('/v2/orders', {
@@ -136,9 +140,58 @@ async function main() {
         }),
       });
       console.log(`BUY $${BUDGET_PER} of ${pick.sym} @ ~$${pick.price.toFixed(4)} (score: ${pick._score})`);
+      executed.push({ sym: pick.sym, name: pick.name, price: pick.price, score: pick._score,
+                      fromHighPct: pick._fromHighPct });
     } catch(e) {
       console.error(`Order failed for ${pick.sym}:`, e.message);
     }
+  }
+
+  if (executed.length && process.env.RESEND_API_KEY) {
+    await sendCryptoTradeEmail(executed, today);
+  }
+}
+
+async function sendCryptoTradeEmail(trades, date) {
+  try {
+    const tradesHtml = trades.map(t => `
+      <div style="background:#0a1a2e;border-radius:8px;padding:14px 16px;margin-bottom:12px;border-left:4px solid #f59e0b;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="color:#f59e0b;font-weight:800;font-size:16px;">${t.sym}</span>
+          <span style="color:#a78bfa;font-size:11px;font-weight:700;">SCORE: ${t.score}</span>
+        </div>
+        <div style="color:#e0d7ff;font-size:13px;margin-bottom:4px;">$${BUDGET_PER} notional @ ~$${t.price.toFixed(4)}</div>
+        ${t.fromHighPct != null ? `<div style="color:#7a9cc0;font-size:11px;">${t.fromHighPct.toFixed(1)}% below 52W high</div>` : ''}
+      </div>`).join('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="background:#030d18;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+  <div style="background:#1a1000;border:2px solid #5a3d00;border-radius:12px;padding:20px 24px;margin-bottom:20px;">
+    <div style="font-size:22px;font-weight:800;color:#f59e0b;margin-bottom:4px;">₿ Crypto Bot Bought Today</div>
+    <div style="color:#7a9cc0;font-size:13px;">${date} · Alpaca Paper Account</div>
+  </div>
+  ${tradesHtml}
+  <div style="margin-top:20px;text-align:center;">
+    <a href="https://rmfi-tool-app.vercel.app/randys-money.html#sec-robot"
+       style="color:#f59e0b;font-weight:700;text-decoration:none;">View in Randy's Money →</a>
+  </div>
+  <p style="color:#333;font-size:11px;text-align:center;margin-top:16px;">Paper trading · not real money</p>
+</body></html>`;
+
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from:    "Randy's Robot <onboarding@resend.dev>",
+        to:      ['randybarclay1@gmail.com'],
+        subject: `₿ Crypto bot bought ${trades.map(t => t.sym).join(', ')} — ${date}`,
+        html,
+      }),
+    });
+    if (r.ok) console.log('Crypto trade notification sent');
+    else console.warn('Email send failed:', r.status);
+  } catch (e) {
+    console.warn('Crypto email error:', e.message);
   }
 }
 
