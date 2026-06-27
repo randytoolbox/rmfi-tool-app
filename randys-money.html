@@ -450,9 +450,10 @@
 <div id="marketsBand">
   <div class="mpulse"><div class="mpulse-label">&#128200; S&amp;P 500</div><div class="mpulse-val val-loading" id="mktVal-SPY">--</div><div class="mpulse-sub" id="mktChg-SPY"></div></div>
   <div class="mpulse"><div class="mpulse-label">&#128187; Nasdaq 100</div><div class="mpulse-val val-loading" id="mktVal-QQQ">--</div><div class="mpulse-sub" id="mktChg-QQQ"></div></div>
-  <div class="mpulse"><div class="mpulse-label">&#127941; Gold</div><div class="mpulse-val val-loading" id="mktVal-GLD">--</div><div class="mpulse-sub" id="mktChg-GLD"></div></div>
-  <div class="mpulse"><div class="mpulse-label">&#9899; Silver</div><div class="mpulse-val val-loading" id="mktVal-SLV">--</div><div class="mpulse-sub" id="mktChg-SLV"></div></div>
-  <div class="mpulse"><div class="mpulse-label">&#128707; Oil (WTI)</div><div class="mpulse-val val-loading" id="mktVal-USO">--</div><div class="mpulse-sub" id="mktChg-USO"></div></div>
+  <div class="mpulse"><div class="mpulse-label">🥇 Gold</div><div class="mpulse-val val-loading" id="mktVal-GLD">--</div><div class="mpulse-sub" id="mktChg-GLD"></div></div>
+  <div class="mpulse"><div class="mpulse-label">🥈 Silver</div><div class="mpulse-val val-loading" id="mktVal-SLV">--</div><div class="mpulse-sub" id="mktChg-SLV"></div></div>
+  <div class="mpulse"><div class="mpulse-label">🛢️ WTI Oil</div><div class="mpulse-val val-loading" id="mktVal-USO">--</div><div class="mpulse-sub" id="mktChg-USO"></div></div>
+  <div class="mpulse"><div class="mpulse-label">🛢️ Brent Oil</div><div class="mpulse-val val-loading" id="mktVal-BNO">--</div><div class="mpulse-sub" id="mktChg-BNO"></div></div>
 </div>
 
 <!-- MARKET PULSE — macro weather forecast strip -->
@@ -778,7 +779,7 @@ const STOCK_REFRESH_MS    = 5 * 60 * 1000;
 const CRYPTO_HIST_TTL_MS  = 6 * 60 * 60 * 1000; // 6 hours between full history re-fetches
 
 const DEFAULT_STOCKS = ['SPY','QQQ','DIA','IWM'];
-const MARKETS_SYMS   = ['SPY','QQQ','GLD','SLV','USO'];
+const MARKETS_SYMS   = ['SPY','QQQ','GLD','SLV','USO','BNO'];
 const STOCK_NAMES = {
   SPY:'S&P 500 ETF', QQQ:'Nasdaq 100 ETF', DIA:'Dow Jones ETF', IWM:'Russell 2000 ETF',
   'BRK.B':'Berkshire Hathaway B',
@@ -1842,7 +1843,7 @@ function renderTrumpPosts() {
   const el = document.getElementById('trumpPostList');
   if (!el) return;
   if (!trumpPosts.length) {
-    el.innerHTML = '<div class="news-empty">No Trump posts found — click ↻ Refresh.</div>'; return;
+    el.innerHTML = '<div class="news-empty">No recent Truth Social posts found.</div>'; return;
   }
   const watchSet = new Set(stockWatchlist);
   el.innerHTML = trumpPosts.map(item => {
@@ -1939,7 +1940,7 @@ function renderPolicyWatch() {
   const el = document.getElementById('policyList');
   if (!el) return;
   if (!policyNews.length) {
-    el.innerHTML = '<div class="news-empty">No policy alerts found — click ↻ Refresh.</div>';
+    el.innerHTML = '<div class="news-empty">No policy alerts at this time.</div>';
     return;
   }
   const watchSet = new Set(stockWatchlist);
@@ -3065,7 +3066,7 @@ function renderCongressList() {
   const el = document.getElementById('congList');
   if (!el) return;
   if (!congressTrades.length) {
-    el.innerHTML = '<div class="news-empty">No filings loaded — click &#8635; Refresh above.</div>';
+    el.innerHTML = '<div class="news-empty">No recent filings found.</div>';
     return;
   }
   const watchSet = new Set([...stockWatchlist, ...portfolio]);
@@ -3469,7 +3470,7 @@ function renderHouseLeaderboard() {
   const listEl = document.getElementById('houseLeaderList');
   if (!listEl) return;
   if (!houseLeaderData.length) {
-    listEl.innerHTML = '<div class="news-empty">No data — click ↻ Refresh.</div>';
+    listEl.innerHTML = '<div class="news-empty">No data available.</div>';
     return;
   }
   const followedSet = new Set(followedMembers);
@@ -4297,6 +4298,8 @@ renderTradeJournal();
 renderTrumpPosts();
 renderPolicyWatch();
 refreshAll();
+// Force-fetch news feeds on every page load regardless of cache
+setTimeout(() => { fetchTrumpPosts(true); fetchPolicyNews(true); }, 2000);
 // Dedicated news refresh every 5 minutes
 setInterval(() => fetchNews(), NEWS_TTL);
 // Trump Direct refresh every 5 minutes
