@@ -39,6 +39,7 @@
   .status-dot.ok { background: var(--good); }
   .status-dot.loading { background: var(--accent); animation: blink .8s ease-in-out infinite; }
   .status-dot.error { background: var(--bad); }
+  .status-dot.warn  { background: #f59e0b; }
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
   #statusText { font-size: 13px; color: var(--muted); }
   .btn { border: none; border-radius: 9px; padding: 8px 16px; font-size: 13px; font-weight: 800; cursor: pointer; transition: opacity .15s; }
@@ -1434,9 +1435,9 @@ async function refreshAll() {
     if (hasCached) {
       renderGrid();
       renderMacro();
-      setStatus('error', '⚠ Live prices unavailable — showing cached data. Will retry.');
+      setStatus('warn', '⚠ Showing cached crypto prices — stocks & commodities still live. Auto-retrying.');
     } else {
-      setStatus('error', 'Error: ' + e.message + '. CoinGecko may be rate-limiting. Try again in a minute.');
+      setStatus('error', 'Error: ' + e.message + '. Crypto feed may be rate-limiting. Try again in a minute.');
     }
     // Still run non-CoinGecko fetches
     fetchNews();
