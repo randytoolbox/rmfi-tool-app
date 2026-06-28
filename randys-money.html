@@ -1048,6 +1048,15 @@ let stockHoldings    = load('rm_stockHoldings', {}); // { SYM: { qty, cost } }
 let stockHistory     = load('rm_stockHistory', {});
 let lastHistoryFetch = load('rm_lastHistFetch', 0);
 
+// Clear any cached ETF prices for commodities so they re-fetch as real futures
+(function bustCommodityCache() {
+  let changed = false;
+  ['GLD','SLV','USO','BNO'].forEach(s => {
+    if (stockData[s]) { delete stockData[s]; changed = true; }
+  });
+  if (changed) save('rm_stockData', stockData);
+})();
+
 /// One-time migration: add defense/sector stocks and fix known bad tickers
 (function migrateStocks() {
   let changed = false;
