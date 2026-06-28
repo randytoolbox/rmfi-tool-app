@@ -63,32 +63,27 @@ module.exports = async function handler(req, res) {
     } catch (e) { return res.status(502).json({ error: e.message }); }
   }
 
-  // ── Batch quote (was api/quote.js) ───────────────────────────────────────
+  // ── Batch quote — uses v7/quote (handles futures like GC=F, SI=F natively)
   if (req.query.syms) {
     const symbols = req.query.syms.split(',').map(s => s.trim()).filter(Boolean);
-    const results = await Promise.all(symbols.map(async sym => {
-      try {
-        const r = await fetch(
-          `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=1y&interval=1mo`,
-          { headers: { 'User-Agent': UA } }
-        );
-        if (!r.ok) return null;
-        const data = await r.json();
-        const meta   = data?.chart?.result?.[0]?.meta;
-        if (!meta) return null;
-        const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(v => v != null) || [];
-        return {
-          symbol:                     meta.symbol || sym,
-          fiftyTwoWeekHigh:           meta.fiftyTwoWeekHigh ?? (closes.length ? Math.max(...closes) : null),
-          fiftyTwoWeekLow:            meta.fiftyTwoWeekLow  ?? (closes.length ? Math.min(...closes) : null),
-          regularMarketPrice:         meta.regularMarketPrice,
-          regularMarketChangePercent: meta.regularMarketChangePercent,
-          shortName:                  meta.shortName || sym,
-        };
-      } catch { return null; }
-    }));
-    res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
-    return res.json({ quoteResponse: { result: results.filter(Boolean), error: null } });
+    try {
+      const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbols.join(','))}&fields=regularMarketPrice,regularMarketChangePercent,fiftyTwoWeekHigh,fiftyTwoWeekLow,shortName`;
+      const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(9000) });
+      if (!r.ok) throw new Error(`Yahoo v7 ${r.status}`);
+      const data = await r.json();
+      const results = (data?.quoteResponse?.result || []).map(q => ({
+        symbol:                     q.symbol,
+        regularMarketPrice:         q.regularMarketPrice,
+        regularMarketChangePercent: q.regularMarketChangePercent ?? null,
+        fiftyTwoWeekHigh:           q.fiftyTwoWeekHigh ?? null,
+        fiftyTwoWeekLow:            q.fiftyTwoWeekLow  ?? null,
+        shortName:                  q.shortName || q.symbol,
+      }));
+      res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+      return res.json({ quoteResponse: { result: results, error: null } });
+    } catch(e) {
+      return res.status(502).json({ error: e.message, quoteResponse: { result: [], error: e.message } });
+    }
   }
 
   // ── Single symbol price ───────────────────────────────────────────────────
