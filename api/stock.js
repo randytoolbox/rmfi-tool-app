@@ -11,6 +11,29 @@ module.exports = async function handler(req, res) {
     'APCA-API-SECRET-KEY': secretKey,
   };
 
+  // ── Close a single Alpaca position (POST or GET ?close=SYMBOL) ─────────────
+  if (req.query.close || (req.method === 'POST' && req.body?.close)) {
+    res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') return res.status(200).end();
+    if (!keyId || !secretKey) return res.status(500).json({ error: 'Alpaca credentials not configured' });
+    const symbol = req.query.close || req.body?.close;
+    const alpacaSym = symbol.replace('/', '%2F');
+    try {
+      const r = await fetch(`${ALPACA_BASE}/v2/positions/${alpacaSym}`, {
+        method: 'DELETE',
+        headers: alpacaHeaders,
+        signal: AbortSignal.timeout(10000),
+      });
+      const body = await r.text();
+      const data = body ? JSON.parse(body) : {};
+      if (!r.ok) return res.status(r.status).json({ error: data.message || `Alpaca ${r.status}` });
+      return res.json({ ok: true, order: data });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   // ── Alpaca positions + account (was api/positions.js) ────────────────────
   if (req.query.positions) {
     if (!keyId || !secretKey) return res.status(500).json({ error: 'Alpaca credentials not configured' });

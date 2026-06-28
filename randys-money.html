@@ -3605,10 +3605,7 @@ function renderRobotPositions() {
 async function closeRobotPosition(symbol, dispSym, plLabel) {
   if (!confirm(`Close ${dispSym}?\nP&L: ${plLabel}\n\nThis sells the full position in the paper account.`)) return;
   try {
-    const r = await fetch('/api/close-position', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ symbol }),
+    const r = await fetch(`/api/stock?close=${encodeURIComponent(symbol)}`, {
       signal: AbortSignal.timeout(12000),
     });
     const data = await r.json();
