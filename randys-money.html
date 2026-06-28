@@ -1050,13 +1050,7 @@ let stockHistory     = load('rm_stockHistory', {});
 let lastHistoryFetch = load('rm_lastHistFetch', 0);
 
 // Clear any cached ETF prices for commodities so they re-fetch as real futures
-(function bustCommodityCache() {
-  let changed = false;
-  ['GLD','SLV','USO','BNO'].forEach(s => {
-    if (stockData[s]) { delete stockData[s]; changed = true; }
-  });
-  if (changed) save('rm_stockData', stockData);
-})();
+// Commodity prices (GLD/SLV/USO/BNO) are always re-fetched as futures on load — no cache clearing needed
 
 /// One-time migration: add defense/sector stocks and fix known bad tickers
 (function migrateStocks() {
@@ -2850,10 +2844,9 @@ function computeYTD(sym, currentPrice) {
 }
 
 async function fetchMarketStrip() {
-  const missing = MARKETS_SYMS.filter(s => !stockData[s]?.price);
-  if (!missing.length) { renderMarketsStrip(); return; }
-  // Translate commodity display IDs to real futures tickers
-  const fetchSyms = missing.map(s => MARKETS_FUTURES[s] || s);
+  renderMarketsStrip(); // show cached values immediately; fresh data overwrites below
+  // Always fetch all markets — futures prices change throughout the day
+  const fetchSyms = MARKETS_SYMS.map(s => MARKETS_FUTURES[s] || s);
   try {
     const r = await fetch(`/api/stock?syms=${encodeURIComponent(fetchSyms.join(','))}`, { signal: AbortSignal.timeout(10000) });
     if (!r.ok) return;
