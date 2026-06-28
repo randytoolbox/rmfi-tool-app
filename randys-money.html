@@ -421,6 +421,46 @@
 </head>
 <body>
 
+<!-- ── Disclaimer Modal ─────────────────────────────────────────────────── -->
+<div id="disclaimerOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#0d1f33;border:1px solid #2a4a6a;border-radius:16px;max-width:560px;width:100%;padding:32px;font-family:inherit;">
+    <div style="font-size:22px;font-weight:900;color:#fff;margin-bottom:6px;">Before You Dive In</div>
+    <div style="font-size:12px;color:#6aaeff;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:20px;">Please Read This First</div>
+    <p style="color:#c8d8e8;font-size:14px;line-height:1.7;margin:0 0 14px;">
+      Hi — I'm Randy Barclay, a precision machining shop owner from California. I'm <strong style="color:#fff;">not a financial advisor, stockbroker, or Wall Street expert.</strong> I don't have 20 years of investing experience. I'm just a regular guy who got tired of paying fees to people who didn't always outperform the market.
+    </p>
+    <p style="color:#c8d8e8;font-size:14px;line-height:1.7;margin:0 0 14px;">
+      I built this tool as a personal experiment to see if AI could gather public market data, track what Congress is buying, and help everyday people make more informed decisions — <strong style="color:#fff;">the same information the pros use, without the $500/month subscription.</strong>
+    </p>
+    <p style="color:#c8d8e8;font-size:14px;line-height:1.7;margin:0 0 20px;">
+      <strong style="color:#f87171;">Nothing on this dashboard is financial advice.</strong> All trading shown is simulated paper trading. Past performance does not guarantee future results. Please consult a licensed financial advisor before making any real investment decisions.
+    </p>
+    <div style="background:#1a0f00;border:1px solid #5a3d00;border-radius:8px;padding:12px 16px;margin-bottom:24px;font-size:12px;color:#f0a030;line-height:1.6;">
+      By continuing, you acknowledge this tool is for <strong>educational and informational purposes only</strong> and that you are solely responsible for your own investment decisions.
+    </div>
+    <button onclick="acceptDisclaimer()" style="width:100%;padding:14px;background:linear-gradient(135deg,#3dd68c,#22a865);color:#001a0d;font-size:15px;font-weight:900;border:none;border-radius:10px;cursor:pointer;letter-spacing:.5px;">
+      I Understand — Let Me In
+    </button>
+    <div style="text-align:center;margin-top:12px;font-size:11px;color:#4a6a8a;">
+      This disclaimer is shown once per device.
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  if (!localStorage.getItem('rm_disclaimerAccepted')) {
+    document.getElementById('disclaimerOverlay').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+})();
+function acceptDisclaimer() {
+  localStorage.setItem('rm_disclaimerAccepted', '1');
+  document.getElementById('disclaimerOverlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+</script>
+
 <div class="header">
   <div>
     <h1>Randy's Money</h1>
@@ -4557,6 +4597,11 @@ setInterval(() => fetchPolicyNews(), POLICY_TTL);
     🗞️<span>Briefing</span>
   </button>
 </nav>
+
+<div style="text-align:center;padding:16px 20px 80px;font-size:11px;color:#3a5a7a;line-height:1.6;max-width:700px;margin:0 auto;">
+  <strong style="color:#4a7a9a;">Not Financial Advice.</strong> Randy's Money is an independent AI experiment built by a machining shop owner — not a licensed financial advisor. All trading is simulated paper trading. Nothing here should be construed as investment advice. You are solely responsible for your own financial decisions.
+  <span style="color:#2a4a6a;cursor:pointer;text-decoration:underline;" onclick="localStorage.removeItem('rm_disclaimerAccepted');location.reload();">View full disclaimer</span>
+</div>
 
 </body>
 </html>
