@@ -1352,6 +1352,7 @@ async function refreshAll() {
     setStatus('ok', 'Crypto loaded — fetching stocks...');
     checkAlerts();
     renderMarketsStrip(); renderDailyPicks(); // render from cache immediately (shows picks if cache is fresh)
+    fetchMarketStrip(); // fast batch fetch for GLD/SLV/USO/BNO — non-blocking
     if (Date.now() - lastStockFetch >= STOCK_REFRESH_MS) {
       try {
         await fetchStocks();
@@ -2781,6 +2782,25 @@ function computeYTD(sym, currentPrice) {
   const yearOpen = hist[idx];
   if (!yearOpen) return null;
   return ((currentPrice - yearOpen) / yearOpen) * 100;
+}
+
+async function fetchMarketStrip() {
+  const missing = MARKETS_SYMS.filter(s => !stockData[s]?.price);
+  if (!missing.length) { renderMarketsStrip(); return; }
+  try {
+    const r = await fetch(`/api/stock?syms=${encodeURIComponent(missing.join(','))}`, { signal: AbortSignal.timeout(10000) });
+    if (!r.ok) return;
+    const results = (await r.json())?.quoteResponse?.result || [];
+    for (const q of results) {
+      if (!q.regularMarketPrice) continue;
+      if (!stockData[q.symbol]) stockData[q.symbol] = { name: STOCK_NAMES[q.symbol] || q.symbol };
+      stockData[q.symbol].price     = q.regularMarketPrice;
+      stockData[q.symbol].changePct = q.regularMarketChangePercent || null;
+      stockData[q.symbol].name      = stockData[q.symbol].name || q.shortName || q.symbol;
+    }
+    save('rm_stockData', stockData);
+    renderMarketsStrip();
+  } catch(e) { console.warn('market strip fetch:', e.message); }
 }
 
 async function fetchStocks() {
