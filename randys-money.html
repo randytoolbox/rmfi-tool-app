@@ -865,6 +865,9 @@ const CRYPTO_HIST_TTL_MS  = 6 * 60 * 60 * 1000; // 6 hours between full history 
 
 const DEFAULT_STOCKS = ['SPY','QQQ','DIA','IWM'];
 const MARKETS_SYMS   = ['SPY','QQQ','GLD','SLV','USO','BNO'];
+// Map display IDs → real Yahoo Finance futures tickers for commodity prices
+const MARKETS_FUTURES = { 'GLD':'GC=F', 'SLV':'SI=F', 'USO':'CL=F', 'BNO':'BZ=F' };
+const FUTURES_TO_ID   = Object.fromEntries(Object.entries(MARKETS_FUTURES).map(([id,f])=>[f,id]));
 const STOCK_NAMES = {
   SPY:'S&P 500 ETF', QQQ:'Nasdaq 100 ETF', DIA:'Dow Jones ETF', IWM:'Russell 2000 ETF',
   'BRK.B':'Berkshire Hathaway B',
@@ -2827,16 +2830,19 @@ function computeYTD(sym, currentPrice) {
 async function fetchMarketStrip() {
   const missing = MARKETS_SYMS.filter(s => !stockData[s]?.price);
   if (!missing.length) { renderMarketsStrip(); return; }
+  // Translate commodity display IDs to real futures tickers
+  const fetchSyms = missing.map(s => MARKETS_FUTURES[s] || s);
   try {
-    const r = await fetch(`/api/stock?syms=${encodeURIComponent(missing.join(','))}`, { signal: AbortSignal.timeout(10000) });
+    const r = await fetch(`/api/stock?syms=${encodeURIComponent(fetchSyms.join(','))}`, { signal: AbortSignal.timeout(10000) });
     if (!r.ok) return;
     const results = (await r.json())?.quoteResponse?.result || [];
     for (const q of results) {
       if (!q.regularMarketPrice) continue;
-      if (!stockData[q.symbol]) stockData[q.symbol] = { name: STOCK_NAMES[q.symbol] || q.symbol };
-      stockData[q.symbol].price     = q.regularMarketPrice;
-      stockData[q.symbol].changePct = q.regularMarketChangePercent || null;
-      stockData[q.symbol].name      = stockData[q.symbol].name || q.shortName || q.symbol;
+      // Map futures ticker back to display ID (e.g. GC=F → GLD)
+      const displayId = FUTURES_TO_ID[q.symbol] || q.symbol;
+      if (!stockData[displayId]) stockData[displayId] = { name: STOCK_NAMES[displayId] || q.shortName || displayId };
+      stockData[displayId].price     = q.regularMarketPrice;
+      stockData[displayId].changePct = q.regularMarketChangePercent || null;
     }
     save('rm_stockData', stockData);
     renderMarketsStrip();
