@@ -30,12 +30,13 @@ async function repoFile(file) {
 }
 
 module.exports = async function handler(req, res) {
-  // Always respond 200 immediately so Telegram doesn't retry
-  res.status(200).json({ ok: true });
-
-  if (req.method !== 'POST' || !TELEGRAM_BOT_TOKEN) return;
+  if (req.method !== 'POST' || !TELEGRAM_BOT_TOKEN) {
+    return res.status(200).json({ ok: true });
+  }
   const message = req.body?.message;
-  if (!message?.text) return;
+  if (!message?.text) {
+    return res.status(200).json({ ok: true });
+  }
 
   const chatId = message.chat.id;
   const cmd = message.text.split(' ')[0].toLowerCase().replace(/@.*/, '');
@@ -131,4 +132,6 @@ module.exports = async function handler(req, res) {
     console.error('Telegram handler error:', e.message);
     await send(chatId, `❌ Error: ${e.message}`).catch(() => {});
   }
+
+  return res.status(200).json({ ok: true });
 };
