@@ -245,16 +245,10 @@ Return ONLY valid JSON:
 // ── Email builder ─────────────────────────────────────────────────────────────
 
 function buildEmail(allArticles, briefingDate, topTakeaways) {
-  const byCategory = {};
-  for (const a of allArticles) {
-    const cat = a.analysis?.category || 'Other';
-    if (!byCategory[cat]) byCategory[cat] = [];
-    byCategory[cat].push(a);
-  }
+  const aiCount   = allArticles.filter(a => a.analysis).length;
+  const totalRead = allArticles.length;
 
-  const catOrder = ['AI/Tech','Infrastructure','Energy','Defense','Government','Markets','Crypto','Other'];
-  const catIcons = { 'AI/Tech':'🤖','Infrastructure':'🏗️','Energy':'⚡','Defense':'🛡️','Government':'🏛️','Markets':'📈','Crypto':'₿','Other':'📰' };
-
+  // Top 3 Takeaways block
   const summaryHtml = topTakeaways ? `
   <div style="background:#0a1f0a;border:1px solid #2d5a2d;border-radius:10px;padding:20px 22px;margin-bottom:24px;">
     <div style="color:#4ade80;font-weight:800;font-size:13px;margin-bottom:14px;letter-spacing:.5px;">📋 TODAY'S TOP 3 TAKEAWAYS</div>
@@ -272,46 +266,67 @@ function buildEmail(allArticles, briefingDate, topTakeaways) {
     </div>
   </div>` : '';
 
-  const sectionsHtml = catOrder.filter(c => byCategory[c]?.length).map(cat => {
-    const articles = byCategory[cat];
-    const itemsHtml = articles.map(a => {
-      const an = a.analysis;
-      const tickerBadges = (an?.tickers || []).map(t =>
-        `<span style="display:inline-block;background:#0d2d1a;border:1px solid #4caf50;color:#4caf50;border-radius:4px;font-size:10px;font-weight:900;padding:1px 7px;margin-right:4px;">${t}</span>`
-      ).join('');
-      const urgencyColor = an?.urgency === 'high' ? '#f59e0b' : an?.urgency === 'medium' ? '#6aaeff' : '#555';
-      return `<div style="margin-bottom:14px;padding:12px 14px;background:#0a1a2e;border-radius:8px;border-left:3px solid ${urgencyColor};">
-        <a href="${a.url||'#'}" style="color:#4aaeff;font-weight:700;font-size:13px;text-decoration:none;">${a.title}</a>
-        <div style="color:#888;font-size:10px;margin-top:2px;">${a.source}</div>
-        ${an?.insight ? `<p style="color:#d0d8e8;font-size:12px;margin:8px 0 6px;line-height:1.5;">${an.insight}</p>` : ''}
-        ${tickerBadges ? `<div style="margin-bottom:6px;">${tickerBadges}</div>` : ''}
-        ${an?.rmfi ? `<div style="color:#4ade80;font-size:11px;background:#0d1f0d;padding:5px 8px;border-radius:4px;">🏭 RMFI: ${an.rmfi}</div>` : ''}
-      </div>`;
-    }).join('');
-    return `<h2 style="color:#6aaeff;border-bottom:1px solid #1a3a5c;padding-bottom:6px;margin-top:28px;">${catIcons[cat]||'📰'} ${cat}</h2>${itemsHtml}`;
-  }).join('');
+  // Top RMFI leads — articles Claude flagged as actionable for the shop
+  const rmfiLeads = allArticles
+    .filter(a => a.analysis?.rmfi && a.analysis.urgency === 'high')
+    .slice(0, 3);
+  const rmfiHtml = rmfiLeads.length ? `
+  <div style="background:#0d1a0d;border:1px solid #2d5a1a;border-radius:10px;padding:18px 20px;margin-bottom:24px;">
+    <div style="color:#4ade80;font-weight:800;font-size:13px;margin-bottom:12px;letter-spacing:.5px;">🏭 TOP RMFI OPPORTUNITIES</div>
+    ${rmfiLeads.map(a => `
+    <div style="margin-bottom:10px;padding:10px 12px;background:#060f06;border-radius:6px;border-left:3px solid #4ade80;">
+      <a href="${a.url||'#'}" style="color:#7dd3a8;font-weight:700;font-size:12px;text-decoration:none;">${a.title}</a>
+      <div style="color:#4ade80;font-size:11px;margin-top:5px;">${a.analysis.rmfi}</div>
+    </div>`).join('')}
+  </div>` : '';
 
-  const aiCount   = allArticles.filter(a => a.analysis).length;
-  const totalRead = allArticles.length;
+  // High-urgency headlines only — max 8
+  const highUrgency = allArticles
+    .filter(a => a.analysis?.urgency === 'high')
+    .slice(0, 8);
+
+  const catIcons = { 'AI/Tech':'🤖','Infrastructure':'🏗️','Energy':'⚡','Defense':'🛡️','Government':'🏛️','Markets':'📈','Crypto':'₿','Other':'📰' };
+
+  const headlinesHtml = highUrgency.length ? `
+  <div style="margin-bottom:24px;">
+    <div style="color:#f59e0b;font-weight:800;font-size:13px;margin-bottom:12px;letter-spacing:.5px;">🔥 TOP HEADLINES (${highUrgency.length} high-urgency)</div>
+    ${highUrgency.map(a => {
+      const an = a.analysis;
+      const cat = an?.category || 'Other';
+      const tickerBadges = (an?.tickers || []).slice(0,4).map(t =>
+        `<span style="display:inline-block;background:#0d2d1a;border:1px solid #4caf50;color:#4caf50;border-radius:4px;font-size:10px;font-weight:900;padding:1px 6px;margin-right:3px;">${t}</span>`
+      ).join('');
+      return `<div style="margin-bottom:10px;padding:11px 13px;background:#0a1a2e;border-radius:8px;border-left:3px solid #f59e0b;">
+        <div style="font-size:10px;color:#f59e0b;font-weight:700;margin-bottom:3px;">${catIcons[cat]||'📰'} ${cat} &bull; ${a.source}</div>
+        <a href="${a.url||'#'}" style="color:#4aaeff;font-weight:700;font-size:13px;text-decoration:none;line-height:1.4;">${a.title}</a>
+        ${an?.insight ? `<p style="color:#b0bec5;font-size:12px;margin:6px 0 4px;line-height:1.5;">${an.insight}</p>` : ''}
+        ${tickerBadges ? `<div>${tickerBadges}</div>` : ''}
+      </div>`;
+    }).join('')}
+  </div>` : '';
+
+  const skipped = totalRead - highUrgency.length;
 
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
 <body style="background:#030d18;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:680px;margin:0 auto;padding:24px;">
-  <div style="background:#0f2040;border:1px solid #1a3a5c;border-radius:12px;padding:24px 28px;margin-bottom:20px;">
+  <div style="background:#0f2040;border:1px solid #1a3a5c;border-radius:12px;padding:20px 24px;margin-bottom:20px;">
     <h1 style="color:#fff;margin:0 0 4px;font-size:22px;">Morning Briefing</h1>
-    <p style="color:#6aaeff;margin:0 0 8px;font-size:14px;">${briefingDate}</p>
-    <p style="color:#4ade80;margin:0;font-size:13px;">Claude read <strong>${totalRead}</strong> articles across <strong>${SOURCES.length}</strong> sources — <strong>${aiCount}</strong> AI-analyzed</p>
+    <p style="color:#6aaeff;margin:0 0 6px;font-size:14px;">${briefingDate}</p>
+    <p style="color:#4ade80;margin:0;font-size:12px;">Claude scanned <strong>${totalRead}</strong> articles — showing top ${highUrgency.length} high-urgency &bull; ${skipped} others filtered out</p>
   </div>
 
   ${summaryHtml}
-  ${sectionsHtml}
+  ${rmfiHtml}
+  ${headlinesHtml}
 
-  <div style="margin-top:32px;padding:16px;background:#0a1a2e;border-radius:8px;text-align:center;">
-    <a href="https://rmfi-tool-app.vercel.app/briefing.html" style="color:#4ade80;font-weight:700;text-decoration:none;margin-right:20px;">Open Full Briefing →</a>
-    <a href="https://rmfi-tool-app.vercel.app/randys-money.html" style="color:#4aaeff;font-weight:700;text-decoration:none;">Randy's Money Dashboard →</a>
+  <div style="padding:18px;background:#0a1a2e;border-radius:10px;text-align:center;">
+    <div style="color:#888;font-size:12px;margin-bottom:10px;">That's it. ${skipped} lower-priority articles were filtered out.</div>
+    <a href="https://rmfi-tool-app.vercel.app/randys-money.html" style="display:inline-block;background:#1a3a5c;color:#4aaeff;font-weight:700;font-size:13px;text-decoration:none;padding:10px 20px;border-radius:8px;margin-right:10px;">Open Dashboard →</a>
+    <a href="https://rmfi-tool-app.vercel.app/briefing.html" style="display:inline-block;background:#0d2d1a;color:#4ade80;font-weight:700;font-size:13px;text-decoration:none;padding:10px 20px;border-radius:8px;">Full Briefing →</a>
   </div>
-  <p style="color:#444;font-size:11px;text-align:center;margin-top:16px;">Auto-generated by GitHub Actions &bull; ${SOURCES.length} sources &bull; Playwright + Claude AI</p>
+  <p style="color:#444;font-size:11px;text-align:center;margin-top:14px;">Auto-generated by GitHub Actions &bull; ${SOURCES.length} sources &bull; Playwright + Claude AI</p>
 </body>
 </html>`;
 }
@@ -450,7 +465,8 @@ async function sendEmail(html, briefingDate) {
   fs.writeFileSync(outPath, JSON.stringify(briefingData, null, 2));
   console.log(`\nSaved briefing.json (${allArticles.length} articles, ${briefingData.aiAnalyzed} AI-analyzed)`);
 
-  // ── Phase 6: Send email ───────────────────────────────────────────────────
+  // Step 4: Generate top takeaways + send email
+  const topTakeaways = await generateTopTakeaways(allArticles);
   const html = buildEmail(allArticles, briefingDate, topTakeaways);
   await sendEmail(html, briefingDate);
   console.log('Done.');

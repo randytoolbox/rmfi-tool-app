@@ -1,16 +1,17 @@
 {
   "functions": {
-    "api/congress.js":       { "maxDuration": 55 },
-    "api/house-traders.js":  { "maxDuration": 30 },
-    "api/screener.js":       { "maxDuration": 45 },
-    "api/stock.js":          { "maxDuration": 15 },
-    "api/news.js":           { "maxDuration": 15 },
-    "api/scan.js":           { "maxDuration": 30 },
-    "api/history.js":        { "maxDuration": 20 },
-    "api/prices.js":         { "maxDuration": 15 },
-    "api/earnings.js":       { "maxDuration": 15 },
-    "api/subcontractors.js": { "maxDuration": 40 },
-    "api/buylog.js":         { "maxDuration": 10 },
-    "api/telegram.js":       { "maxDuration": 10 }
+    "api/congress.js":         { "maxDuration": 55 },
+    "api/house-traders.js":    { "maxDuration": 30 },
+    "api/screener.js":         { "maxDuration": 45 },
+    "api/stock.js":            { "maxDuration": 15 },
+    "api/news.js":             { "maxDuration": 15 },
+    "api/scan.js":             { "maxDuration": 30 },
+    "api/history.js":          { "maxDuration": 20 },
+    "api/prices.js":           { "maxDuration": 15 },
+    "api/earnings.js":         { "maxDuration": 15 },
+    "api/subcontractors.js":   { "maxDuration": 40 },
+    "api/buylog.js":           { "maxDuration": 10 },
+    "api/telegram.js":         { "maxDuration": 10 },
+    "api/close-position.js":   { "maxDuration": 15 }
   }
 }

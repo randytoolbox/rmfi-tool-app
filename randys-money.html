@@ -845,7 +845,7 @@ const NAMES = {
 };
 
 // ── State ─────────────────────────────────────────────────────────────────────
-const DEFAULT_PORTFOLIO = ['XRP','QNT','XDC','ALGO','HBAR'];
+const DEFAULT_PORTFOLIO = ['BTC','ETH','SOL'];
 
 function load(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } }
 function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
@@ -865,7 +865,7 @@ const CRYPTO_HIST_TTL_MS  = 6 * 60 * 60 * 1000; // 6 hours between full history 
 
 const DEFAULT_STOCKS = ['SPY','QQQ','DIA','IWM'];
 const MARKETS_SYMS   = ['SPY','QQQ','GLD','SLV','USO','BNO'];
-// Map display IDs → real Yahoo Finance futures tickers for commodity prices
+// Map ETF display IDs → Yahoo Finance futures tickers for real commodity prices
 const MARKETS_FUTURES = { 'GLD':'GC=F', 'SLV':'SI=F', 'USO':'CL=F', 'BNO':'BZ=F' };
 const FUTURES_TO_ID   = Object.fromEntries(Object.entries(MARKETS_FUTURES).map(([id,f])=>[f,id]));
 const STOCK_NAMES = {
@@ -876,7 +876,7 @@ const STOCK_NAMES = {
   BAC:'Bank of America', WFC:'Wells Fargo', GS:'Goldman Sachs',
   XLE:'Energy Select ETF (Oil & Gas)', XLF:'Financial ETF', XLI:'Industrial ETF',
   XLK:'Technology ETF', XLV:'Health Care ETF', XLU:'Utilities ETF',
-  GLD:'Gold ETF', SLV:'Silver ETF', USO:'Crude Oil ETF',
+  GLD:'Gold', SLV:'Silver', USO:'WTI Crude Oil', BNO:'Brent Crude Oil',
   // Oil & Gas — Hormuz / geopolitical plays
   XOM:'ExxonMobil', CVX:'Chevron', OXY:'Occidental Petroleum',
   COP:'ConocoPhillips', MRO:'Marathon Oil', EOG:'EOG Resources',
@@ -2068,10 +2068,12 @@ async function fetchPolicyNews(force = false) {
     await new Promise(r => setTimeout(r, 200));
   }
 
-  // Dedupe by title prefix
+  // Dedupe by URL first (most reliable), fall back to normalized title
   const seen = new Set();
   policyNews = all.filter(item => {
-    const key = item.title.slice(0, 60).toLowerCase();
+    const key = item.link
+      ? item.link.toLowerCase().replace(/[?#].*$/, '')   // strip query/fragment
+      : item.title.slice(0, 80).toLowerCase();
     if (seen.has(key)) return false;
     seen.add(key); return true;
   }).sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate)).slice(0, 20);
@@ -2101,13 +2103,18 @@ function renderPolicyWatch() {
     const tags  = getPolicyImpact(item.title);
     const age   = item.pubDate ? timeAgo(item.pubDate) : '';
     const isTruth = item.title.toLowerCase().includes('truth social') || item.source?.toLowerCase().includes('truth');
-    const tagHtml = tags.map(s => {
+    const MAX_TAGS = 4;
+    const visibleTags = tags.slice(0, MAX_TAGS);
+    const hiddenCount = tags.length - visibleTags.length;
+    const tagHtml = visibleTags.map(s => {
       const inW = watchSet.has(s);
       return `<span onclick="addToWatchlist('${s}')" style="display:inline-block;padding:2px 7px;border-radius:5px;
         font-size:10px;font-weight:800;margin:2px 2px 0 0;cursor:pointer;
         background:${inW?'#0d2d1a':'#0a1a2e'};color:${inW?'var(--good)':'var(--accent)'};
         border:1px solid ${inW?'var(--good)':'var(--border)'};">${s}${inW?' ★':''}</span>`;
-    }).join('');
+    }).join('') + (hiddenCount > 0
+      ? `<span style="display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;margin:2px 2px 0 0;background:#1a1a2e;color:var(--muted);border:1px solid var(--border);">+${hiddenCount} more</span>`
+      : '');
     return `<div class="news-item" onclick="window.open('${item.link}','_blank')" style="border-left:3px solid #f9a825;cursor:pointer;">
       <div class="news-meta" style="min-width:44px;">
         <span style="font-size:8px;color:#f9a825;font-weight:800;display:block;">${isTruth?'TRUTH':'POLICY'}</span>
@@ -2204,7 +2211,12 @@ async function fetchNews(force = false) {
 
   const seen = new Set();
   newsItems = all
-    .filter(i => { const k = i.title.slice(0,45); return seen.has(k) ? false : (seen.add(k), true); })
+    .filter(i => {
+      const k = i.link
+        ? i.link.toLowerCase().replace(/[?#].*$/, '')
+        : i.title.slice(0, 80).toLowerCase();
+      return seen.has(k) ? false : (seen.add(k), true);
+    })
     .sort((a,b) => new Date(b.pubDate) - new Date(a.pubDate))
     .slice(0, 25);
 
@@ -2858,8 +2870,9 @@ async function fetchStocks() {
   let anyOk = false;
   for (const sym of [...new Set([...MARKETS_SYMS, ...stockWatchlist])]) {
     if (stockData[sym]?.price) continue;
+    const fetchSym = MARKETS_FUTURES[sym] || sym;  // use futures ticker for commodities
     try {
-      const r = await fetch(`/api/stock?sym=${encodeURIComponent(sym)}&range=5d&interval=1d`, { cache: 'no-store' });
+      const r = await fetch(`/api/stock?sym=${encodeURIComponent(fetchSym)}&range=5d&interval=1d`, { cache: 'no-store' });
       if (!r.ok) continue;
       const d = await r.json();
       const meta = d?.chart?.result?.[0]?.meta;
@@ -3547,7 +3560,8 @@ function renderRobotPositions() {
       ? p.symbol.replace(/USD$/, '/USD')
       : p.symbol;
     const qtyStr   = p.qty < 0.01 ? p.qty.toFixed(6) : p.qty < 1 ? p.qty.toFixed(4) : p.qty.toFixed(p.qty % 1 === 0 ? 0 : 2);
-    return `<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:12px 14px;min-width:150px;flex:1;display:flex;flex-direction:column;gap:5px;">
+    const plLabel  = `${plSign}$${Math.abs(p.pl).toFixed(2)} (${pctSign}${p.plPct.toFixed(2)}%)`;
+    return `<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:12px 14px;min-width:150px;flex:1;display:flex;flex-direction:column;gap:5px;position:relative;">
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <span style="font-size:15px;font-weight:800;color:#a78bfa;">${dispSym}</span>
         <span style="font-size:10px;background:#1a1035;color:#a78bfa;padding:2px 6px;border-radius:4px;">🤖 auto</span>
@@ -3555,9 +3569,13 @@ function renderRobotPositions() {
       <div style="font-size:12px;color:var(--muted);">Qty: <b style="color:var(--text);">${qtyStr}</b></div>
       <div style="font-size:12px;color:var(--muted);">Entry: <b style="color:var(--text);">$${p.entry.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:4})}</b></div>
       <div style="font-size:12px;color:var(--muted);">Now: <b style="color:var(--text);">$${p.price.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:4})}</b></div>
-      <div style="font-size:13px;font-weight:700;margin-top:2px;color:${plColor};">${plSign}$${Math.abs(p.pl).toFixed(2)} <span style="font-size:11px;">(${pctSign}${p.plPct.toFixed(2)}%)</span></div>
+      <div style="font-size:13px;font-weight:700;margin-top:2px;color:${plColor};">${plLabel}</div>
       <div style="font-size:10px;color:var(--muted);">Value: $${p.value.toFixed(2)}</div>
       ${buildWhyStr(p.symbol)}
+      <button onclick="closeRobotPosition('${p.symbol}','${dispSym}','${plLabel}')"
+        style="margin-top:6px;background:#2a0a0a;border:1px solid #7f2020;color:#ff6b6b;border-radius:7px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;width:100%;">
+        Close Position
+      </button>
     </div>`;
   }
 
@@ -3573,6 +3591,25 @@ function renderRobotPositions() {
   html += '</div>';
   html += `<div style="font-size:10px;color:var(--muted);margin-top:8px;">Paper trading account · not real money · updates every 60 seconds</div>`;
   posEl.innerHTML = html;
+}
+
+async function closeRobotPosition(symbol, dispSym, plLabel) {
+  if (!confirm(`Close ${dispSym}?\nP&L: ${plLabel}\n\nThis sells the full position in the paper account.`)) return;
+  try {
+    const r = await fetch('/api/close-position', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ symbol }),
+      signal: AbortSignal.timeout(12000),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+    // Force refresh positions after a short delay so the order processes
+    setTimeout(() => { robotData = null; fetchRobotPositions(); }, 2500);
+    alert(`✅ ${dispSym} position closed. Refreshing…`);
+  } catch(e) {
+    alert(`❌ Failed to close ${dispSym}: ${e.message}`);
+  }
 }
 
 function renderCongressMembers() {
