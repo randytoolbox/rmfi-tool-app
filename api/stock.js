@@ -107,10 +107,11 @@ module.exports = async function handler(req, res) {
           const lines = text.trim().split('\n');
           if (lines.length < 2) return null;
           const cols = lines[1].split(',');
-          const close = parseFloat(cols[6]), open = parseFloat(cols[3]);
+          const close = parseFloat(cols[6]);
           if (!close || close === 0) return null;
+          // Stooq intraday open ≠ prior close — don't show misleading 0% change
           return { symbol: sym, regularMarketPrice: close,
-            regularMarketChangePercent: open ? (close - open) / open * 100 : null,
+            regularMarketChangePercent: null,
             fiftyTwoWeekHigh: null, fiftyTwoWeekLow: null, shortName: sym };
         } catch (_) { return null; }
       }));

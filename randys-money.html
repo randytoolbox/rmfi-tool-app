@@ -1296,12 +1296,25 @@ async function fetchMacro() {
       if (d.mktCapChange24h != null) macroData.mktCapChange24h = d.mktCapChange24h;
       if (d.fearGreed    != null) macroData.fearGreed        = d.fearGreed;
       if (d.fearGreedLabel)       macroData.fearGreedLabel   = d.fearGreedLabel;
-      const existing = load('rm_macroCache', {});
-      save('rm_macroCache', { ...existing, btcDominance: macroData.btcDominance,
-        totalMktCap: macroData.totalMktCap, mktCapChange24h: macroData.mktCapChange24h,
-        fearGreed: macroData.fearGreed, fearGreedLabel: macroData.fearGreedLabel, ts: Date.now() });
     }
   } catch(e) { console.warn('macro:', e.message); }
+  // Client-side CoinGecko fallback for BTC dominance (browser IPs aren't blocked)
+  if (macroData.btcDominance == null) {
+    try {
+      const cgR = await fetch('https://api.coingecko.com/api/v3/global');
+      if (cgR.ok) {
+        const cgD = (await cgR.json()).data || {};
+        if (cgD.market_cap_percentage?.bitcoin != null) macroData.btcDominance = cgD.market_cap_percentage.bitcoin;
+        if (cgD.total_market_cap?.usd && !macroData.totalMktCap) macroData.totalMktCap = cgD.total_market_cap.usd;
+        if (cgD.market_cap_change_percentage_24h_usd != null && macroData.mktCapChange24h == null)
+          macroData.mktCapChange24h = cgD.market_cap_change_percentage_24h_usd;
+      }
+    } catch (_) {}
+  }
+  const existing = load('rm_macroCache', {});
+  save('rm_macroCache', { ...existing, btcDominance: macroData.btcDominance,
+    totalMktCap: macroData.totalMktCap, mktCapChange24h: macroData.mktCapChange24h,
+    fearGreed: macroData.fearGreed, fearGreedLabel: macroData.fearGreedLabel, ts: Date.now() });
   renderMacro();
 }
 
