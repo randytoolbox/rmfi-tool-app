@@ -1305,14 +1305,33 @@ async function fetchMacro() {
   renderMacro();
 }
 
-// ── API: Live prices (Vercel proxy → CoinCap, same-domain, no CORS ever) ──────
+// ── API: Live prices (Vercel proxy with client-side CoinGecko fallback) ──────
 async function fetchLive() {
   const portfolioIds = portfolio.map(s => COINS[s]).filter(Boolean);
   const allIds = [...new Set([...portfolioIds, 'bitcoin', 'ethereum'])];
   if (!allIds.length) return;
-  const res = await fetch(`/api/prices?ids=${encodeURIComponent(allIds.join(','))}`);
-  if (!res.ok) throw new Error('prices ' + res.status);
-  const json = await res.json();
+  let json = null;
+  try {
+    const res = await fetch(`/api/prices?ids=${encodeURIComponent(allIds.join(','))}`);
+    if (res.ok) json = await res.json();
+  } catch (_) {}
+  // Client-side CoinGecko fallback — browser IPs aren't rate-limited like Vercel IPs
+  if (!json?.data?.length) {
+    try {
+      const cgRes = await fetch(
+        `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(allIds.join(','))}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true&include_market_cap=true`
+      );
+      if (cgRes.ok) {
+        const cgData = await cgRes.json();
+        json = { data: Object.entries(cgData).map(([id, v]) => ({
+          id, symbol: id.split('-')[0].toUpperCase(),
+          priceUsd: String(v.usd || 0), changePercent24Hr: String(v.usd_24h_change || 0),
+          volumeUsd24Hr: String(v.usd_24h_vol || 0), marketCapUsd: String(v.usd_market_cap || 0),
+        })).filter(d => parseFloat(d.priceUsd) > 0) };
+      }
+    } catch (_) {}
+  }
+  if (!json?.data?.length) throw new Error('prices unavailable');
   (json.data || []).forEach(c => {
     const price     = parseFloat(c.priceUsd) || 0;
     const change24h = parseFloat(c.changePercent24Hr) ?? null;
@@ -1429,11 +1448,12 @@ async function refreshAll() {
     if (hasCached) {
       renderGrid();
       renderMacro();
-      setStatus('warn', '⚠ Showing cached crypto prices — stocks & commodities still live. Auto-retrying.');
+      setStatus('warn', '⚠ Showing cached prices — live feeds rate-limited. Auto-retrying.');
     } else {
-      setStatus('error', 'Error: ' + e.message + '. Crypto feed may be rate-limiting. Try again in a minute.');
+      setStatus('warn', '⚠ Price feeds rate-limited. Retrying with alternate sources...');
     }
-    // Still run non-CoinGecko fetches
+    // Still run stock/commodity fetches even when crypto fails
+    fetchMarketStrip();
     fetchNews();
     fetchCongress();
     fetchCongressBuys();

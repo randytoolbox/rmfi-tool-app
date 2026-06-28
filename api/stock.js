@@ -91,6 +91,35 @@ module.exports = async function handler(req, res) {
         return res.json({ quoteResponse: { result: results, error: null } });
       } catch (_) {}
     }
+    // Stooq fallback — free, no API key, handles stocks + futures (gc.f, si.f etc.)
+    function toStooqSym(s) {
+      if (s.toUpperCase().includes('=F')) return s.toLowerCase().replace('=f', '.f'); // GC=F → gc.f
+      return s.toLowerCase().replace(/\./g, '-') + '.us'; // SPY → spy.us, BRK.B → brk-b.us
+    }
+    try {
+      const stooqRes = await Promise.all(symbols.map(async sym => {
+        try {
+          const r = await fetch(`https://stooq.com/q/l/?s=${toStooqSym(sym)}&f=sd2t2ohlcv&h&e=csv`, {
+            headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(6000),
+          });
+          if (!r.ok) return null;
+          const text = await r.text();
+          const lines = text.trim().split('\n');
+          if (lines.length < 2) return null;
+          const cols = lines[1].split(',');
+          const close = parseFloat(cols[6]), open = parseFloat(cols[3]);
+          if (!close || close === 0) return null;
+          return { symbol: sym, regularMarketPrice: close,
+            regularMarketChangePercent: open ? (close - open) / open * 100 : null,
+            fiftyTwoWeekHigh: null, fiftyTwoWeekLow: null, shortName: sym };
+        } catch (_) { return null; }
+      }));
+      const stooqData = stooqRes.filter(Boolean);
+      if (stooqData.length) {
+        res.setHeader('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=300');
+        return res.json({ quoteResponse: { result: stooqData, error: null } });
+      }
+    } catch (_) {}
     return res.status(502).json({ error: 'Yahoo batch quote failed', quoteResponse: { result: [], error: 'failed' } });
   }
 

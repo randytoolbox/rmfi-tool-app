@@ -116,7 +116,29 @@ module.exports = async function handler(req, res) {
     }
   } catch {}
 
-  // 3) CoinCap v2 (may be rate-limited but worth trying)
+  // 3) CoinGecko simple price (free, no key, reliable — ids are already CoinGecko format)
+  try {
+    const r = await fetch(
+      `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(ids)}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true&include_market_cap=true`,
+      { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(8000) }
+    );
+    if (r.ok) {
+      const json = await r.json();
+      const data = Object.entries(json).map(([id, v]) => ({
+        id, symbol: id.split('-')[0].toUpperCase(),
+        priceUsd:          String(v.usd || 0),
+        changePercent24Hr: String(v.usd_24h_change || 0),
+        volumeUsd24Hr:     String(v.usd_24h_vol || 0),
+        marketCapUsd:      String(v.usd_market_cap || 0),
+      })).filter(d => parseFloat(d.priceUsd) > 0);
+      if (data.length) {
+        res.setHeader('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=60');
+        return res.json({ data });
+      }
+    }
+  } catch {}
+
+  // 4) CoinCap v2 (may be rate-limited but worth trying)
   try {
     const r = await fetch(`https://api.coincap.io/v2/assets?ids=${encodeURIComponent(ids)}&limit=50`, {
       signal: AbortSignal.timeout(8000),
