@@ -1,15 +1,31 @@
 {
   "date": "2026-06-28",
-  "generated": "2026-06-28T00:08:17.260Z",
+  "generated": "2026-06-28T12:59:12.667Z",
   "sourcesRead": 27,
   "articlesRead": 128,
   "aiAnalyzed": 126,
   "topTakeaways": {
-    "trader": "Bitcoin faces fresh capitulation risk as large BTC holders sell at losses, signaling potential downward pressure and heightened volatility through 2026 per Binance founder CZ's macro outlook. Watch the 50K BTC movement levels and consider this a potential accumulation zone if your risk tolerance supports crypto exposure amid Fed hawkishness rotating capital away from inflation hedges.",
-    "rmfiLead": "Securitize's public debut (SECZ) backed by BlackRock validates tokenized securities infrastructure for alternative assets—RMFI should explore partnerships with Securitize to tokenize defense/aerospace contracts and unlock institutional capital for precision machining supply chain financing. Contact Securitize's BD team immediately to position RMFI as a case study in industrial tokenization.",
-    "wildcard": "DCG-backed Yuma's institutional Bittensor (TAO) fund signals serious venture capital flowing into decentralized AI compute—this could create demand spikes for high-performance machining components used in GPU clusters and AI hardware infrastructure that RMFI could target."
+    "trader": "Bitcoin's back-to-back quarterly losses and UTXO capitulation signals suggest potential bottom-forming conditions, but the $60K breakdown requires confirmation of support before aggressive accumulation. Watch BTC's weekly close and monitor institutional inflows via Grayscale/Fidelity products for capitulation reversal signals.",
+    "rmfiLead": "The Linux Foundation's new Akrites open-source security coalition creates urgent demand for supply-chain security audits and defensive infrastructure upgrades across aerospace/defense contractors—contact prime contractors (Boeing, Lockheed, Raytheon, GD) about securing their OSS component dependencies in classified programs.",
+    "wildcard": "Securitize's public debut (SPAC merger completed, ticker SECZ) validates institutional tokenization infrastructure—watch if this drives enterprise blockchain adoption that could create precision-manufacturing tracking/verification opportunities in defense supply chains."
   },
   "articles": [
+    {
+      "title": "Bitcoin falls below $60,000, on track for a rare back-to-back quarterly loss",
+      "url": "https://www.coindesk.com/markets/2026/06/28/bitcoin-falls-below-usd60-000-on-track-for-a-rare-back-to-back-quarterly-loss",
+      "summary": "The token is down nearly 7% on the week with the altcoins falling harder. Bitcoin and ether are both ending the second quarter in the red, a back-to-back losing first half that runs against the usual pattern.",
+      "source": "CoinDesk",
+      "rss": true,
+      "analysis": {
+        "insight": "Bitcoin's back-to-back quarterly losses signal weakening risk appetite and potential pullback in crypto-linked sectors; this could dampen demand for high-margin tech infrastructure projects that depend on crypto mining or speculative capital flows.",
+        "tickers": [
+          "BTC"
+        ],
+        "rmfi": null,
+        "category": "Crypto",
+        "urgency": "low"
+      }
+    },
     {
       "title": "Why a selloff in gold and silver is dragging bitcoin down",
       "url": "https://www.coindesk.com/markets/2026/06/27/why-a-selloff-in-gold-and-silver-is-dragging-bitcoin-down",
@@ -17,11 +33,8 @@
       "source": "CoinDesk",
       "rss": true,
       "analysis": {
-        "insight": "The unwinding of the precious metals hedge trade due to Fed hawkishness is pulling bitcoin lower, signaling that traditional safe-haven correlations are breaking down as interest rate expectations shift. For traders like Randy, this reflects a broader rotation away from inflation hedges toward higher yielding assets.",
-        "tickers": [
-          "GLD",
-          "SLV"
-        ],
+        "insight": "A stronger dollar and hawkish Fed policy are unwinding the 'weak dollar hedge' trade that previously linked bitcoin to precious metals, causing simultaneous selloffs across all three assets. This reflects shifting investor expectations about inflation and currency weakness rather than fundamental weakness in bitcoin itself.",
+        "tickers": [],
         "rmfi": null,
         "category": "Crypto",
         "urgency": "low"
@@ -34,7 +47,7 @@
       "source": "CoinDesk",
       "rss": true,
       "analysis": {
-        "insight": "Robinhood's layoffs reflect ongoing crypto market weakness and consolidation, but analysts suggest the downturn is late-stage bear market territory rather than systemic collapse. For traders like Randy, this signals potential stabilization opportunities ahead, though near-term crypto volatility remains elevated.",
+        "insight": "Robinhood's layoffs reflect crypto market contraction in a late bear market, but analysts maintain there's no need for panic, suggesting potential stabilization ahead for crypto investors.",
         "tickers": [
           "HOOD"
         ],
@@ -50,7 +63,7 @@
       "source": "CoinDesk",
       "rss": true,
       "analysis": {
-        "insight": "Tether is expanding its tokenized gold strategy by enabling XAUT holders to borrow against bullion without liquidating positions, creating a new crypto-native lending market. This demonstrates growing institutional adoption of blockchain-based asset management but carries counterparty risk concerns around Tether's $23B gold reserves.",
+        "insight": "Tether is expanding its tokenized gold strategy by enabling XAUT holders to borrow against bullion without liquidating positions, creating a new financial primitive that mirrors bitcoin-backed lending and could drive institutional adoption of crypto-collateralized lending. This reflects growing crypto market maturation but has limited direct relevance to traditional manufacturing or defense sectors.",
         "tickers": [],
         "rmfi": null,
         "category": "Crypto",
@@ -64,11 +77,11 @@
       "source": "CoinDesk",
       "rss": true,
       "analysis": {
-        "insight": "Polymarket suffered a $3.1M hack and faces FTC investigation for deceptive practices, damaging trust in crypto prediction markets and raising regulatory risk for the sector. This highlights cybersecurity vulnerabilities in unregulated crypto platforms that could impact institutional adoption and trader confidence.",
+        "insight": "Polymarket suffered a $3.1M security breach and faces FTC investigation for deceptive marketing, undermining user trust in crypto prediction markets and raising regulatory scrutiny across the industry.",
         "tickers": [],
         "rmfi": null,
         "category": "Crypto",
-        "urgency": "medium"
+        "urgency": "low"
       }
     },
     {
@@ -78,7 +91,7 @@
       "source": "CoinDesk",
       "rss": true,
       "analysis": {
-        "insight": "Binance's failure to secure EU MiCA compliance triggered aggressive poaching of its user base by Coinbase and OKX, signaling regulatory enforcement is reshaping crypto market structure and consolidating users toward compliant platforms.",
+        "insight": "Binance's failure to secure MiCA compliance in the EU is forcing a user migration to competitors Coinbase and OKX, who are aggressively competing for market share with deposit bonuses. This regulatory fragmentation highlights ongoing crypto market consolidation and compliance pressures that could benefit established, regulated platforms.",
         "tickers": [
           "COIN"
         ],
@@ -88,13 +101,55 @@
       }
     },
     {
-      "title": "Binance founder CZ blames crypto's sour 2026 on mix of AI, global tension, 4-year cycle",
-      "url": "https://www.coindesk.com/policy/2026/06/27/binance-founder-cz-blames-crypto-s-sour-2026-on-mix-of-ai-global-tension-4-year-cycle",
-      "summary": "There is no single cause for the crypto market's 50% decline over the past year, the Binance founder told CoinDesk.",
-      "source": "CoinDesk",
+      "title": "Binance posts over $400M in weekly net outflows as MiCA deadline nears",
+      "url": "https://cointelegraph.com/news/binance-400m-weekly-net-outflows-mica-deadline-nears?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound",
+      "summary": "Early exchange flow data show no clear signs of a mass migration from Binance ahead of the EU MiCA transition deadline, despite rivals' efforts to attract users.",
+      "source": "CoinTelegraph",
       "rss": true,
       "analysis": {
-        "insight": "Crypto market's 50% decline attributed to AI volatility, geopolitical tensions, and natural 4-year market cycles rather than fundamental failures. For traders like Randy, this suggests crypto weakness may persist through 2026 as these macro headwinds continue.",
+        "insight": "Binance's $400M weekly outflows reflect regulatory pressure from EU's MiCA deadline, but the absence of mass migration suggests institutional confidence in compliance rather than panic. This indicates crypto market stabilization rather than systemic exchange risk.",
+        "tickers": [],
+        "rmfi": null,
+        "category": "Crypto",
+        "urgency": "low"
+      }
+    },
+    {
+      "title": "Grayscale's Pandl hopes Strategy sells $3B in Bitcoin to restore confidence",
+      "url": "https://cointelegraph.com/news/grayscales-pandl-strategy-sells-3b-bitcoin-confidence?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound",
+      "summary": "Grayscale's research head Zach Pandl said Strategy should sell $3 billion in Bitcoin to cover its cash obligations, but CryptoQuant argued the company has other ways to support STRC.",
+      "source": "CoinTelegraph",
+      "rss": true,
+      "analysis": {
+        "insight": "Grayscale's Strategy fund faces liquidity pressure, with research head Pandl recommending a $3B Bitcoin sale to meet cash obligations, signaling potential crypto market volatility and institutional fund stress. This reflects broader concerns about crypto asset management stability during uncertain market conditions.",
+        "tickers": [],
+        "rmfi": null,
+        "category": "Crypto",
+        "urgency": "low"
+      }
+    },
+    {
+      "title": "Base post-mortem reveals sequencer bug behind back-to-back outages",
+      "url": "https://cointelegraph.com/news/base-post-mortem-reveals-sequencer-bug-behind-back-to-back-outages?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound",
+      "summary": "A “race condition” after the system was reset prevented the sequencers from catching up, causing the second outage. \n",
+      "source": "CoinTelegraph",
+      "rss": true,
+      "analysis": {
+        "insight": "Base's sequencer suffered a critical race condition bug causing back-to-back outages, highlighting infrastructure fragility in blockchain systems. This underscores ongoing reliability challenges that could impact enterprise adoption of blockchain infrastructure.",
+        "tickers": [],
+        "rmfi": null,
+        "category": "Crypto",
+        "urgency": "medium"
+      }
+    },
+    {
+      "title": "Bitcoin unspent transaction outputs signal capitulation underway: analyst",
+      "url": "https://cointelegraph.com/news/bitcoin-unspent-transaction-outputs-signal-capitulation-underway-analyst?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound",
+      "summary": "“These periods have always been profitable for long-term investors,” said CryptoQuant analyst Darkfost. \n",
+      "source": "CoinTelegraph",
+      "rss": true,
+      "analysis": {
+        "insight": "Bitcoin UTXO metrics suggest market capitulation, historically a profitable accumulation period for long-term crypto investors. This technical signal indicates potential bottom-forming conditions.",
         "tickers": [],
         "rmfi": null,
         "category": "Crypto",
@@ -108,15 +163,11 @@
       "source": "CoinTelegraph",
       "rss": true,
       "analysis": {
-        "insight": "Fidelity's defense of Bitcoin's security model post-halving addresses investor concerns about mining viability as block rewards decline. This matters for crypto traders assessing long-term Bitcoin stability and for those evaluating exposure to mining infrastructure and energy demands.",
-        "tickers": [
-          "BTC",
-          "MARA",
-          "RIOT"
-        ],
+        "insight": "Fidelity's defense of Bitcoin's security model post-halving addresses investor concerns about long-term network sustainability as mining rewards diminish. This matters for crypto traders evaluating Bitcoin's viability as store-of-value, but has no direct bearing on defense/aerospace/industrial manufacturing.",
+        "tickers": [],
         "rmfi": null,
         "category": "Crypto",
-        "urgency": "medium"
+        "urgency": "low"
       }
     },
     {
@@ -126,75 +177,10 @@
       "source": "CoinTelegraph",
       "rss": true,
       "analysis": {
-        "insight": "Unable to analyze - the article provided contains only a generic headline and template description with no actual crypto news, specific events, or market data.",
+        "insight": null,
         "tickers": [],
         "rmfi": null,
-        "category": "Crypto",
-        "urgency": "low"
-      }
-    },
-    {
-      "title": "Bitcoin faces fresh capitulation risk as 50K BTC moved at a loss",
-      "url": "https://cointelegraph.com/markets/bitcoin-faces-fresh-capitulation-risk-as-50k-btc-moves-at-a-loss?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound",
-      "summary": "Nearly 50,000 BTC shifted to exchanges at a loss while short-term Bitcoin holders' stress level reached 2-year highs. Is BTC headed toward new lows?",
-      "source": "CoinTelegraph",
-      "rss": true,
-      "analysis": {
-        "insight": "Large BTC transfers at losses signal potential capitulation and panic selling among short-term holders, suggesting possible downward pressure on Bitcoin price in the near term. For traders like Randy, this indicates heightened volatility and potential buying/selling opportunities depending on his risk tolerance.",
-        "tickers": [
-          "BTC"
-        ],
-        "rmfi": null,
-        "category": "Crypto",
-        "urgency": "medium"
-      }
-    },
-    {
-      "title": "DCG-backed Yuma launches fund offering institutional exposure to Bittensor",
-      "url": "https://cointelegraph.com/news/yuma-bittensor-fund-institutional-tao-decentralized-ai?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound",
-      "summary": "The new investment vehicle arrives as asset managers expand TAO offerings and decentralized AI gains momentum following recent restrictions on Anthropic's models.",
-      "source": "CoinTelegraph",
-      "rss": true,
-      "analysis": {
-        "insight": "DCG-backed Yuma is launching an institutional fund for Bittensor (TAO), capitalizing on growing demand for decentralized AI infrastructure following restrictions on centralized AI models. This signals institutional capital flowing into decentralized compute networks, which could accelerate hardware demands for AI infrastructure.",
-        "tickers": [
-          "TAO"
-        ],
-        "rmfi": "Potential opportunity in precision components for distributed AI node hardware and data center infrastructure supporting Bittensor's decentralized compute network expansion.",
-        "category": "Crypto",
-        "urgency": "medium"
-      }
-    },
-    {
-      "title": "Coinbase, Circle underperform Big Tech as crypto stock slump deepens",
-      "url": "https://cointelegraph.com/news/crypto-stocks-underperform-tech-market-slump?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound",
-      "summary": "Coinbase and Circle have posted steeper losses than Oracle, Netflix and Salesforce, highlighting the widening gap between crypto equities and the broader market.\n",
-      "source": "CoinTelegraph",
-      "rss": true,
-      "analysis": {
-        "insight": "Crypto equities including Coinbase and Circle are significantly underperforming mega-cap tech stocks, signaling investor flight from high-risk digital asset plays toward established Big Tech. This reflects broader market skepticism about crypto adoption and profitability compared to proven cloud/enterprise software leaders.",
-        "tickers": [
-          "COIN",
-          "GOOGL",
-          "ORCL",
-          "NFLX"
-        ],
-        "rmfi": null,
-        "category": "Crypto",
-        "urgency": "low"
-      }
-    },
-    {
-      "title": "SecondFi targets two-week recovery after Cardano wallet exploit",
-      "url": "https://cointelegraph.com/news/secondfi-two-week-recovery-cardano-wallet-exploit?utm_source=rss_feed&utm_medium=rss&utm_campaign=rss_partner_inbound",
-      "summary": "SecondFi says it has completed forensic investigations, taken a final balance snapshot and is preparing to return assets.",
-      "source": "CoinTelegraph",
-      "rss": true,
-      "analysis": {
-        "insight": "SecondFi, a Cardano-based lending protocol, suffered a wallet exploit but is moving toward asset recovery within two weeks, reducing immediate contagion risk in crypto lending markets. This demonstrates ongoing security vulnerabilities in DeFi platforms that could impact institutional adoption of blockchain infrastructure.",
-        "tickers": [],
-        "rmfi": null,
-        "category": "Crypto",
+        "category": "Other",
         "urgency": "low"
       }
     },
@@ -205,7 +191,7 @@
       "source": "Decrypt",
       "rss": true,
       "analysis": {
-        "insight": "Stablecoin usage is concentrated in emerging markets while venture funding and founder networks remain U.S./Europe-focused, creating a geographic arbitrage opportunity for crypto infrastructure and fintech solutions serving underbanked regions.",
+        "insight": "Stablecoin adoption is strongest in emerging markets, but venture funding and founder networks remain concentrated in the U.S. and Europe, creating a structural mismatch that could limit growth in high-demand regions and present opportunities for infrastructure builders serving these markets.",
         "tickers": [],
         "rmfi": null,
         "category": "Crypto",
@@ -219,7 +205,7 @@
       "source": "Decrypt",
       "rss": true,
       "analysis": {
-        "insight": "Jeremy Grantham, a respected value investor, predicts Bitcoin will gradually lose relevance and fade away, reflecting growing skepticism from institutional investors about crypto's long-term viability. This bearish outlook may pressure crypto asset prices and could influence risk-averse traders to reallocate capital to traditional equities or commodities.",
+        "insight": "Jeremy Grantham, a respected macro investor, publicly dismisses Bitcoin's long-term viability, predicting crypto will gradually fade rather than sustain value. This bearish sentiment from an influential voice may influence institutional allocation decisions away from crypto assets.",
         "tickers": [],
         "rmfi": null,
         "category": "Crypto",
@@ -233,12 +219,12 @@
       "source": "Decrypt",
       "rss": true,
       "analysis": {
-        "insight": "Securitize's public debut (SECZ) marks a major milestone in Wall Street's tokenization infrastructure, with BlackRock backing signaling institutional validation for digital securities platforms that could eventually support alternative asset classes across defense, industrial, and energy sectors.",
+        "insight": "Securitize's SPAC merger completion and public trading debut (ticker: SECZ) marks another institutional validation of blockchain-based asset tokenization, with BlackRock backing signaling mainstream finance's embrace of digital securities infrastructure.",
         "tickers": [
           "SECZ"
         ],
         "rmfi": null,
-        "category": "Markets",
+        "category": "Crypto",
         "urgency": "medium"
       }
     },
@@ -249,14 +235,14 @@
       "source": "Decrypt",
       "rss": true,
       "analysis": {
-        "insight": "Major tech companies and AI labs are collectively addressing open-source security vulnerabilities that AI systems could exploit, reducing software supply chain risks across defense and industrial sectors. This coordinated effort may accelerate security standards adoption and create compliance requirements for contractors serving government/defense clients.",
+        "insight": "A major coalition including AI labs and financial institutions is creating dedicated security infrastructure for open-source software, addressing vulnerability risks that could affect supply chains across defense, aerospace, and tech sectors. This formalization of open-source security reduces systemic risk for companies dependent on OSS components in critical applications.",
         "tickers": [
           "MSFT",
           "GOOGL"
         ],
-        "rmfi": "Potential opportunity: As Akrites security standards proliferate in defense contractor supply chains, RMFI may see increased demand for precision-machined components in secure hardware security modules (HSMs) and encrypted data processing systems required for AI-resilient systems.",
+        "rmfi": "Potential opportunity if Akrites initiative drives demand for secure hardware security modules, encrypted component manufacturing, or specialized machining for defense contractor security infrastructure upgrades.",
         "category": "AI/Tech",
-        "urgency": "high"
+        "urgency": "medium"
       }
     },
     {
@@ -266,11 +252,11 @@
       "source": "Decrypt",
       "rss": true,
       "analysis": {
-        "insight": "CFTC scrutiny of Polymarket's marketing practices could increase regulatory pressure on crypto prediction markets and derivatives platforms. This may dampen retail trading activity in crypto derivatives, affecting platform volumes and related trading opportunities.",
+        "insight": "CFTC regulatory scrutiny of Polymarket's marketing practices signals heightened government oversight of prediction market platforms, which could impact crypto trading volumes and regulatory clarity for decentralized finance platforms. This creates uncertainty for crypto traders but may accelerate legitimate market infrastructure development.",
         "tickers": [],
         "rmfi": null,
         "category": "Crypto",
-        "urgency": "low"
+        "urgency": "medium"
       }
     },
     {
@@ -280,7 +266,7 @@
       "source": "The Block",
       "rss": true,
       "analysis": {
-        "insight": "SecondFi's $2.4M Cardano wallet exploit highlights security risks in decentralized finance platforms; while not directly impacting traditional markets, it reinforces ongoing concerns about crypto custody and smart contract vulnerabilities that affect institutional adoption.",
+        "insight": "A $2.4 million exploit of SecondFi's Cardano wallet highlights security risks in crypto infrastructure; while the company aims to recover funds within two weeks, such vulnerabilities underscore ongoing concerns about DeFi platform reliability.",
         "tickers": [],
         "rmfi": null,
         "category": "Crypto",
@@ -294,13 +280,13 @@
       "source": "The Block",
       "rss": true,
       "analysis": {
-        "insight": "Bitcoin ETF outflows hit record levels with IBIT experiencing a 40% drawdown and seven consecutive weeks of net redemptions, signaling investor capitulation and potential bottom-fishing opportunity for contrarian traders. The sustained selling pressure reflects broader crypto market weakness and loss of retail confidence in spot bitcoin products.",
+        "insight": "Bitcoin ETF investors face historic outflows with IBIT down 40% and seven consecutive negative weeks, signaling weak crypto market sentiment and potential forced selling pressure. This reflects broader risk-off positioning that typically correlates with defensive asset rotation.",
         "tickers": [
           "IBIT"
         ],
         "rmfi": null,
         "category": "Crypto",
-        "urgency": "medium"
+        "urgency": "low"
       }
     },
     {
@@ -310,10 +296,8 @@
       "source": "The Block",
       "rss": true,
       "analysis": {
-        "insight": "Strategy's closed-end fund (STRC) trading at significant discount to net asset value indicates loss of investor confidence, likely due to bitcoin holdings depreciating below premium valuations amid crypto market weakness.",
-        "tickers": [
-          "STRC"
-        ],
+        "insight": "Strategy Shares' STRC preferred shares hit record lows with mNAV below 1.0, indicating the fund's bitcoin holdings have depreciated significantly and eroded its premium valuation structure. This signals softening crypto asset valuations that could affect treasury management strategies for companies holding digital assets.",
+        "tickers": [],
         "rmfi": null,
         "category": "Crypto",
         "urgency": "low"
@@ -326,9 +310,10 @@
       "source": "The Block",
       "rss": true,
       "analysis": {
-        "insight": "Ripple CEO criticizes Michael Saylor's MicroStrategy for financial engineering that divorces assets from utility, as MicroStrategy's crypto fund (STRC) trades 25% below par—highlighting broader debate about sustainable value in digital assets versus speculative financial instruments.",
+        "insight": "Ripple CEO criticizes Michael Saylor's MicroStrategy for 'financial engineering' rather than utility-driven value creation, as the company's Bitcoin Strategy fund trades significantly below par value. This reflects ongoing debate about crypto asset fundamentals versus speculative trading dynamics.",
         "tickers": [
-          "MSTR"
+          "MSTR",
+          "XRP"
         ],
         "rmfi": null,
         "category": "Crypto",
@@ -342,7 +327,7 @@
       "source": "The Block",
       "rss": true,
       "analysis": {
-        "insight": "Sol Strategies (STKE) surged 22% as Solana gained 9%, demonstrating how crypto-native equities amplify underlying blockchain volatility. This signals renewed institutional interest in crypto treasury stocks as digital assets recover.",
+        "insight": "Sol Strategies (STKE) surged 22% as Solana rallied 9%, demonstrating how crypto treasury stocks amplify blockchain asset movements. This is primarily a crypto trading signal rather than a fundamental business catalyst.",
         "tickers": [
           "STKE"
         ],
@@ -374,11 +359,39 @@
       "source": "Reuters Business",
       "rss": true,
       "analysis": {
-        "insight": "Q1 GDP beat expectations but consumer spending stalled, signaling economic growth driven by government/business investment rather than consumer demand—relevant for defense contractors and capital equipment manufacturers expecting continued public sector spending.",
+        "insight": "Q1 GDP beat expectations due to government spending and business investment, but consumer spending weakness signals economic fragility that could pressure discretionary manufacturing demand and defense budgets if momentum slows further.",
         "tickers": [],
-        "rmfi": "Stalled consumer spending supports sustained defense/aerospace budget allocation and industrial capital expenditure on precision components, while weak retail demand may pressure commercial aerospace OEM orders.",
+        "rmfi": "Weak consumer spending may reduce industrial/commercial machining demand, but strong government and business capex could support defense contractor orders and data center infrastructure buildout—monitor defense budget allocations and cloud expansion timelines for near-term visibility.",
         "category": "Markets",
         "urgency": "medium"
+      }
+    },
+    {
+      "title": "Wall St Week Ahead: Jobs data, rate bets in focus as US stocks close solid first half - Reuters",
+      "url": "https://news.google.com/rss/articles/CBMivwFBVV95cUxQV2k2eUkyVTJrU1VTdlJGcVNVUmpBUTJsWmNBd0ZqV0RPQ2VQZDROR0tXSjdxSVpwcERmczR2dUlxWWxYRmlxbXR4b2lNTVloMEJGWmdCTjRleFpkSG94ZUN5cnRGLXlvODRfM055dzBjT093TWloLV9ndC1ncXA0ODEyeGkyTmFWMHYyZEUxTlloek9xMGhBRlk1bFJHeEJtZGFHYlRLT3prbTVqR3NJbUN1ZGhYWURjT19uZFk3cw?oc=5",
+      "summary": "Wall St Week Ahead: Jobs data, rate bets in focus as US stocks close solid first half&nbsp;&nbsp;Reuters",
+      "source": "Reuters Business",
+      "rss": true,
+      "analysis": {
+        "insight": "US stocks finished H1 strong with focus shifting to jobs data and Fed rate expectations for H2; market sentiment hinges on employment trends and inflation trajectory affecting rate cut timing.",
+        "tickers": [],
+        "rmfi": null,
+        "category": "Markets",
+        "urgency": "medium"
+      }
+    },
+    {
+      "title": "China industrial profits stay resilient as economy leans on factories, exports - Reuters",
+      "url": "https://news.google.com/rss/articles/CBMixAFBVV95cUxNM0VOakRicmVyWHlPTnhLZi1KbFJpUTJKbE9qWVBYTUNNNTR3dkJUQVZFSFg0ZGc0VFJGZWVuUnFHaXRwZF9vVnVEeVFMTGNZSWNoZms4RDVLU0VkR2lCMXZ0Nmhma2gwMTBJUzdzODZjLWFQT3gtOWZjeVkzaFYzcW50ZzQ0LWIzTnZDTFBiUG5UM180WTlZWEx3WU9sNVB3MC1qWjlLb3ktTEwyUkRpTFVYRmotSWNNNTM0ZkdIaktaczcz?oc=5",
+      "summary": "China industrial profits stay resilient as economy leans on factories, exports&nbsp;&nbsp;Reuters",
+      "source": "Reuters Business",
+      "rss": true,
+      "analysis": {
+        "insight": "China's resilient industrial profits signal sustained manufacturing and export strength, which may pressure US manufacturers through competitive pricing but could drive increased defense spending as geopolitical tensions rise.",
+        "tickers": [],
+        "rmfi": "Limited direct opportunity; Chinese factory resilience may intensify competition in industrial machining, but could indirectly support RMFI if US defense/aerospace budgets increase due to China trade concerns.",
+        "category": "Markets",
+        "urgency": "low"
       }
     },
     {
@@ -388,39 +401,61 @@
       "source": "Reuters Business",
       "rss": true,
       "analysis": {
-        "insight": "Mexico's economy grew at its fastest pace in five years in April, signaling stronger regional economic activity that could boost demand for industrial manufacturing and defense supply chain operations in North America.",
+        "insight": "Mexico's economy grew at its fastest pace in five years in April, likely driven by manufacturing and exports; this signals strengthening North American industrial demand that could benefit precision manufacturers serving the region.",
         "tickers": [],
-        "rmfi": "Potential uptick in demand for precision machined industrial components as Mexican manufacturing and aerospace sectors benefit from regional economic expansion; monitor for increased orders from Mexico-based defense contractors and industrial manufacturers.",
-        "category": "Markets",
-        "urgency": "low"
-      }
-    },
-    {
-      "title": "EXCLUSIVE: Dubai enlists businesses to help secure hub status after Iran war shock - Reuters",
-      "url": "https://news.google.com/rss/articles/CBMivwFBVV95cUxQVGJ3THBrTnZTc0oxUXVuMUVmWW4tZVBNZjctQjBOYmVjbGJlOFNNdEVaaDZWTEZWWmRTUGVQa3d6Y2VJWUE2RU1yQ1haN2RhM1Y0RHRwSTB0NTJsYy1jcmxBWEtITkxzb2s2ZGw3MDBITnlyV3ppdUh5cUxpMTdXUWloUDBfeUdGaFppNmRFdm1xeXhxZFRSa3haeERuaGpIZXZ1elRfU2lXbHozLV92X0pCZ01YTnNCckwxWkp1MA?oc=5",
-      "summary": "EXCLUSIVE: Dubai enlists businesses to help secure hub status after Iran war shock&nbsp;&nbsp;Reuters",
-      "source": "Reuters Business",
-      "rss": true,
-      "analysis": {
-        "insight": "Dubai is mobilizing its business community to maintain its regional hub status amid Middle East geopolitical tensions from Iran conflict escalation. This signals potential instability for regional trade, finance, and logistics operations that could redirect to competing hubs.",
-        "tickers": [],
-        "rmfi": null,
+        "rmfi": "Potential uptick in aerospace/defense orders from Mexican manufacturers or U.S. companies expanding Mexican operations; monitor for supply chain expansion opportunities in North American defense industrial base.",
         "category": "Markets",
         "urgency": "medium"
       }
     },
     {
-      "title": "Scars mark Britain's economy 10 years after Brexit vote - Reuters",
-      "url": "https://news.google.com/rss/articles/CBMioAFBVV95cUxNOV9iM2lIcFZlbHBnWDRtblVsOUdBRnR0WmF2ZEdScGU0SnpEaGlKUnNJTmZTNWV0dUtpNGVXV3lUQWZIdFVJVnNrdUdmMGZ4aThKelVIeG1zVzJxOFhpb3VoUVBvRW1XcVJJTjZUUTlwcnluQW1ROFAwT0s0S05HV1l5V1ZGUk1lbDRRMFRnMjNwVGJtT2haRUV4WlFyMzdJ?oc=5",
-      "summary": "Scars mark Britain's economy 10 years after Brexit vote&nbsp;&nbsp;Reuters",
-      "source": "Reuters Business",
+      "title": "Trump again threatens Iran with annihilation as Kuwait and Bahrain report attacks",
+      "url": "https://www.cnbc.com/2026/06/28/trump-threatens-iran-with-annihilation-kuwait-bahrain-report-attacks.html",
+      "summary": "Iran says it targeted U.S. military facilities in Kuwait and Bahrain following U.S. strikes on targets in and around the Strait of Hormuz.",
+      "source": "CNBC",
       "rss": true,
       "analysis": {
-        "insight": "Britain's economy shows persistent damage a decade after Brexit, with reduced trade, investment, and growth compared to peer economies. This reflects structural headwinds for UK-based suppliers and potential supply chain fragmentation affecting defense/aerospace partnerships.",
-        "tickers": [],
-        "rmfi": "Limited direct opportunity; if RMFI exports defense components to UK allies or relies on UK supply chain partners, Brexit-related tariffs and regulatory complexity may increase costs or create sourcing alternatives, but no specific new business driver is evident from economic decline.",
-        "category": "Government",
+        "insight": "Escalating U.S.-Iran military conflict in the Middle East threatens critical global oil shipping through the Strait of Hormuz, potentially disrupting energy supplies and triggering defense spending increases. This geopolitical tension typically benefits defense contractors and raises oil/energy prices.",
+        "tickers": [
+          "RTX",
+          "LMT",
+          "NOC",
+          "BA"
+        ],
+        "rmfi": "Increased U.S. military operations in the Middle East likely drive demand for precision-machined defense components, aircraft parts, and weapons systems — direct sales opportunities with prime contractors expanding production.",
+        "category": "Defense",
+        "urgency": "high"
+      }
+    },
+    {
+      "title": "Seniors in Medicare are about to get landmark obesity drug coverage — but many may not know it yet",
+      "url": "https://www.cnbc.com/2026/06/28/medicare-will-soon-cover-obesity-drugs-but-many-seniors-may-not-know.html",
+      "summary": "Many seniors may be unaware of the landmark coverage shift starting on July 1, with limited advertising seen from the government or Eli Lilly and Novo.",
+      "source": "CNBC",
+      "rss": true,
+      "analysis": {
+        "insight": "Medicare coverage of GLP-1 obesity drugs (Eli Lilly, Novo Nordisk) starting July 1 expands addressable market for weight-loss medications among 45M+ seniors, potentially driving significant pharma revenue growth and supporting healthcare infrastructure demand.",
+        "tickers": [
+          "LLY",
+          "NVO"
+        ],
+        "rmfi": null,
+        "category": "Markets",
         "urgency": "low"
+      }
+    },
+    {
+      "title": "A &apos;perfect storm&apos; points to a much smaller U.S. auto market by 2040",
+      "url": "https://www.cnbc.com/2026/06/28/us-auto-market.html",
+      "summary": "The auto industry is selling fewer cars--one forecaster says this is a fundamental change, and it is going to get worse.",
+      "source": "CNBC",
+      "rss": true,
+      "analysis": {
+        "insight": "U.S. auto market contraction signals a fundamental structural shift reducing vehicle demand through 2040, potentially redirecting manufacturing capacity and supply chain investment away from automotive toward other sectors including defense and industrial applications.",
+        "tickers": [],
+        "rmfi": "Auto market decline may reduce precision machining demand from traditional automotive suppliers, but could create opportunities if RMFI pivots to defense/aerospace production or supplies components for alternative energy sectors like nuclear SMR reactors.",
+        "category": "Markets",
+        "urgency": "medium"
       }
     },
     {
@@ -430,60 +465,24 @@
       "source": "CNBC",
       "rss": true,
       "analysis": {
-        "insight": "Memory chip shortage is forcing large tech companies to raise prices while squeezing smaller competitors out of the market, creating potential supply chain consolidation and opportunities for companies serving the remaining viable players.",
+        "insight": "Memory chip shortages are forcing large tech companies (Apple, Microsoft) to raise prices, while smaller electronics manufacturers face existential pressure from cost inflation they cannot pass through. This supply chain stress may increase demand for precision-manufactured components in data center infrastructure and cooling systems as companies scale capacity to manage memory-constrained production.",
         "tickers": [
-          "MSFT",
           "NVDA",
-          "AMZN"
+          "MSFT"
         ],
-        "rmfi": "Memory shortage driving data center infrastructure buildout by hyperscalers (cooling systems, power distribution frames) and potential defense contractor diversification away from consumer electronics into aerospace/defense memory module housings.",
+        "rmfi": "Potential opportunity: memory shortage driving accelerated data center expansion and infrastructure buildout could increase demand for RMFI precision cooling/power management components and server enclosure parts serving hyperscalers.",
         "category": "AI/Tech",
         "urgency": "medium"
       }
     },
     {
-      "title": "U.S. military attacks Iranian targets after commercial tanker hit in the Strait of Hormuz",
-      "url": "https://www.cnbc.com/2026/06/27/tanker-struck-in-strait-of-hormuz-as-us-iran-tensions-escalate.html",
-      "summary": "The attacks come as the United States and Iran are supposed to be engaging in a 60-day ceasefire as they attempt to work toward a resolution.",
+      "title": "From protein coffee to CBD soda: How brands are cashing in on the functional beverage boom",
+      "url": "https://www.cnbc.com/2026/06/28/protein-coffee-cbd-soda-starbucks-functional-beverage-boom.html",
+      "summary": "\"We're selling [almost] as much protein cold foam as we do flat whites,\" Starbuck's EMEA Manager of Beverage Development Sam Henderson told CNBC.",
       "source": "CNBC",
       "rss": true,
       "analysis": {
-        "insight": "U.S. military escalation against Iran amid supposed ceasefire negotiations raises geopolitical tensions and increases defense spending urgency, particularly for precision manufacturing of military systems and components. This signals potential acceleration of defense contracts and aerospace modernization initiatives.",
-        "tickers": [
-          "RTX",
-          "LMT",
-          "NOC"
-        ],
-        "rmfi": "Elevated geopolitical tensions typically accelerate defense procurement cycles—potential increased demand for precision-machined defense components, missile systems parts, and aerospace assemblies used by prime contractors.",
-        "category": "Defense",
-        "urgency": "high"
-      }
-    },
-    {
-      "title": "SpaceX to join the Nasdaq-100 in a fast-tracked process that will drive huge ETF buying demand",
-      "url": "https://www.cnbc.com/2026/06/26/spacex-added-to-nasdaq-100.html",
-      "summary": "Adding SpaceX this quickly would make the Elon Musk company one of the first beneficiaries of Nasdaq's recently adopted fast-track inclusion framework.",
-      "source": "CNBC",
-      "rss": true,
-      "analysis": {
-        "insight": "SpaceX's accelerated Nasdaq-100 inclusion will trigger significant passive ETF inflows, boosting the company's valuation and reinforcing Elon Musk's influence across his portfolio companies. This benefits aerospace/defense suppliers like RMFI through increased SpaceX production activity and contract acceleration.",
-        "tickers": [
-          "QQQ",
-          "NVDA"
-        ],
-        "rmfi": "SpaceX's rapid growth from Nasdaq inclusion capital influx increases demand for precision machined components in rocket engines, landing gear, and avionics—direct contracting opportunities for RMFI's aerospace-qualified manufacturing capabilities.",
-        "category": "Markets",
-        "urgency": "high"
-      }
-    },
-    {
-      "title": "Death toll in Venezuela quake tops 1,400 as rescue efforts intensify",
-      "url": "https://www.cnbc.com/2026/06/27/venezuela-quake-toll-tops-900-search-intensifies-for-hundreds-trapped.html",
-      "summary": "Venezuela's interim President Delcy Rodriguez said on state television that 10 more countries were still to join rescue efforts.",
-      "source": "CNBC",
-      "rss": true,
-      "analysis": {
-        "insight": "A major earthquake in Venezuela with over 1,400 deaths will likely strain the country's already fragile infrastructure and economy, with limited immediate impact on US markets or defense contractors given Venezuela's isolation and lack of strategic US manufacturing ties.",
+        "insight": "Functional beverage market growth signals consumer demand shift toward health-oriented products, but has minimal direct investment relevance for defense/aerospace manufacturers or macro trading.",
         "tickers": [],
         "rmfi": null,
         "category": "Other",
@@ -491,27 +490,41 @@
       }
     },
     {
-      "title": "Trump says he is nominating former Oklahoma state trooper Lance Schroyer as ICE director",
-      "url": "https://www.cnbc.com/2026/06/27/trump-nominates-ex-oklahoma-state-trooper-lance-schroyer-as-ice-director.html",
-      "summary": "The nomination comes after former ICE director Todd Lyons resigned at the end of May. David Venturella has been serving as the acting head of the agency.",
+      "title": "Morgan Stanley says salt is the new oil. Here&apos;s why and how to play it",
+      "url": "https://www.cnbc.com/2026/06/28/morgan-stanley-says-salt-is-the-new-oil-heres-why-and-how-to-play-it.html",
+      "summary": "Salt can become as sought-out as oil amid a boom in demand for sodium-ion batteries, according to the firm.",
       "source": "CNBC",
       "rss": true,
       "analysis": {
-        "insight": "Trump nominates Lance Schroyer as ICE director, replacing Todd Lyons. This leadership change at Immigration and Customs Enforcement has limited direct impact on defense/aerospace manufacturing or equity markets.",
+        "insight": "Morgan Stanley forecasts sodium-ion batteries will drive massive salt demand growth, creating a new commodity super-cycle similar to oil's historical importance. This shift could reshape battery supply chains and create opportunities in extraction, processing, and related manufacturing.",
+        "tickers": [],
+        "rmfi": "Potential opportunity: sodium-ion battery manufacturing expansion may require precision-machined components for battery assembly equipment, cell manufacturing hardware, and thermal management systems—worth monitoring as major battery makers scale production.",
+        "category": "Energy",
+        "urgency": "medium"
+      }
+    },
+    {
+      "title": "&#x2018;She is retired&#x2019;: Do I dip into my 401(k) to pay my mother&#x2019;s $30,000 credit-card debt?",
+      "url": "https://www.marketwatch.com/story/she-is-retired-do-i-dip-into-my-401-k-to-pay-my-mothers-30-000-credit-card-debt-dc97569b?mod=mw_rss_topstories",
+      "summary": "&#x201c;I want her to live on her Social Security instead of using it to pay off her credit-card debt.&#x201d;",
+      "source": "MarketWatch",
+      "rss": true,
+      "analysis": {
+        "insight": "Personal finance advice column about managing family debt has no relevance to investment markets, defense manufacturing, or Randy's business interests.",
         "tickers": [],
         "rmfi": null,
-        "category": "Government",
+        "category": "Other",
         "urgency": "low"
       }
     },
     {
-      "title": "Berkshire CEO Greg Abel sworn in as U.S. citizen at baseball game",
-      "url": "https://www.cnbc.com/2026/06/27/berkshire-ceo-greg-abel-sworn-in-as-us-citizen-at-baseball-game.html",
-      "summary": "Abel, a longtime Iowa resident who was born in the Canadian city of Edmonton in 1962, was among the roughly two dozen people from 16 countries who participated in an annual naturalization ceremony hosted by the Iowa Cubs Thursday night in Des Moines.",
-      "source": "CNBC",
+      "title": "&#x2018;I&#x2019;ll happily wait&#x2019;: Does delaying Social Security make sense for high earners like me?",
+      "url": "https://www.marketwatch.com/story/ill-happily-wait-does-delaying-social-security-make-sense-for-high-earners-like-me-17dca69b?mod=mw_rss_topstories",
+      "summary": "&#x201c;In many states, Social Security benefits are exempt from state income tax.&#x201d;",
+      "source": "MarketWatch",
       "rss": true,
       "analysis": {
-        "insight": "Berkshire Hathaway CEO Greg Abel's U.S. naturalization has no material business impact; this is a personal citizenship milestone unrelated to company operations or market conditions.",
+        "insight": "Article discusses Social Security optimization strategies for high earners, focusing on tax-advantaged timing of benefits rather than investment or manufacturing developments.",
         "tickers": [],
         "rmfi": null,
         "category": "Other",
@@ -525,7 +538,7 @@
       "source": "MarketWatch",
       "rss": true,
       "analysis": {
-        "insight": "Article discusses Social Security claiming strategies and work income rules — not relevant to equity markets, defense manufacturing, or crypto trading.",
+        "insight": "Article addresses Social Security claiming strategies for retirees with employment income; not investment-relevant or industry-impacting content.",
         "tickers": [],
         "rmfi": null,
         "category": "Other",
@@ -539,7 +552,7 @@
       "source": "MarketWatch",
       "rss": true,
       "analysis": {
-        "insight": "Record 401(k) balances indicate strong consumer wealth and confidence, which supports continued discretionary spending on defense/aerospace and industrial equipment. This positive retirement savings trend reflects robust equity market performance benefiting household finances.",
+        "insight": "Record 401(k) balances indicate strong consumer wealth and confidence, which supports continued discretionary spending and defense contractor demand, but also reflects equity market gains that may already be priced in.",
         "tickers": [],
         "rmfi": null,
         "category": "Markets",
@@ -553,41 +566,10 @@
       "source": "MarketWatch",
       "rss": true,
       "analysis": {
-        "insight": "Social Security overpayment dispute highlights administrative errors in federal benefit systems; not material to markets or defense manufacturing.",
+        "insight": "A Social Security overpayment dispute highlights administrative challenges in government benefit systems; this has minimal relevance to investment markets or defense/aerospace manufacturing operations.",
         "tickers": [],
         "rmfi": null,
-        "category": "Other",
-        "urgency": "low"
-      }
-    },
-    {
-      "title": "This disease is more expensive than cancer and heart disease combined. And it&#x2019;s only going to get worse.",
-      "url": "https://www.marketwatch.com/story/this-disease-is-more-expensive-than-cancer-and-heart-disease-combined-and-its-only-going-to-get-worse-797b72d9?mod=mw_rss_topstories",
-      "summary": "&#x201c;People should be alarmed. This is a health crisis. It&#x2019;s also an economic crisis for families and government.&#x201d;",
-      "source": "MarketWatch",
-      "rss": true,
-      "analysis": {
-        "insight": "A major disease epidemic is creating economic strain on families and government budgets, which could redirect healthcare spending and influence fiscal policy priorities. This macroeconomic headwind may impact consumer discretionary spending and government budget allocation across sectors.",
-        "tickers": [],
-        "rmfi": null,
-        "category": "Other",
-        "urgency": "low"
-      }
-    },
-    {
-      "title": "Older Americans will soon have Medicare access to GLP-1s for weight loss for the first time. Here&#x2019;s what they need to know.",
-      "url": "https://www.marketwatch.com/story/millions-of-older-americans-will-soon-have-medicare-access-to-glp-1s-for-weight-loss-heres-what-they-need-to-know-758efe4c?mod=mw_rss_topstories",
-      "summary": "Starting July 1, Medicare beneficiaries who qualify can get weight-loss drugs for $50 a month. They should consider the side effects and muscle loss.",
-      "source": "MarketWatch",
-      "rss": true,
-      "analysis": {
-        "insight": "Medicare coverage of GLP-1 weight-loss drugs starting July 1 will significantly expand the addressable market for pharmaceutical manufacturers and healthcare providers, potentially driving demand for related medical equipment and supply chain components.",
-        "tickers": [
-          "LLY",
-          "NVO"
-        ],
-        "rmfi": null,
-        "category": "Markets",
+        "category": "Government",
         "urgency": "low"
       }
     },
@@ -598,13 +580,13 @@
       "source": "Breaking Defense",
       "rss": true,
       "analysis": {
-        "insight": "Pentagon is advancing AI and cybersecurity capabilities as core strategic priorities, signaling increased defense spending on advanced computing infrastructure and cyber defense systems. This reflects growing federal investment in AI-enabled defense modernization that will drive demand across defense contractors and tech suppliers.",
+        "insight": "The Pentagon is advancing AI and cybersecurity capabilities as core elements of future military strategy, driving demand for advanced computing infrastructure and defense-grade security solutions across the industrial base.",
         "tickers": [
           "NVDA",
           "MSFT",
           "BWXT"
         ],
-        "rmfi": "Pentagon's AI and cyber modernization creates potential opportunities for precision machining components in defense electronics manufacturing, computing hardware assemblies, and military-grade equipment systems.",
+        "rmfi": "Potential opportunity in precision machining for Pentagon cyber infrastructure buildout—including components for secure data centers, AI system cooling/power systems, and advanced defense electronics manufacturing.",
         "category": "Defense",
         "urgency": "high"
       }
@@ -616,9 +598,11 @@
       "source": "Breaking Defense",
       "rss": true,
       "analysis": {
-        "insight": "AM General's JLTV A2 program faces congressional funding scrutiny due to technical baseline issues inherited during transition, creating program risk for the primary contractor and potential delays in delivery.",
-        "tickers": [],
-        "rmfi": "JLTV A2 production ramp could generate precision machining opportunities for drivetrain components, suspension assemblies, or armor-related parts if AM General accelerates manufacturing to address technical delays and satisfy lawmakers.",
+        "insight": "AM General's JLTV A2 program faces congressional funding pressure due to technical baseline issues inherited during transition, creating program risk and potential contract delays for defense suppliers.",
+        "tickers": [
+          "GOL"
+        ],
+        "rmfi": "RMFI could pursue precision machining work for JLTV A2 component redesigns or production ramp if AM General needs to address technical baseline deficiencies, particularly for suspension, drivetrain, or armor-related parts.",
         "category": "Defense",
         "urgency": "high"
       }
@@ -630,10 +614,10 @@
       "source": "Breaking Defense",
       "rss": true,
       "analysis": {
-        "insight": "Hypothetical UK PM change signals potential shifts in defense/security policy, but article lacks concrete details on specific defense spending, procurement changes, or strategic priorities that would impact US defense contractors or manufacturers.",
+        "insight": "Potential UK Prime Minister Andy Burnham may shift defense and security policy from current direction, creating uncertainty for defense contractors about future procurement priorities and spending focus.",
         "tickers": [],
-        "rmfi": null,
-        "category": "Government",
+        "rmfi": "Unclear defense procurement priorities under potential Burnham leadership could impact future UK defense spending decisions affecting precision machining component suppliers; monitor for policy clarity on aerospace and defense sector support.",
+        "category": "Defense",
         "urgency": "low"
       }
     },
@@ -644,12 +628,13 @@
       "source": "Breaking Defense",
       "rss": true,
       "analysis": {
-        "insight": "Japan's air force restructuring to emphasize space capabilities signals accelerating defense space investments in the Indo-Pacific region, likely driving demand for advanced defense manufacturing and satellite/space systems.",
+        "insight": "Japan's 2027 air force rebranding signals accelerated investment in space defense capabilities, potentially expanding procurement for advanced aerospace and precision components across allied defense contractors.",
         "tickers": [
-          "ETN",
-          "BWXT"
+          "RTX",
+          "NOC",
+          "LMT"
         ],
-        "rmfi": "Potential opportunity for precision machining components in Japanese space launch systems, satellite structures, and next-gen defense platform manufacturing as Japan expands space capabilities.",
+        "rmfi": "Opportunity to bid on precision-machined components for Japan's expanded space defense systems, satellite launch platforms, and next-generation aerospace platforms through U.S. defense primes.",
         "category": "Defense",
         "urgency": "medium"
       }
@@ -661,12 +646,13 @@
       "source": "Breaking Defense",
       "rss": true,
       "analysis": {
-        "insight": "Breaking Defense investigates the T-7 Red Hawk trainer aircraft Pentagon acquisition program, exposing potential risks and vulnerabilities in a major defense contract. This could signal upcoming budget pressures, contractor performance issues, or program restructuring affecting defense supply chains.",
+        "insight": "Breaking Defense investigation into T-7 Red Hawk acquisition reveals Pentagon program vulnerabilities and execution risks that could impact defense contractor performance and supply chain stability.",
         "tickers": [
-          "LMT",
-          "RTX"
+          "RTX",
+          "NOC",
+          "LMT"
         ],
-        "rmfi": "Potential opportunity: T-7 Red Hawk production ramp-up will require precision machined components for airframe assembly, landing gear systems, and engine components—direct sales lead for RMFI's aerospace manufacturing capabilities if Boeing/Saab team expands supplier base.",
+        "rmfi": "T-7 Red Hawk production ramp-up creates potential subcontract opportunities for precision machining of aircraft structural components, landing gear assemblies, and engine parts for major defense primes.",
         "category": "Defense",
         "urgency": "high"
       }
@@ -678,12 +664,12 @@
       "source": "Breaking Defense",
       "rss": true,
       "analysis": {
-        "insight": "Chinese rocket body explosions creating space debris poses collision risks to LEO satellites; increases demand for satellite operators' collision avoidance systems and potential regulatory pushback against Chinese space activities.",
+        "insight": "Chinese rocket body explosions are creating space debris that threatens low Earth orbit satellites for decades, increasing demand for debris tracking, satellite protection systems, and space situational awareness technology.",
         "tickers": [
-          "VSAT",
-          "IRIDIUM"
+          "EQIX",
+          "DLR"
         ],
-        "rmfi": "Opportunity in precision components for satellite collision avoidance systems, space situational awareness platforms, and potential defense contracts for debris tracking/mitigation technologies.",
+        "rmfi": "Potential opportunity: space debris mitigation systems and satellite structural components may drive demand for precision-machined aerospace parts, plus increased satellite constellation buildout requires precision manufacturing for deployment hardware.",
         "category": "Defense",
         "urgency": "medium"
       }
@@ -695,11 +681,11 @@
       "source": "GovConWire",
       "rss": true,
       "analysis": {
-        "insight": "True Zero Technologies secured a DARPA MANNUS contract award (one of nine awardees on a $350M program) for managed enterprise network support services, signaling continued government investment in defense IT infrastructure and network management capabilities.",
+        "insight": "True Zero Technologies secured a $350M DARPA MANNUS contract for enterprise network support services, signaling continued defense sector investment in IT infrastructure and managed services capabilities.",
         "tickers": [],
-        "rmfi": null,
+        "rmfi": "Limited direct relevance unless RMFI supplies precision components for network infrastructure equipment or data center cooling systems; no clear indication from article of machining component demand.",
         "category": "Defense",
-        "urgency": "medium"
+        "urgency": "low"
       }
     },
     {
@@ -709,7 +695,7 @@
       "source": "GovConWire",
       "rss": true,
       "analysis": {
-        "insight": "Socure's appointment of a CISO signals strengthened focus on enterprise security and compliance, likely in preparation for increased federal contracting or regulatory scrutiny. This reflects broader cybersecurity investment trends among identity verification/fintech platforms serving government agencies.",
+        "insight": "Socure's appointment of a new CISO signals strengthened focus on enterprise security and compliance, likely in response to increasing regulatory scrutiny in identity verification and fintech sectors. This reflects broader industry movement toward cybersecurity infrastructure investments.",
         "tickers": [],
         "rmfi": null,
         "category": "AI/Tech",
@@ -723,13 +709,13 @@
       "source": "GovConWire",
       "rss": true,
       "analysis": {
-        "insight": "NASA awarded Rocket Lab IDIQ contracts for rideshare launches of climate/weather science satellites under the $300M Venture-Class Acquisition program, validating Rocket Lab's commercial launch capabilities and potentially expanding future government space missions.",
+        "insight": "NASA awarded Rocket Lab IDIQ task orders for rideshare launches of two Earth science satellites under the $300M Venture-Class Acquisition program, validating commercial small-lift launch capabilities for government science missions.",
         "tickers": [
           "RKLB"
         ],
-        "rmfi": "Potential opportunity: Rocket Lab launches may require precision-machined components for satellite structures, propulsion systems, or ground support equipment — worth monitoring for subcontractor RFQs.",
-        "category": "Defense",
-        "urgency": "medium"
+        "rmfi": "Potential component supply opportunity for Rocket Lab's Electron vehicle production ramp or satellite integration work, though this appears primarily a launch services contract rather than manufacturing component demand.",
+        "category": "Government",
+        "urgency": "low"
       }
     },
     {
@@ -739,11 +725,11 @@
       "source": "GovConWire",
       "rss": true,
       "analysis": {
-        "insight": "WidePoint secured a $3.1B, 10-year DHS cellular wireless managed services contract, demonstrating sustained federal investment in critical infrastructure and communications systems that support homeland security operations.",
+        "insight": "WidePoint secured a $3.1B, 10-year DHS cellular wireless managed services contract, demonstrating continued government investment in critical communications infrastructure for homeland security operations.",
         "tickers": [
-          "WP"
+          "WID"
         ],
-        "rmfi": "Potential opportunity for precision machining components if RMFI supplies telecommunications equipment housings, connectors, or RF shielding components used in DHS cellular wireless infrastructure, though likely indirect supplier role.",
+        "rmfi": null,
         "category": "Defense",
         "urgency": "medium"
       }
@@ -755,13 +741,34 @@
       "source": "GovConWire",
       "rss": true,
       "analysis": {
-        "insight": "Firefly Aerospace acquired Space-ng to enhance autonomous navigation capabilities for lunar and space missions, signaling accelerating commercial space infrastructure development and potential increased demand for precision components in space vehicle manufacturing and autonomous systems.",
+        "insight": "Firefly Aerospace acquired Space-ng to enhance autonomous navigation capabilities for lunar and space missions, signaling growing demand for AI-driven space infrastructure that could drive demand for specialized manufacturing components.",
         "tickers": [
-          "RFS"
+          "RXO"
         ],
-        "rmfi": "Potential opportunity: Firefly's expanded lunar lander and autonomous spacecraft programs may require precision-machined components for propulsion systems, structural assemblies, and guidance hardware — areas where RMFI could compete for defense/aerospace supply contracts.",
+        "rmfi": "Potential opportunity: Firefly's expanded autonomous spacecraft production may require precision-machined components for propulsion systems, structural assemblies, and navigation hardware—worth monitoring for RFQ activity in commercial space launch vehicles.",
         "category": "Defense",
         "urgency": "medium"
+      }
+    },
+    {
+      "title": "Turning constraints into opportunity",
+      "url": "https://www.datacenterdynamics.com/en/opinions/turning-constraints-into-opportunity/",
+      "summary": "The future of sustainable data center design",
+      "source": "Data Center Dynamics",
+      "rss": true,
+      "analysis": {
+        "insight": "Sustainable data center design is becoming a critical competitive differentiator as operators seek to optimize cooling and power efficiency amid massive AI infrastructure buildout. This trend creates supply chain opportunities for precision components serving the thermal management and power distribution systems essential to next-generation data centers.",
+        "tickers": [
+          "NVDA",
+          "MSFT",
+          "AMZN",
+          "GOOGL",
+          "EQIX",
+          "DLR"
+        ],
+        "rmfi": "Potential sales opportunity in precision-machined cooling loop components, thermal interface hardware, and modular power distribution subassemblies for hyperscaler data center expansion and liquid cooling systems.",
+        "category": "Infrastructure",
+        "urgency": "high"
       }
     },
     {
@@ -771,12 +778,12 @@
       "source": "Data Center Dynamics",
       "rss": true,
       "analysis": {
-        "insight": "Edged is completing a second data center building in Council Bluffs, Iowa, signaling continued expansion of hyperscale compute infrastructure in the Midwest, likely driven by AI/cloud demand. This represents growing distributed data center capacity outside traditional tech hubs.",
+        "insight": "Edged is rapidly expanding data center infrastructure in Council Bluffs with two buildings topped out, signaling strong demand for hyperscale compute capacity in the Midwest corridor. This reflects ongoing AI/cloud computing growth driving data center construction.",
         "tickers": [
           "EQIX",
           "DLR"
         ],
-        "rmfi": "Potential opportunity: precision cooling system components, power distribution equipment, and structural fasteners for data center buildout; coordinate with Edged on second building completion and operational ramp.",
+        "rmfi": "Potential opportunity for precision machining components in data center cooling systems, server mounting hardware, and thermal management solutions as Edged scales its Council Bluffs facility.",
         "category": "Infrastructure",
         "urgency": "medium"
       }
@@ -788,12 +795,12 @@
       "source": "Data Center Dynamics",
       "rss": true,
       "analysis": {
-        "insight": "FCC's $3.5bn AWS-3 spectrum auction will fund replacement of Chinese telecommunications equipment across US networks, creating substantial demand for domestic manufacturing of telecom infrastructure components and related hardware.",
+        "insight": "FCC's $3.5bn AWS-3 spectrum auction will fund replacement of Chinese telecom equipment across US infrastructure, creating significant demand for domestic manufacturing of telecom and network hardware components.",
         "tickers": [
           "VRT",
           "ETN"
         ],
-        "rmfi": "Opportunity to supply precision-machined components for telecom equipment manufacturers and network infrastructure buildout related to Chinese kit replacement; potential demand for ruggedized defense-grade enclosures and fastening systems.",
+        "rmfi": "Potential opportunity: 'rip and replace' telecom buildout may require precision-machined components for network infrastructure equipment, antenna systems, and telecom cabinet hardware manufactured by RMFI.",
         "category": "Infrastructure",
         "urgency": "high"
       }
@@ -805,14 +812,14 @@
       "source": "Data Center Dynamics",
       "rss": true,
       "analysis": {
-        "insight": "OpenAI's Lighthouse campus expansion in Wisconsin signals major AI infrastructure buildout requiring precision manufacturing support for data center mechanical systems, power distribution, and specialized cooling components.",
+        "insight": "OpenAI's Lighthouse campus expansion in Wisconsin signals major AI infrastructure buildout in a new geographic region, likely requiring significant power, cooling, and structural support systems. This represents growing AI compute footprint outside traditional tech hubs and potential demand for precision-engineered components.",
         "tickers": [
-          "MSFT",
-          "NVDA"
+          "NVDA",
+          "MSFT"
         ],
-        "rmfi": "Opportunity to bid on precision-machined components for data center cooling loops, power distribution manifolds, and thermal management systems at OpenAI's Wisconsin facility expansion.",
+        "rmfi": "Potential opportunity for RMFI to supply precision cooling system components, electrical enclosures, and structural fasteners for OpenAI's data center buildout in Wisconsin—worth qualifying with Vantage (general contractor) or OpenAI's supply chain.",
         "category": "Infrastructure",
-        "urgency": "high"
+        "urgency": "medium"
       }
     },
     {
@@ -822,12 +829,12 @@
       "source": "Data Center Dynamics",
       "rss": true,
       "analysis": {
-        "insight": "Z Squared's 150MW immersion-cooled data center in Arkansas signals accelerating infrastructure investment for AI/HPC workloads, with behind-the-meter natural gas power positioning for cost-effective operations in a competitive cryptomining/AI compute market.",
+        "insight": "Z Squared's 150MW immersion-cooled data center in Arkansas signals accelerating infrastructure buildout for AI/HPC workloads, driven by crypto mining and high-compute demand. This represents substantial capital deployment in specialized data center development with potential downstream demand for precision cooling systems and power infrastructure components.",
         "tickers": [
           "NVDA",
           "EQIX"
         ],
-        "rmfi": "Potential sales opportunities for precision-machined cooling system components, immersion cooling manifolds, high-pressure gas infrastructure fittings, and thermal management hardware for large-scale data center deployments.",
+        "rmfi": "Potential opportunity: immersion cooling systems, custom manifolds, precision-machined heat exchanger components, and behind-the-meter power distribution hardware for 150MW campus could generate B2B sales leads with data center developers and mechanical systems integrators.",
         "category": "Infrastructure",
         "urgency": "medium"
       }
@@ -839,28 +846,14 @@
       "source": "Data Center Dynamics",
       "rss": true,
       "analysis": {
-        "insight": "An unnamed data center developer is exploring a former bottling facility in Mount Shasta, California for conversion, signaling continued geographic expansion of data center development into regional markets; however, the lack of a formal application and unnamed developer status limits immediate investment implications.",
-        "tickers": [],
-        "rmfi": "Potential long-term opportunity if project advances — precision machining could support data center cooling systems, power infrastructure components, or modular construction hardware, but current pre-application stage offers no immediate sales lead.",
-        "category": "Infrastructure",
-        "urgency": "low"
-      }
-    },
-    {
-      "title": "NorthVault launches, plans data center campus in Ontario, Canada",
-      "url": "https://www.datacenterdynamics.com/en/news/northvault-launches-plans-data-center-campus-in-ontario-canada/",
-      "summary": "Site reportedly has 4.4MW available now, company targeting 120MW",
-      "source": "Data Center Dynamics",
-      "rss": true,
-      "analysis": {
-        "insight": "NorthVault is expanding a Canadian data center campus to 120MW, capitalizing on growing demand for secure, northern-tier computing infrastructure. This represents a significant buildout opportunity in the data center sector, relevant to infrastructure investors and precision manufacturing suppliers.",
+        "insight": "An unnamed data center developer is exploring a former bottling facility in Mount Shasta for conversion into a data center, signaling continued expansion of compute infrastructure into regional markets. Early-stage interest with no formal application suggests this is pre-development, but successful conversion could drive significant regional power/cooling demand and construction activity.",
         "tickers": [
           "EQIX",
           "DLR"
         ],
-        "rmfi": "Potential opportunity in precision machining for data center cooling systems, power distribution components, and thermal management hardware as NorthVault scales from 4.4MW to 120MW capacity.",
+        "rmfi": "Potential opportunity for precision machining components in data center cooling systems, power distribution equipment, and structural support systems if the Mount Shasta project advances to construction and operational phases.",
         "category": "Infrastructure",
-        "urgency": "medium"
+        "urgency": "low"
       }
     },
     {
@@ -870,12 +863,12 @@
       "source": "Data Center Knowledge",
       "rss": true,
       "analysis": {
-        "insight": "Data center expansion requires sustainable land-use practices balancing environmental, community, and infrastructure needs. This regulatory/planning focus could slow deployment timelines but may create opportunities for precision components in compliant cooling and power systems.",
+        "insight": "Data center expansion requires sustainable land use practices balancing environmental stewardship with infrastructure growth. This signals ongoing massive data center buildout that will need specialized components for cooling, power systems, and structural support.",
         "tickers": [
           "EQIX",
           "DLR"
         ],
-        "rmfi": "Potential opportunity: sustainable data center builds may increase demand for precision-engineered cooling systems, power distribution components, and modular infrastructure parts—areas where RMFI's defense/aerospace manufacturing precision could differentiate.",
+        "rmfi": "Opportunity to supply precision-machined cooling system components, power distribution manifolds, and heat exchanger parts for data center thermal management systems as responsible expansion accelerates.",
         "category": "Infrastructure",
         "urgency": "medium"
       }
@@ -887,14 +880,14 @@
       "source": "Data Center Knowledge",
       "rss": true,
       "analysis": {
-        "insight": "Hyperscale AI data centers are overwhelming grid capacity, forcing utilities and developers to accelerate transmission and interconnection infrastructure—creating urgent demand for power delivery, cooling systems, and specialized components. This represents a multi-year capex cycle that benefits manufacturers supplying critical infrastructure and thermal management solutions.",
+        "insight": "Hyperscale AI data centers are straining legacy utility infrastructure, forcing massive upgrades to transmission and interconnection capacity. This creates immediate demand for specialized manufacturing of power distribution, cooling systems, and grid infrastructure components.",
         "tickers": [
           "DLR",
           "EQIX",
           "CEG",
           "BWXT"
         ],
-        "rmfi": "AI data center buildout creates sales opportunities for precision-machined power distribution components, high-reliability cooling system manifolds, and specialized fasteners for modular infrastructure—particularly as operators rush interconnection timelines.",
+        "rmfi": "Strong opportunity: AI data centers require precision-machined components for advanced cooling systems, high-capacity power distribution hardware, and potential nuclear SMR integration for on-site power generation—direct sales potential to data center developers and utility contractors.",
         "category": "Infrastructure",
         "urgency": "high"
       }
@@ -906,13 +899,13 @@
       "source": "Data Center Knowledge",
       "rss": true,
       "analysis": {
-        "insight": "Discovery of 1.4M metric tons of recoverable lithium in the Carolinas could support grid-scale battery storage for AI data centers, reducing supply chain constraints for energy infrastructure critical to semiconductor and AI expansion.",
+        "insight": "A USGS study reveals 1.4M metric tons of recoverable lithium oxide in the Carolinas, positioning the region as a critical domestic source for grid-scale battery storage needed to power AI data center expansion and grid infrastructure.",
         "tickers": [
           "CEG",
           "EQIX",
           "DLR"
         ],
-        "rmfi": "Potential opportunity: AI data center buildout in the Carolinas may require precision-machined cooling system components, power distribution hardware, and structural fasteners for rapid deployment.",
+        "rmfi": "Potential opportunity in precision-machined components for battery energy storage systems, grid infrastructure equipment, and data center power distribution hardware as Carolinas lithium development scales.",
         "category": "Energy",
         "urgency": "high"
       }
@@ -924,13 +917,13 @@
       "source": "Data Center Knowledge",
       "rss": true,
       "analysis": {
-        "insight": "Oracle's legal challenge to Wisconsin's AI data center tariff could set a precedent for how states impose financial guarantees on massive power projects, potentially affecting the cost structure and feasibility of future AI infrastructure buildouts nationwide.",
+        "insight": "Oracle is challenging Wisconsin's financial guarantee requirements for AI data center projects, a legal test that could influence how states nationwide regulate massive power infrastructure investments. This shapes the regulatory landscape for data center expansion and may affect project economics for tech giants planning facility buildouts.",
         "tickers": [
           "ORCL",
           "EQIX",
           "DLR"
         ],
-        "rmfi": "Potential opportunity in precision cooling system components, power distribution manifolds, and structural fasteners for AI data center construction projects if tariff uncertainty resolves in favor of accelerated buildout.",
+        "rmfi": "Potential opportunity in precision machining for data center cooling systems, electrical/mechanical components, and power infrastructure—Oracle's Wisconsin expansion could drive demand for high-tolerance cooling hardware and electrical assemblies if the tariff challenge succeeds and projects accelerate.",
         "category": "Infrastructure",
         "urgency": "medium"
       }
@@ -942,13 +935,13 @@
       "source": "Data Center Knowledge",
       "rss": true,
       "analysis": {
-        "insight": "US power demand could surge 39% by 2035 due to AI growth, but grid delivery infrastructure—not generation capacity—is the actual bottleneck. This creates urgent demand for power distribution upgrades and grid modernization.",
+        "insight": "US electricity demand could surge 39% by 2035 driven by AI, but grid infrastructure limitations—not generation capacity—may become the critical bottleneck. This creates urgency for power delivery infrastructure upgrades and components serving high-demand load centers.",
         "tickers": [
-          "CEG",
           "EQIX",
-          "DLR"
+          "DLR",
+          "CEG"
         ],
-        "rmfi": "Opportunity in precision machining for power distribution equipment, transformer components, substation hardware, and cooling/thermal management systems needed for grid modernization to support AI data center expansion.",
+        "rmfi": "Opportunity in precision machining components for grid infrastructure upgrades, high-voltage power distribution equipment, and potential data center cooling/power systems serving AI load centers near transmission constraints.",
         "category": "Energy",
         "urgency": "high"
       }
@@ -960,9 +953,9 @@
       "source": "World Nuclear News",
       "rss": true,
       "analysis": {
-        "insight": "Russia's Smolensk Nuclear Power Plant Phase II begins concrete work, signaling continued nuclear infrastructure investment in Russia despite Western sanctions. This has minimal direct impact on US markets but underscores global nuclear expansion trends.",
+        "insight": "Russia is advancing construction on Smolensk Nuclear Power Plant Phase II with commissioning of concrete mixing infrastructure, signaling continued state investment in nuclear capacity expansion despite geopolitical tensions.",
         "tickers": [],
-        "rmfi": "Potential opportunity if RMFI supplies precision-machined components to US nuclear contractors (BWXT, Westinghouse) competing for SMR and reactor modernization work, though Russian projects are sanctioned and inaccessible.",
+        "rmfi": "Potential opportunity in precision machining components for nuclear reactor construction (vessel internals, control rod mechanisms, pump housings) if RMFI can navigate export controls and establish Russian supply chain relationships.",
         "category": "Energy",
         "urgency": "low"
       }
@@ -974,14 +967,14 @@
       "source": "World Nuclear News",
       "rss": true,
       "analysis": {
-        "insight": "Rolls-Royce is advancing High-Temperature Gas-Cooled Reactor (HTGR) technology through a UK-Japan partnership, positioning itself as a key supplier for next-generation nuclear SMR development with potential commercial applications in the 2030s.",
+        "insight": "Rolls-Royce, Japan Atomic Energy Agency, and UK's National Nuclear Laboratory are collaborating on High-Temperature Gas-Cooled Reactor (HTGR) technology and advanced fuel development, signaling accelerated commercialization of next-generation nuclear reactors for energy security.",
         "tickers": [
-          "RR",
-          "BWXT"
+          "BWXT",
+          "CCJ"
         ],
-        "rmfi": "HTGR development creates opportunities for precision-machined components in reactor core assemblies, heat exchanger internals, control rod mechanisms, and specialized fasteners for extreme-temperature nuclear applications.",
+        "rmfi": "RMFI may have opportunities supplying precision-machined components for HTGR reactor assemblies, heat exchangers, and fuel element fabrication equipment as UK-Japan development scales toward manufacturing.",
         "category": "Energy",
-        "urgency": "medium"
+        "urgency": "high"
       }
     },
     {
@@ -991,12 +984,12 @@
       "source": "World Nuclear News",
       "rss": true,
       "analysis": {
-        "insight": "China General Nuclear Power Group successfully installed the containment dome on Ningde Unit 5, advancing construction of what will be one of China's largest nuclear facilities and signaling continued momentum in China's nuclear expansion program despite geopolitical tensions.",
+        "insight": "China's Ningde Nuclear Power Plant Unit 5 reaches a major construction milestone with dome installation, signaling acceleration of China's nuclear expansion and potential supply chain opportunities for precision components in reactor construction.",
         "tickers": [
           "BWXT",
           "CCJ"
         ],
-        "rmfi": "Potential opportunity: Nuclear power plant construction requires precision-machined components for reactor systems, cooling mechanisms, and safety-critical containment equipment—areas where RMFI could compete for supply contracts as new Chinese nuclear facilities come online.",
+        "rmfi": "Nuclear power plant construction involves precision machining for reactor internals, cooling system components, and safety-critical structural assemblies — potential supply chain opportunity if RMFI can qualify for reactor component manufacturing or subassembly work.",
         "category": "Energy",
         "urgency": "medium"
       }
@@ -1008,12 +1001,12 @@
       "source": "World Nuclear News",
       "rss": true,
       "analysis": {
-        "insight": "Saskatchewan and Czech Republic partnership on small and micro modular reactors signals growing international momentum for SMR deployment in clean energy transition. This expands the addressable market for nuclear supply chain vendors.",
+        "insight": "Saskatchewan and Czech Republic are collaborating on small and micro modular reactor deployment, signaling growing international momentum for SMR commercialization and expanding the addressable market for nuclear supply chain partners.",
         "tickers": [
           "BWXT",
           "SMR"
         ],
-        "rmfi": "Potential sales opportunity in precision machining for SMR/MMR component manufacturing — nuclear reactors require high-tolerance machined parts for reactor vessels, coolant systems, and control mechanisms that align with RMFI's aerospace/defense-grade capabilities.",
+        "rmfi": "SMR and MMR projects require precision-machined components for reactor vessels, coolant systems, and control mechanisms—potential OEM supplier opportunity as Saskatchewan and Czech projects move toward construction phase.",
         "category": "Energy",
         "urgency": "medium"
       }
@@ -1025,27 +1018,13 @@
       "source": "World Nuclear News",
       "rss": true,
       "analysis": {
-        "insight": "UK government identifying barriers to advanced nuclear technology deployment presents a policy opportunity for small modular reactors (SMRs) and related infrastructure; regulatory clarity could accelerate UK nuclear expansion and supply chain demand.",
+        "insight": "UK government is addressing deployment barriers for advanced nuclear technologies, creating potential regulatory and infrastructure opportunities for companies in the nuclear supply chain as the country accelerates its SMR and next-gen reactor roadmap.",
         "tickers": [
           "BWXT",
           "SMR"
         ],
-        "rmfi": "Potential sales opportunity in precision machining components for UK SMR reactor assembly and supporting infrastructure as regulatory barriers are addressed and deployment accelerates.",
+        "rmfi": "Potential opportunity: UK advanced nuclear rollout will require precision-machined components for SMR reactors, cooling systems, and reactor assemblies — RMFI should monitor NextGen Nuclear Summit outcomes for supply chain qualification needs with UK nuclear developers and Rolls-Royce SMR program.",
         "category": "Energy",
-        "urgency": "medium"
-      }
-    },
-    {
-      "title": "7 Best Defense Stocks to Buy Now | Investing - U.S. News - Money",
-      "url": "https://news.google.com/rss/articles/CBMif0FVX3lxTFB5NXdkOHFBUzZuVUo4TmZrb0F2Yng4VGExSlVZa3BUMzFyOU1lVl9Gc0l5SUxzUmpnbllaOTViRnZfWGxxNm00Q3RLODhCMjFRRVR4Y1pvMUVLNVE2VF9IRDdGb2JfYWh6cE4xUHg4c0hYNUdyb1ZLUk5CSWhibXc?oc=5",
-      "summary": "7 Best Defense Stocks to Buy Now | Investing&nbsp;&nbsp;U.S. News - Money",
-      "source": "Google News — Machining",
-      "rss": true,
-      "analysis": {
-        "insight": "A listicle highlighting top defense stocks suggests continued investor interest in the defense sector, likely driven by geopolitical tensions and increased military spending. This reflects sustained demand for defense contractors and their supply chain partners.",
-        "tickers": [],
-        "rmfi": "Precision machining demand from defense contractors should remain elevated; RMFI should monitor tier-1 defense OEM capital allocation announcements and supply chain expansion plans for potential new contracts.",
-        "category": "Defense",
         "urgency": "medium"
       }
     },
@@ -1056,9 +1035,9 @@
       "source": "Google News — Machining",
       "rss": true,
       "analysis": {
-        "insight": "PMGC is acquiring a 76% stake in an Arizona aerospace machine shop with $5.46M in sales, consolidating precision machining capacity in the defense/aerospace supply chain. This signals M&A activity in the aerospace manufacturing sector as OEMs and suppliers optimize production capabilities.",
+        "insight": "PMGC is acquiring a 76% stake in an Arizona aerospace machine shop with $5.46M in sales, indicating consolidation in the precision machining sector serving defense and aerospace. This M&A activity suggests growing demand for specialized machining capabilities in these sectors.",
         "tickers": [],
-        "rmfi": "Potential competitive or partnership opportunity for RMFI — aerospace machine shop consolidation in Arizona may create subcontracting or joint venture openings for precision machining work on defense/aerospace platforms.",
+        "rmfi": "Potential competitive intelligence: Arizona aerospace machine shop acquisition by PMGC may indicate market consolidation; RMFI should monitor for acquisition targets or partnership opportunities in aerospace/defense precision machining supply chain.",
         "category": "Defense",
         "urgency": "medium"
       }
@@ -1070,11 +1049,11 @@
       "source": "Google News — Machining",
       "rss": true,
       "analysis": {
-        "insight": "A market analysis forecasting precision machining growth through 2034 suggests sustained demand across defense, aerospace, and industrial sectors. For Randy's RMFI, this validates the sector's expansion trajectory and potential tailwinds from defense spending and advanced manufacturing adoption.",
+        "insight": "Precision machining market forecast through 2034 indicates sustained growth across defense, aerospace, and industrial sectors. This forward-looking data suggests continued demand for high-tolerance manufacturing capabilities that support emerging technologies and infrastructure buildout.",
         "tickers": [],
-        "rmfi": "Growing precision machining market demand likely benefits RMFI across defense contracts, aerospace platforms, and emerging applications in nuclear SMR components and data center thermal solutions—worth monitoring market-specific growth drivers.",
+        "rmfi": "Market growth forecast validates RMFI's core defense/aerospace end markets; opportunities likely in advanced cooling systems for data center buildout and potential nuclear SMR component manufacturing as next-gen reactors advance.",
         "category": "Markets",
-        "urgency": "low"
+        "urgency": "medium"
       }
     },
     {
@@ -1084,11 +1063,11 @@
       "source": "Google News — Machining",
       "rss": true,
       "analysis": {
-        "insight": "PMGC Holdings' acquisition of A&B Aerospace consolidates precision manufacturing capacity in the aerospace and defense sector, signaling continued consolidation and growth in a market benefiting from increased defense spending and aerospace demand.",
+        "insight": "PMGC Holdings strengthens its aerospace and defense precision manufacturing platform through the A&B Aerospace acquisition, consolidating capabilities in a sector with sustained defense spending and aerospace recovery tailwinds.",
         "tickers": [
           "PMGC"
         ],
-        "rmfi": "RMFI may face increased competition from consolidated players like PMGC, but could also identify acquisition or partnership opportunities as the precision machining market consolidates around aerospace and defense customers.",
+        "rmfi": "Consolidation activity in precision aerospace/defense manufacturing may signal increased customer demand and integration opportunities for RMFI; potential partnership or subcontract expansion with larger platform players acquiring complementary shops.",
         "category": "Defense",
         "urgency": "medium"
       }
@@ -1100,9 +1079,23 @@
       "source": "Google News — Machining",
       "rss": true,
       "analysis": {
-        "insight": "A South Paris precision parts maker acquired a Texas-based aerospace firm, consolidating manufacturing capacity in the defense/aerospace supply chain. This vertical integration move strengthens the combined entity's ability to serve major OEMs requiring precision machining and assembly capabilities.",
+        "insight": "A South Paris precision parts manufacturer acquired a Texas-based aerospace firm, consolidating capabilities in the aerospace supply chain and potentially strengthening competitive positioning in defense/aerospace markets.",
         "tickers": [],
-        "rmfi": "Potential competitive threat or partnership opportunity — aerospace consolidation may create larger competitors but could also generate subcontracting opportunities for RMFI if the acquired firm lacks certain machining capabilities or capacity.",
+        "rmfi": "Direct competitive intelligence on aerospace precision manufacturing consolidation; potential acquisition target or partnership opportunity if RMFI seeks to expand aerospace/defense capabilities through similar M&A.",
+        "category": "Defense",
+        "urgency": "medium"
+      }
+    },
+    {
+      "title": "SVM Machining, Inc. Signs Long-Term Agreement to Supply Mission-Critical Aerospace and Defense Components to Turbo-Jet Products Co., Inc. - Yahoo Finance",
+      "url": "https://news.google.com/rss/articles/CBMingFBVV95cUxPSXg5V09Qc2Z1RlpRdEZfT3VPb0RmbTVDdmlfUEhNTFVrQXVNWjdGNGFHSWJ3VHJucTVwdUM4M3pXX0pUSzBOMW5mUVl2UTJ5Mm91cVFQSk5rZjVObjlURUEtRU0tMUl5SU9aX2FJWDBwbVpqTk5tTm9xX19qNDh3N25lZU0yWWRmMG5hdl9ic1lyV3ZQX1YzMzNfbzl3Zw?oc=5",
+      "summary": "SVM Machining, Inc. Signs Long-Term Agreement to Supply Mission-Critical Aerospace and Defense Components to Turbo-Jet Products Co., Inc.&nbsp;&nbsp;Yahoo Finance",
+      "source": "Google News — Machining",
+      "rss": true,
+      "analysis": {
+        "insight": "SVM Machining secured a long-term supply agreement for mission-critical aerospace and defense components with Turbo-Jet Products, demonstrating sustained demand in the defense industrial base for precision-manufactured parts.",
+        "tickers": [],
+        "rmfi": "Direct competitive intelligence: SVM's long-term aerospace/defense supply contract validates the market opportunity RMFI targets. This suggests continued robust demand for precision machining in defense propulsion systems—a potential sales lead category for RMFI's capabilities in mission-critical component manufacturing.",
         "category": "Defense",
         "urgency": "medium"
       }
@@ -1114,9 +1107,9 @@
       "source": "Google News — Defense Mfg",
       "rss": true,
       "analysis": {
-        "insight": "IMCO secured a $5M defense contract for electrical systems in armored military vehicles, signaling continued defense sector demand for specialized components and subsystems.",
+        "insight": "IMCO secured a $5M defense contract for electrical systems in armored military vehicles, signaling continued strong demand for defense electronics and potential supply chain opportunities for precision manufacturers supporting vehicle electrification and military modernization.",
         "tickers": [],
-        "rmfi": "Potential opportunity for RMFI to supply precision-machined metal components, connectors, or enclosures for electrical system assemblies in armored vehicle platforms if IMCO sources manufacturing partners.",
+        "rmfi": "Potential opportunity for RMFI to supply precision-machined components for electrical system housings, connectors, thermal management parts, or vehicle structural/chassis elements used in armored military vehicle platforms.",
         "category": "Defense",
         "urgency": "medium"
       }
@@ -1128,25 +1121,9 @@
       "source": "Google News — Defense Mfg",
       "rss": true,
       "analysis": {
-        "insight": "A Wichita aerospace manufacturer secured a $47.8M defense contract while diversifying into body armor production, signaling strong defense sector demand and potential supply chain opportunities for precision machining vendors.",
+        "insight": "A Wichita aerospace manufacturer secured a $47.8M defense contract and is diversifying into body armor production, signaling strong defense sector demand and potential supply chain opportunities for specialized component manufacturers.",
         "tickers": [],
-        "rmfi": "Potential sales opportunity: precision machining components for defense contract manufacturing and body armor production (metal stampings, fasteners, sub-assemblies) — worth monitoring for direct vendor relationships with this manufacturer.",
-        "category": "Defense",
-        "urgency": "medium"
-      }
-    },
-    {
-      "title": "Nikon AM Synergy Secures New DLA Supply Chain Contract - 3D Printing Industry",
-      "url": "https://news.google.com/rss/articles/CBMinwFBVV95cUxQWGdHQ1VORXBQVTlIU0pvdkR0Zm05amVXVUJURzgxMS1BWmY0c2JSckhWOWR1WF9UMDZNUkxpOGRlNDZxR1I1YnllTXlxRGRNbDNvR3R3NmdHRzlJZ1lmTk9rRi1pbTFsUV9ocmw5Y215RGp5aU9fUHFhUGlhaktLZ2NiYV80RXNrb3BYc0F6VmV0b3kzenNVV0pVdWRlN3c?oc=5",
-      "summary": "Nikon AM Synergy Secures New DLA Supply Chain Contract&nbsp;&nbsp;3D Printing Industry",
-      "source": "Google News — Defense Mfg",
-      "rss": true,
-      "analysis": {
-        "insight": "Nikon AM Synergy secured a DLA (Defense Logistics Agency) supply chain contract, expanding additive manufacturing capabilities for U.S. defense procurement. This signals growing DoD adoption of 3D printing for critical parts and potential supply chain diversification.",
-        "tickers": [
-          "BWXT"
-        ],
-        "rmfi": "Potential partnership or subcontracting opportunity if RMFI provides precision machining services for post-processing, finishing, or complementary components to 3D-printed defense parts supplied through DLA contracts.",
+        "rmfi": "Potential opportunity for precision machining parts for aerospace defense assemblies, body armor components (metal backing plates, fasteners), or related defense manufacturing subcontracting if RMFI has aerospace/defense certifications.",
         "category": "Defense",
         "urgency": "medium"
       }
@@ -1158,27 +1135,74 @@
       "source": "Google News — Defense Mfg",
       "rss": true,
       "analysis": {
-        "insight": "Raytheon (RTX) is expanding domestic production of a critical material for both commercial and defense sectors, reducing supply chain vulnerabilities and supporting U.S. industrial resilience in key markets.",
+        "insight": "Raytheon (RTX) is expanding domestic production of a critical material for both commercial and defense sectors, likely addressing supply chain vulnerabilities and reducing reliance on foreign sources. This signals strengthening defense-industrial capacity and potential new contract opportunities across the aerospace/defense supply chain.",
         "tickers": [
           "RTX"
         ],
-        "rmfi": "Potential opportunity for precision machining work supporting Raytheon's domestic material production expansion, particularly if the critical material requires precision-machined components or assembly support for defense/aerospace applications.",
+        "rmfi": "Potential opportunity for precision machining of components in Raytheon's critical material supply chain expansion, particularly if the material involves aerospace/defense-grade parts requiring specialized machining or assembly work.",
         "category": "Defense",
         "urgency": "high"
       }
     },
     {
-      "title": "Advanced Magnet Lab secures USD$2M defense contract for rare earth magnet production - Mugglehead Investment Magazine",
-      "url": "https://news.google.com/rss/articles/CBMiqwFBVV95cUxNeVBwMU95X2JoWEdvc1AyWFVKelhaUnNVN2REemlhdW1lYUswM1NycVFiRVhaM01yR2RnVzBZQmxhNzdtWWRxN0RQd01ibmhjNGxYcWdJd0ZWaS1PUlFPcU9Md0s0cDROYUZBbmxFVXBoSEFsTTJ2ZVNHOVpqbXFyUnM5MVEtcFU4dkhlUjUzX1dXdkhVNjJqdllIbEpldnhBNGV3bmszckVPRWc?oc=5",
-      "summary": "Advanced Magnet Lab secures USD$2M defense contract for rare earth magnet production&nbsp;&nbsp;Mugglehead Investment Magazine",
+      "title": "Ukraine, the U.S. Defense Industrial Base, and the Elusive Crisis-Era Munitions Production Surge - Institute for National Strategic Studies (INSS)",
+      "url": "https://news.google.com/rss/articles/CBMixwFBVV95cUxQSEFxZGt6SmtiNjVRMm43dG9qam42N04yV2kzX0Z5ZWd6ZXMxVDZVYVpoVi1OdlhCYTBITmM0aDdIVmhfd1pkUUhHN3VGazZPQWpOUEVYYkFjMnIycV93Z0VNbHBGVUVCdlJRbUtZdzFib3Q5TGdrR3VzZmNKaWVOdWVyNmhGZU9uRGNGMUxSaDNhQWd4V2NlMEVaRFpwMlJ1OVBCUVRzZmpNOGRYeWVidy1xUFFoNmZwMlplMDNrYzNxZ0NodVM0?oc=5",
+      "summary": "Ukraine, the U.S. Defense Industrial Base, and the Elusive Crisis-Era Munitions Production Surge&nbsp;&nbsp;Institute for National Strategic Studies (INSS)",
       "source": "Google News — Defense Mfg",
       "rss": true,
       "analysis": {
-        "insight": "Advanced Magnet Lab secured a $2M defense contract for rare earth magnet production, signaling growing defense sector demand for critical materials essential to missile guidance systems, radar, and military electronics.",
+        "insight": "The U.S. defense industrial base is struggling to surge munitions production despite sustained Ukraine conflict demand, revealing structural capacity constraints and supply chain bottlenecks that could persist even as geopolitical tensions remain elevated.",
+        "tickers": [
+          "RTX",
+          "NOC",
+          "GD",
+          "LMT"
+        ],
+        "rmfi": "Precision machining opportunity: Defense contractors facing munitions production constraints will need precision-machined components for ammunition manufacturing, fuzing systems, and artillery shell production — direct sales lead for RMFI to tier-1 and tier-2 defense suppliers.",
+        "category": "Defense",
+        "urgency": "high"
+      }
+    },
+    {
+      "title": "Nikon AM Synergy Secures New DLA Supply Chain Contract - 3D Printing Industry",
+      "url": "https://news.google.com/rss/articles/CBMinwFBVV95cUxQWGdHQ1VORXBQVTlIU0pvdkR0Zm05amVXVUJURzgxMS1BWmY0c2JSckhWOWR1WF9UMDZNUkxpOGRlNDZxR1I1YnllTXlxRGRNbDNvR3R3NmdHRzlJZ1lmTk9rRi1pbTFsUV9ocmw5Y215RGp5aU9fUHFhUGlhaktLZ2NiYV80RXNrb3BYc0F6VmV0b3kzenNVV0pVdWRlN3c?oc=5",
+      "summary": "Nikon AM Synergy Secures New DLA Supply Chain Contract&nbsp;&nbsp;3D Printing Industry",
+      "source": "Google News — Defense Mfg",
+      "rss": true,
+      "analysis": {
+        "insight": "Nikon AM Synergy secured a DLA (Defense Logistics Agency) supply chain contract for 3D printing capabilities, indicating growing defense sector adoption of additive manufacturing for supply chain resilience and rapid prototyping.",
         "tickers": [],
-        "rmfi": "Potential machining opportunity: rare earth magnet production often requires precision-machined housings, mounts, and component assemblies for defense applications—worth monitoring Advanced Magnet Lab's supply chain needs.",
+        "rmfi": "Potential opportunity if RMFI can partner as a secondary supplier or post-processing vendor for 3D-printed defense components, particularly for complex aerospace/defense parts requiring precision finishing or integration services.",
         "category": "Defense",
         "urgency": "medium"
+      }
+    },
+    {
+      "title": "Bitcoin, Ethereum Extend Slide As Crypto Market Sentiment Weakens - Moomoo",
+      "url": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxQaVE5bDlhdFJlMzdvUWwxZzd1VkUzb1p0Y3gzQkp3NVROUEZqY3FiTm5yNWNXakpkcUszUXNiOC1laU9ZOGw2aVFyQ3F4bFRqdkphelY3RFdGcFNPM3drZ2UteU5hSGRTanBDQmdzNWI2WkNkc3JHUmVDX3VHSlhlbVBZVHBMc3VSRndKSGZqU19PTkpmYVlYamUtLXc4NzdsWXZxemFQRU44QQ?oc=5",
+      "summary": "Bitcoin, Ethereum Extend Slide As Crypto Market Sentiment Weakens&nbsp;&nbsp;Moomoo",
+      "source": "Google News — Crypto",
+      "rss": true,
+      "analysis": {
+        "insight": "Bitcoin and Ethereum are declining amid weakening crypto market sentiment, which could reduce demand from crypto mining operations for power and cooling infrastructure but has limited direct impact on defense/aerospace manufacturing.",
+        "tickers": [],
+        "rmfi": null,
+        "category": "Crypto",
+        "urgency": "low"
+      }
+    },
+    {
+      "title": "Top 10 Cryptocurrencies Of June 26, 2026 - Forbes",
+      "url": "https://news.google.com/rss/articles/CBMif0FVX3lxTE80eDBYNklCTEdEa0pWcnBvUXRnMzR5Z0l2TldwTHVKVjlrTzlWcTBlY1YzdGFfMFRXbVBNZV81Q1FrUnJhTUFuT0JRNEJiclR2ZzRwcGJNd1F5SzZTVzgteGNyNU5VUUd4WHhNbV83ZDdzanE3bXVmUGFMN3VCeXM?oc=5",
+      "summary": "Top 10 Cryptocurrencies Of June 26, 2026&nbsp;&nbsp;Forbes",
+      "source": "Google News — Crypto",
+      "rss": true,
+      "analysis": {
+        "insight": "A generic crypto rankings article with no actionable market data, specific price movements, or developments that would impact investors or manufacturers.",
+        "tickers": [],
+        "rmfi": null,
+        "category": "Crypto",
+        "urgency": "low"
       }
     },
     {
@@ -1188,11 +1212,13 @@
       "source": "Google News — Crypto",
       "rss": true,
       "analysis": {
-        "insight": "Bitcoin dropped below $60,000, indicating crypto market weakness that could reduce discretionary spending by tech investors and traders. This macro headwind may dampen demand for non-essential industrial equipment, though defense/aerospace spending typically remains insulated from crypto volatility.",
-        "tickers": [],
+        "insight": "Bitcoin dropped below $60,000, signaling potential crypto market weakness that could impact trader portfolios and tech sector sentiment. This price action reflects broader market risk-off conditions worth monitoring for downstream effects on growth stocks.",
+        "tickers": [
+          "BTC"
+        ],
         "rmfi": null,
         "category": "Crypto",
-        "urgency": "low"
+        "urgency": "medium"
       }
     },
     {
@@ -1202,42 +1228,11 @@
       "source": "Google News — Crypto",
       "rss": true,
       "analysis": {
-        "insight": "Bitcoin hits a 21-month low as the crypto market tests critical support levels, signaling potential weakness in risk assets and trader sentiment that could impact crypto-exposed portfolios.",
+        "insight": "Bitcoin hit a 21-month low as the crypto market tests support levels, signaling potential weakness in risk assets and investor sentiment. This downturn may pressure crypto-exposed traders and reduce discretionary spending on high-tech equipment, though defense/aerospace demand remains largely independent of crypto cycles.",
         "tickers": [],
         "rmfi": null,
         "category": "Crypto",
         "urgency": "low"
-      }
-    },
-    {
-      "title": "Whale Activity Shows High-Leverage Short Positions Re-Opened on Bitcoin and Ethereum - TradingView",
-      "url": "https://news.google.com/rss/articles/CBMi2gFBVV95cUxQc3AzUHl2X25VYm55TGpXLUZWR1pfTjJZVER1QV91RHhqQWtyQVgzZ25EbXFIUmtZNmt2dER0b1RlTWhPLTRVUkVBNTA0YnpIYy1OTDVsUm92c3hFU1hCQzFkVTlBc0VuUW45Q1k0cDRvY0xsR01lRExUeTJra0o4VlNJcmE3RHNtU3pkeDZ6dWNOcjV3QTdnWWM5TmJMMHdTM2NISXpFTzh5cGU0RVBwUlNNcU1HYUxPNUhkSWUwTXlEejRTZGswNm5VdTRSaXJYb1Z4RWpSRU1MQQ?oc=5",
-      "summary": "Whale Activity Shows High-Leverage Short Positions Re-Opened on Bitcoin and Ethereum&nbsp;&nbsp;TradingView",
-      "source": "Google News — Crypto",
-      "rss": true,
-      "analysis": {
-        "insight": "Major crypto investors are re-establishing high-leverage short positions on Bitcoin and Ethereum, signaling bearish sentiment and potential near-term price volatility that could affect trader portfolios.",
-        "tickers": [],
-        "rmfi": null,
-        "category": "Crypto",
-        "urgency": "medium"
-      }
-    },
-    {
-      "title": "Crypto Market Flashes Recovery Signs Ahead of $10.8B Bitcoin, ETH, XRP, SOL Options Expiry - Cryptonews.net",
-      "url": "https://news.google.com/rss/articles/CBMiW0FVX3lxTFBFbFkxUUdxeHJBX2RHRnpZakdZWGlhTEd4UEZEM3BGdnlXZklSOWdKMTY0MVJjT0J5eEE2M1BWNXFPdWVUajNDZUpuVmtGd0lyWm9veEE1VUtGa00?oc=5",
-      "summary": "Crypto Market Flashes Recovery Signs Ahead of $10.8B Bitcoin, ETH, XRP, SOL Options Expiry&nbsp;&nbsp;Cryptonews.net",
-      "source": "Google News — Crypto",
-      "rss": true,
-      "analysis": {
-        "insight": "Crypto market shows recovery momentum ahead of a major $10.8B options expiry event across Bitcoin, Ethereum, XRP, and Solana, which could create significant price volatility. Large options expirations often trigger sharp moves as traders manage positions, presenting both trading opportunities and risks for active crypto investors.",
-        "tickers": [
-          "BTC",
-          "ETH"
-        ],
-        "rmfi": null,
-        "category": "Crypto",
-        "urgency": "medium"
       }
     },
     {
@@ -1247,7 +1242,7 @@
       "source": "Google News — Crypto",
       "rss": true,
       "analysis": {
-        "insight": "Bitcoin and crypto assets experienced significant outflows ($1.3B from ETFs this week) amid broad risk-off market sentiment, signaling investor pullback from higher-risk assets. This reflects weakening risk appetite that typically precedes or accompanies broader market corrections affecting growth stocks and speculative investments.",
+        "insight": "Bitcoin ETF outflows of $1.3B this week signal risk-off sentiment in crypto markets, reflecting broader investor caution that could impact tech and growth-oriented equities. This pullback may persist if macroeconomic headwinds continue.",
         "tickers": [],
         "rmfi": null,
         "category": "Crypto",
@@ -1255,18 +1250,20 @@
       }
     },
     {
-      "title": "EPA Hands Over AI Data Center Regulation to States and Communities to Develop Best Practices - Crowell & Moring LLP",
+      "title": "EPA Steps Back from AI Data Center Regulation: What Developers Must Know Now - Crowell & Moring LLP",
       "url": "https://news.google.com/rss/articles/CBMi2gFBVV95cUxNV1A2RWVBSko1SzRFMVRlQWdTZ0lDMXZSRkVxMFRCaEhRUU8zV1NTWGJCOGpXY1ZwZ3NlQ3VBTUZwTmdRdFdZLUZJQ2hGVzBJdnRxenFjS1Jwa0ZpMC1FdzQ2UzEtUTZ1WFQ0Yk9udy1MeGlqZkZvSTR6LVpaMlpKTWFEMlpSWDVSNVJBMG5hTk1NN3FsWEl3RUx2eUFLdkVJTjF1V0dCeXJEWjZEMkRpeVlWQ0ZYNHN3NmdyNDNfTUN1LVJYVmdJOHl4RGRMXzl1VFZMcVhSU3lZQQ?oc=5",
-      "summary": "EPA Hands Over AI Data Center Regulation to States and Communities to Develop Best Practices&nbsp;&nbsp;Crowell & Moring LLP",
+      "summary": "EPA Steps Back from AI Data Center Regulation: What Developers Must Know Now&nbsp;&nbsp;Crowell & Moring LLP",
       "source": "Google News — Data Centers",
       "rss": true,
       "analysis": {
-        "insight": "EPA is decentralizing AI data center regulation to states and communities rather than establishing federal standards, creating a fragmented regulatory landscape that could accelerate regional data center buildouts but increase compliance complexity and infrastructure demands across diverse jurisdictions.",
+        "insight": "EPA regulatory pullback on AI data center rules reduces compliance burdens for developers, likely accelerating data center expansion and infrastructure investment in the sector. This creates near-term tailwinds for data center buildout and cooling/power system demand.",
         "tickers": [
-          "EQIX",
-          "DLR"
+          "NVDA",
+          "MSFT",
+          "AMZN",
+          "GOOGL"
         ],
-        "rmfi": "State-led data center regulation could drive localized infrastructure expansion, creating demand for precision-machined cooling system components, power distribution hardware, and structural support assemblies for rapid data center construction and upgrades.",
+        "rmfi": "Potential sales opportunity in precision cooling components, power distribution systems, and structural supports for accelerated AI data center construction projects.",
         "category": "Infrastructure",
         "urgency": "medium"
       }
@@ -1278,7 +1275,7 @@
       "source": "Google News — Data Centers",
       "rss": true,
       "analysis": {
-        "insight": "Unable to analyze: article title suggests political/social commentary ('peasants must continue the rebellion') with no substantive content provided. No clear connection to markets, defense, manufacturing, or investment themes.",
+        "insight": null,
         "tickers": [],
         "rmfi": null,
         "category": "Other",
@@ -1292,32 +1289,14 @@
       "source": "Google News — Data Centers",
       "rss": true,
       "analysis": {
-        "insight": "Bessemer's AI data center stack roadmap outlines the critical infrastructure layers required to support AI workloads, from semiconductors to cooling systems to power delivery. This is relevant for investors seeking exposure to the AI infrastructure buildout and for manufacturers supplying specialized components to data center operators.",
+        "insight": "Bessemer's AI data center stack roadmap outlines the infrastructure and components needed to support explosive AI compute growth, creating opportunities across chip makers, cloud providers, and infrastructure vendors serving the booming data center buildout.",
         "tickers": [
           "NVDA",
           "MSFT",
           "AMZN",
-          "GOOGL",
-          "EQIX"
+          "GOOGL"
         ],
-        "rmfi": "Significant opportunity: AI data centers require advanced precision-machined cooling manifolds, high-performance heat exchanger components, and custom power distribution hardware—areas where RMFI's defense/aerospace manufacturing expertise in tight tolerances and complex assemblies directly applies to hyperscaler customers.",
-        "category": "Infrastructure",
-        "urgency": "high"
-      }
-    },
-    {
-      "title": "August date looms over Wichita Falls area data center projects - Times Record News",
-      "url": "https://news.google.com/rss/articles/CBMirgFBVV95cUxQQVI2cHI5VUJfamVxSUw5U2ZZQzIwWWgyYkxGd0F2aVhyTm1PRUk1VmRoYldkU0FQMnZOakFkSTZLUi1aNk43YXNRUThXQk0yeGxFaU5uQ2hTUU9RWGwwTXFoS3BneURhZkwwcnRMU3dJNFNwUzBqYTRHdDRETDlXbmZMaGlvNk9BMk1XQWEtSWlvMVZWRXd2bUUza3QxVWJHUThDZFU3UUV6MmY2bUE?oc=5",
-      "summary": "August date looms over Wichita Falls area data center projects&nbsp;&nbsp;Times Record News",
-      "source": "Google News — Data Centers",
-      "rss": true,
-      "analysis": {
-        "insight": "An August deadline is driving data center development decisions in the Wichita Falls area, suggesting accelerating regional infrastructure expansion tied to AI/cloud computing demand.",
-        "tickers": [
-          "EQIX",
-          "DLR"
-        ],
-        "rmfi": "Potential opportunity: data center projects require precision-machined cooling system components, power distribution hardware, and structural supports — RMFI should contact regional developers and contractors to bid on manufacturing contracts.",
+        "rmfi": "Precision machining demand likely increasing for data center cooling systems, power distribution components, and high-precision structural/thermal management parts as hyperscalers rapidly expand AI infrastructure.",
         "category": "Infrastructure",
         "urgency": "high"
       }
@@ -1329,13 +1308,33 @@
       "source": "Google News — Data Centers",
       "rss": true,
       "analysis": {
-        "insight": "EPA's proposed 'Build Now, Permit Later' air permitting streamlining could accelerate data center construction and major industrial projects by reducing regulatory delays, benefiting companies in the data center supply chain and infrastructure buildout sector.",
+        "insight": "EPA's proposed 'Build Now, Permit Later' air permitting framework could accelerate data center and major infrastructure project construction by streamlining environmental approval timelines, reducing project delays and regulatory bottlenecks for large-scale developments.",
         "tickers": [
           "EQIX",
           "DLR",
           "NVDA"
         ],
-        "rmfi": "Potential opportunity for precision machining components in accelerated data center cooling systems, power distribution equipment, and structural support systems if permitting acceleration drives faster facility deployment.",
+        "rmfi": "Potential opportunity for precision machining components in accelerated data center buildouts (cooling systems, power distribution hardware) and infrastructure projects requiring rapid-cycle manufacturing support.",
+        "category": "Infrastructure",
+        "urgency": "medium"
+      }
+    },
+    {
+      "title": "What do Supply Constraints Mean for Data Centre Builds? - Construction Digital",
+      "url": "https://news.google.com/rss/articles/CBMif0FVX3lxTE92NG82d2ppQmZ5X052VDdfRXVZUUhUU0NsRnFkZ1ZheXYzbjQzUWZGRmdla1JFdEdfRXFOaFBtUmNQU01EY05UamltN3VkTzhpNUFXU1BfSG5yOGFyaTlJTlI3eDEtN05OWG1RdDhRY2R6SnBENlVoeWY0YnNJMUE?oc=5",
+      "summary": "What do Supply Constraints Mean for Data Centre Builds?&nbsp;&nbsp;Construction Digital",
+      "source": "Google News — Data Centers",
+      "rss": true,
+      "analysis": {
+        "insight": "Supply constraints are impacting data centre construction timelines and costs, which could delay AI infrastructure buildout and create cost pressures on hyperscalers investing in compute capacity.",
+        "tickers": [
+          "NVDA",
+          "MSFT",
+          "AMZN",
+          "GOOGL",
+          "EQIX"
+        ],
+        "rmfi": "Potential opportunity: Data center builds facing supply constraints may create urgent demand for precision-machined cooling system components, power distribution equipment, and structural fasteners—areas where RMFI could support OEMs and contractors accelerating constrained projects.",
         "category": "Infrastructure",
         "urgency": "medium"
       }
@@ -1347,12 +1346,13 @@
       "source": "Google News — SMR Nuclear",
       "rss": true,
       "analysis": {
-        "insight": "A Texas SMR (Small Modular Reactor) plant achieved a licensing milestone, advancing commercial deployment of nuclear technology that could provide distributed power for data centers and industrial facilities. This regulatory progress increases near-term probability of SMR construction projects requiring specialized manufacturing components.",
+        "insight": "Texas SMR plant achieves licensing milestone, advancing small modular reactor commercialization which could drive demand for precision-manufactured reactor components and industrial equipment in the nuclear supply chain.",
         "tickers": [
+          "SMR",
           "BWXT",
           "OKLO"
         ],
-        "rmfi": "SMR plants require precision-machined reactor vessel components, coolant system parts, and control rod mechanisms — potential direct sales opportunity as Texas facility moves toward construction phase.",
+        "rmfi": "Licensing progress for SMR plants creates potential sales opportunities for RMFI in precision machined reactor internals, pressure vessel components, and specialized industrial parts required for nuclear facility construction and operation.",
         "category": "Energy",
         "urgency": "high"
       }
@@ -1364,13 +1364,13 @@
       "source": "Google News — SMR Nuclear",
       "rss": true,
       "analysis": {
-        "insight": "Holtec received partial NRC approval for its SMR-300 small modular reactor construction permit at the Palisades site, advancing commercialization of next-generation nuclear power technology. This regulatory milestone accelerates SMR deployment which is critical for decarbonization and supports increased demand for specialized manufacturing components.",
+        "insight": "Holtec's partial application approval for SMR-300 construction permit at Palisades represents progress toward commercial small modular reactor deployment, validating the SMR technology pathway and signaling increased nuclear infrastructure investment in the US energy sector.",
         "tickers": [
           "SMR",
           "BWXT",
           "CEG"
         ],
-        "rmfi": "Holtec's SMR-300 construction permit approval creates potential sales opportunities for RMFI in precision-machined reactor vessel components, heat exchanger internals, control rod assemblies, and specialized fasteners required for small modular reactor manufacturing and assembly.",
+        "rmfi": "SMR reactor construction presents potential sales opportunities for precision-machined components including reactor vessel internals, control rod assemblies, heat exchanger parts, and specialized fasteners for nuclear-grade applications.",
         "category": "Energy",
         "urgency": "high"
       }
@@ -1382,13 +1382,13 @@
       "source": "Google News — SMR Nuclear",
       "rss": true,
       "analysis": {
-        "insight": "Holtec's NRC license application for twin SMR-300 reactors at Palisades represents a major milestone in small modular reactor commercialization, potentially opening substantial manufacturing and supply chain opportunities for precision components in the emerging SMR sector.",
+        "insight": "Holtec's NRC license application for twin SMR-300 reactors at Palisades represents a major milestone in small modular reactor commercialization, potentially unlocking substantial demand for specialized manufacturing components in nuclear power generation.",
         "tickers": [
           "SMR",
           "BWXT",
-          "CEG"
+          "CCJ"
         ],
-        "rmfi": "Precision machining opportunity for SMR reactor vessel components, heat exchanger internals, and control rod drive mechanisms—Holtec's Palisades project could require custom-machined parts for nuclear-grade applications.",
+        "rmfi": "Significant opportunity: SMR-300 deployment will require precision-machined reactor components, cooling system parts, and structural assemblies — areas where RMFI can compete for defense contractor supply chain integration and nuclear-qualified manufacturing contracts.",
         "category": "Energy",
         "urgency": "high"
       }
@@ -1400,12 +1400,13 @@
       "source": "Google News — SMR Nuclear",
       "rss": true,
       "analysis": {
-        "insight": "NRC approval of TerraPower's construction permit marks a major milestone for advanced nuclear reactor deployment in the US, potentially accelerating SMR commercialization and creating significant supply chain opportunities for precision components in reactor manufacturing and assembly.",
+        "insight": "NRC approval of TerraPower's construction permit is a major milestone for advanced nuclear reactor development in the US, validating the company's Natrium design and opening opportunities for domestic nuclear supply chain expansion. This accelerates the timeline for next-generation small modular reactors (SMRs) that could power data centers and industrial facilities, creating demand for specialized manufacturing components.",
         "tickers": [
           "BWXT",
-          "SMR"
+          "SMR",
+          "CCJ"
         ],
-        "rmfi": "High-potential opportunity: TerraPower reactors require precision-machined components for reactor internals, cooling systems, fuel handling equipment, and structural assemblies — RMFI should research TerraPower's supply chain and aerospace/defense contractor partnerships for subcontracting positions.",
+        "rmfi": "RMFI should pursue opportunities supplying precision machined components for TerraPower's Natrium reactor assembly, particularly high-tolerance parts for cooling systems, control rod mechanisms, and nuclear-grade fittings.",
         "category": "Energy",
         "urgency": "high"
       }
@@ -1417,13 +1418,12 @@
       "source": "Google News — SMR Nuclear",
       "rss": true,
       "analysis": {
-        "insight": "OPG's license application for the BWRX-300 small modular reactor represents a major milestone in commercial SMR deployment in North America, potentially accelerating adoption for data centers and industrial power applications.",
+        "insight": "OPG's application for operating license of the BWRX-300 small modular reactor signals accelerating SMR commercialization and regulatory approval momentum, opening near-term deployment opportunities for precision components and manufacturing partnerships.",
         "tickers": [
           "BWXT",
-          "SMR",
-          "CEG"
+          "SMR"
         ],
-        "rmfi": "Significant opportunity: BWRX-300 SMR deployments require precision-machined components for reactor internals, cooling systems, and containment structures — potential supply chain entry for RMFI as OPG moves toward construction phase.",
+        "rmfi": "Strong sales lead potential: BWRX-300 deployment requires precision-machined reactor components, coolant system parts, and structural assemblies—core competencies for RMFI in the emerging SMR supply chain.",
         "category": "Energy",
         "urgency": "high"
       }
@@ -1435,16 +1435,16 @@
       "source": "Google News — Nuclear+DataCenter",
       "rss": true,
       "analysis": {
-        "insight": "Major tech hyperscalers (Meta, Google, Microsoft, Amazon) are making ambitious nuclear power commitments to meet AI data center energy demands, but the article questions whether these pledges can realistically be fulfilled given U.S. nuclear supply chain constraints, regulatory timelines, and limited SMR deployment capacity.",
+        "insight": "Major tech hyperscalers (Amazon, Microsoft, Google, Meta) are making nuclear power commitments to fuel AI data center expansion, but the article suggests these pledges may exceed realistic U.S. nuclear capacity and supply chain constraints, creating a gap between announced commitments and actual energy delivery.",
         "tickers": [
-          "NVDA",
           "MSFT",
           "AMZN",
           "GOOGL",
+          "META",
           "BWXT",
-          "CEG"
+          "SMR"
         ],
-        "rmfi": "Strong opportunity: hyperscalers' nuclear power push will require precision-machined components for SMR reactors, data center cooling systems, and power distribution infrastructure — potential multi-year contracts as energy demands accelerate.",
+        "rmfi": "Significant opportunity in precision-machined components for nuclear SMR reactors, data center cooling systems, and power infrastructure serving hyperscaler facilities pursuing nuclear energy solutions.",
         "category": "Energy",
         "urgency": "high"
       }
@@ -1456,14 +1456,14 @@
       "source": "Google News — Nuclear+DataCenter",
       "rss": true,
       "analysis": {
-        "insight": "The National Governors Association is promoting nuclear energy as a driver of state-level innovation, likely signaling increased support for nuclear infrastructure including Small Modular Reactors (SMRs). This reflects growing state-level backing for nuclear as a clean energy solution, which could accelerate commercial deployment and supply chain demand.",
+        "insight": "The NGA is promoting nuclear energy innovation across states, signaling increased government support for nuclear power expansion including Small Modular Reactors (SMRs) as a solution for clean energy and industrial power demands.",
         "tickers": [
           "OKLO",
           "BWXT",
           "CEG",
-          "SMR"
+          "CCJ"
         ],
-        "rmfi": "Potential opportunity in precision machining components for SMR reactor assemblies, cooling system components, and nuclear facility infrastructure — state-level nuclear initiatives typically require specialized precision parts for reactor construction and thermal management systems.",
+        "rmfi": "Potential opportunity in nuclear SMR component manufacturing and precision machining for reactor parts, cooling systems, and related defense/industrial nuclear infrastructure as state-level nuclear initiatives accelerate.",
         "category": "Energy",
         "urgency": "high"
       }
@@ -1475,14 +1475,14 @@
       "source": "Google News — Nuclear+DataCenter",
       "rss": true,
       "analysis": {
-        "insight": "Meta's commitment to 6.6 GW of nuclear power signals massive AI infrastructure expansion and validates nuclear energy as critical for powering next-generation data centers. This represents a major shift in tech industry energy strategy with implications for nuclear suppliers, power infrastructure, and defense-adjacent manufacturing.",
+        "insight": "Meta's commitment to 6.6 GW of nuclear power signals massive long-term AI infrastructure investment, driving demand for specialized components across data center cooling, power systems, and nuclear reactor manufacturing.",
         "tickers": [
           "META",
           "BWXT",
           "OKLO",
           "CEG"
         ],
-        "rmfi": "Precision machining opportunity in nuclear SMR components (reactor hardware, cooling system parts) and data center infrastructure (heat exchanger fittings, power distribution components) as Meta scales AI compute capacity.",
+        "rmfi": "High-value opportunity: Meta's nuclear projects require precision-machined components for SMR reactors, data center power distribution systems, cooling infrastructure, and specialized fasteners/housings — potential multi-year contract potential with reactor OEMs and integration partners.",
         "category": "Energy",
         "urgency": "high"
       }
@@ -1494,16 +1494,17 @@
       "source": "Google News — Nuclear+DataCenter",
       "rss": true,
       "analysis": {
-        "insight": "AI's explosive energy consumption is driving regulatory scrutiny globally, forcing data center operators and chip manufacturers to address power demands and sustainability requirements—creating urgency for infrastructure upgrades and alternative energy solutions like nuclear SMRs.",
+        "insight": "AI's explosive growth is driving unprecedented global energy demands, creating regulatory pressures around power consumption and grid capacity that will reshape infrastructure investment priorities and defense/aerospace supply chains serving energy sector buildout.",
         "tickers": [
           "NVDA",
           "MSFT",
           "AMZN",
           "GOOGL",
           "OKLO",
-          "BWXT"
+          "BWXT",
+          "CEG"
         ],
-        "rmfi": "Precision machining opportunity: AI data centers require advanced cooling systems, power distribution components, and thermal management parts; nuclear SMR buildout (OKLO, BWXT suppliers) needs specialized reactor components and precision-engineered subassemblies—both high-margin defense/industrial segments.",
+        "rmfi": "High opportunity for precision machining components in data center cooling systems, power distribution equipment, and emerging nuclear SMR reactor assemblies as AI energy demands accelerate infrastructure expansion.",
         "category": "Energy",
         "urgency": "high"
       }
@@ -1515,16 +1516,17 @@
       "source": "Google News — Nuclear+DataCenter",
       "rss": true,
       "analysis": {
-        "insight": "Data center power demands are accelerating as AI workloads surge, creating urgent infrastructure challenges around electricity supply and cooling systems. This represents a significant opportunity for suppliers of specialized components serving the data center buildout wave.",
+        "insight": "Data center power demands are accelerating as AI workloads explode, creating critical supply chain challenges for cooling systems, power distribution, and infrastructure components. This represents a significant opportunity for precision manufacturers serving the data center buildout.",
         "tickers": [
           "NVDA",
           "MSFT",
           "AMZN",
           "GOOGL",
+          "META",
           "EQIX",
           "DLR"
         ],
-        "rmfi": "Potential sales opportunities in precision-machined cooling components, power distribution manifolds, and structural assemblies for data center thermal management systems and backup power equipment.",
+        "rmfi": "High-value opportunity: data center operators need precision-machined cooling system components, liquid cooling manifolds, power distribution hardware, and thermal management parts to support rapid AI infrastructure expansion.",
         "category": "Infrastructure",
         "urgency": "high"
       }
@@ -1536,7 +1538,7 @@
       "source": "Google News — DC Virginia",
       "rss": true,
       "analysis": {
-        "insight": "Unable to provide analysis - article text is incomplete. Only the title 'Take This Data Center and Shove It' is visible without the full article content needed to identify specific data center developments, locations, or policy issues.",
+        "insight": "Unable to provide analysis - article text appears incomplete or corrupted. The title suggests opposition/resistance to data center development, likely addressing siting, environmental, or community concerns that could impact data center expansion plans.",
         "tickers": [],
         "rmfi": null,
         "category": "Infrastructure",
@@ -1550,15 +1552,14 @@
       "source": "Google News — DC Virginia",
       "rss": true,
       "analysis": {
-        "insight": "Business Insider's database of 1,400+ US data center facilities provides transparency into the massive buildout wave driven by AI infrastructure demand, signaling continued investment in compute capacity and related supply chain opportunities.",
+        "insight": "Business Insider's database of 1,400+ US data centers provides transparency on facility expansion, reflecting accelerating AI/cloud infrastructure buildout driven by GPU demand and hyperscaler competition. This maps the physical footprint of the tech boom and identifies regional development opportunities.",
         "tickers": [
           "NVDA",
           "MSFT",
           "AMZN",
-          "GOOGL",
-          "EQIX"
+          "GOOGL"
         ],
-        "rmfi": "Data center expansion creates demand for precision-machined cooling system components, power distribution hardware, and structural supports—RMFI should track regional buildout near manufacturing capabilities for direct sales or subcontract opportunities.",
+        "rmfi": "Data center construction boom creates demand for precision-machined cooling system components, server rack hardware, and thermal management parts—RMFI should monitor regional buildouts near its facilities for OEM and subcontract opportunities.",
         "category": "Infrastructure",
         "urgency": "medium"
       }
@@ -1570,13 +1571,13 @@
       "source": "Google News — DC Virginia",
       "rss": true,
       "analysis": {
-        "insight": "Virginia's 'data center alley' is experiencing rapid growth driven by AI/cloud computing demand, but residents face infrastructure strain, power grid stress, and environmental costs that could pressure operational efficiency and expansion timelines.",
+        "insight": "Virginia's data center corridor is a major economic driver but faces infrastructure strain and community costs, creating both opportunities and risks for the region's continued growth as a tech hub.",
         "tickers": [
           "EQIX",
           "DLR",
           "NVDA"
         ],
-        "rmfi": "Precision machining opportunity in high-performance cooling systems, power distribution components, and structural supports for data center expansion in Virginia's growing corridor.",
+        "rmfi": "Potential opportunity for precision machining components supplying data center cooling systems, power distribution equipment, and structural supports as Virginia's data center alley continues expansion.",
         "category": "Infrastructure",
         "urgency": "medium"
       }
@@ -1588,14 +1589,34 @@
       "source": "Google News — DC Virginia",
       "rss": true,
       "analysis": {
-        "insight": "AI chatbots consume massive amounts of water and energy for cooling data centers, creating environmental pollution in local communities—a sustainability concern that could drive regulatory scrutiny and increase operating costs for AI infrastructure companies.",
+        "insight": "AI chatbots consume massive amounts of water for data center cooling, creating environmental pollution concerns that could drive regulatory scrutiny of AI infrastructure and increase operating costs for cloud providers. This environmental cost analysis matters for defense contractors and investors betting on AI-driven growth.",
         "tickers": [
           "NVDA",
           "MSFT",
-          "GOOGL",
-          "AMZN"
+          "AMZN",
+          "GOOGL"
         ],
-        "rmfi": "Potential opportunity: AI data center expansion may drive demand for precision cooling system components, heat exchanger parts, and thermal management systems for hyperscaler facilities.",
+        "rmfi": "Potential opportunity: increased demand for precision-engineered data center cooling components, thermal management systems, and power delivery modules as AI facilities scale and face pressure to improve cooling efficiency and reduce water consumption.",
+        "category": "Infrastructure",
+        "urgency": "medium"
+      }
+    },
+    {
+      "title": "U.S. Data Center Power Consumption Map by State (2026) - ElectricChoice.com",
+      "url": "https://news.google.com/rss/articles/CBMiVkFVX3lxTE9acDEzM3A0SWNlUWl6NjN3UXUyZkxpRE9hZ3BtNVJkMUZ2M2dyVWkyQ0RESC1OLWZHY2oxYzlXMW1vSHdXUjNHWjZIMmNLRjhtU2d4dk53?oc=5",
+      "summary": "U.S. Data Center Power Consumption Map by State (2026)&nbsp;&nbsp;ElectricChoice.com",
+      "source": "Google News — DC Texas/AZ",
+      "rss": true,
+      "analysis": {
+        "insight": "U.S. data center power consumption mapping reveals regional concentration of AI/cloud infrastructure, signaling continued massive energy demand growth that will stress grids and create opportunities for advanced cooling and power delivery solutions.",
+        "tickers": [
+          "NVDA",
+          "MSFT",
+          "AMZN",
+          "GOOGL",
+          "EQIX"
+        ],
+        "rmfi": "Data center expansion drives demand for precision-machined cooling system components, high-reliability power distribution enclosures, and thermal management hardware—direct sales opportunities as hyperscalers build out regional infrastructure.",
         "category": "Infrastructure",
         "urgency": "high"
       }
@@ -1607,17 +1628,14 @@
       "source": "Google News — DC Texas/AZ",
       "rss": true,
       "analysis": {
-        "insight": "Explosive growth of AI data centers across the Western US is creating massive demand for power and water infrastructure, driving opportunities for companies supplying cooling systems, power distribution components, and potentially nuclear SMR technology to meet these facilities' unprecedented energy needs.",
+        "insight": "AI data centers expanding rapidly across the Western US are creating severe power and water constraints, driving urgent infrastructure investments in energy solutions and cooling systems. This trend accelerates demand for nuclear SMRs and advanced cooling/power components to support AI compute buildout.",
         "tickers": [
           "NVDA",
-          "MSFT",
-          "AMZN",
-          "GOOGL",
-          "EQIX",
-          "DLR",
-          "OKLO"
+          "OKLO",
+          "BWXT",
+          "DLR"
         ],
-        "rmfi": "Strong opportunity: precision machining for data center cooling systems, power infrastructure components, and potential nuclear SMR reactor subassemblies if RMFI can qualify for next-gen energy solutions powering AI facilities.",
+        "rmfi": "Precision opportunity in manufacturing cooling system components, power distribution manifolds, and structural support systems for data center expansion and nuclear SMR installations to meet AI infrastructure demand.",
         "category": "Infrastructure",
         "urgency": "high"
       }
@@ -1629,29 +1647,15 @@
       "source": "Google News — DC Texas/AZ",
       "rss": true,
       "analysis": {
-        "insight": "Land subsidence in major US metros threatens critical infrastructure including data centers, power facilities, and defense installations, requiring reinforcement and relocation investments. This creates demand for precision-engineered foundation components and structural support systems.",
+        "insight": "Land subsidence in US metropolitan areas threatens critical infrastructure including data centers, power facilities, and transportation networks, creating demand for reinforcement and remediation solutions. This infrastructure vulnerability could drive investment in resilience projects and precision-engineered support systems.",
         "tickers": [
           "DLR",
           "EQIX",
-          "OKLO"
+          "BWXT"
         ],
-        "rmfi": "Opportunity to supply precision machined foundation support components, subsidence-monitoring equipment brackets, and structural reinforcement parts for data centers and nuclear SMR facilities in affected metropolitan areas.",
+        "rmfi": "Opportunity to supply precision-engineered foundation reinforcement components, subsidence monitoring sensor housings, and structural support systems for data centers and critical infrastructure affected by land subsidence in major metros.",
         "category": "Infrastructure",
-        "urgency": "high"
-      }
-    },
-    {
-      "title": "Texas Cities Top U.S. Rankings for New Home Construction in 2025 - Construction Owners",
-      "url": "https://news.google.com/rss/articles/CBMipAFBVV95cUxPRmE4bm9ETFZfQkpvLVJWV1EwSzJEaDFNdlFfTnFDZ1RqQ0JqenkyMDZXTGNlSmpEQXVWZXo2NXg0bWlTYzNMNDBMQVVOd3JiRk5mVU14ZUt0NGxOR2tGd202NGdWSFJRbXZWSUJvbUR2OU15WWFCSHh5MEh5T3ZqVzNPVm5qbTFYMDVHUVVnTXQ3REFMSlVjOHRsNERWd052Ulo5bg?oc=5",
-      "summary": "Texas Cities Top U.S. Rankings for New Home Construction in 2025&nbsp;&nbsp;Construction Owners",
-      "source": "Google News — DC Texas/AZ",
-      "rss": true,
-      "analysis": {
-        "insight": "Texas construction boom signals sustained demand for industrial infrastructure and materials; residential construction growth typically correlates with increased demand for precision components in HVAC, electrical systems, and industrial equipment.",
-        "tickers": [],
-        "rmfi": "Residential construction surge may drive demand for precision-machined components in construction equipment, HVAC systems, and industrial machinery; however, limited direct defense/aerospace/nuclear exposure in residential sector.",
-        "category": "Infrastructure",
-        "urgency": "low"
+        "urgency": "medium"
       }
     },
     {
@@ -1661,29 +1665,11 @@
       "source": "Google News — DC Texas/AZ",
       "rss": true,
       "analysis": {
-        "insight": "Houston's record home construction boom signals sustained demand for building materials, HVAC systems, and infrastructure components, which could drive industrial manufacturing orders across supply chains.",
+        "insight": "Houston's construction boom indicates strong regional economic growth and increased demand for infrastructure, materials, and precision components across residential, commercial, and industrial sectors.",
         "tickers": [],
-        "rmfi": "Residential construction surge may create indirect demand for precision-machined components in HVAC systems, plumbing fixtures, and appliance manufacturing, though not directly tied to RMFI's core defense/aerospace focus.",
+        "rmfi": "Residential construction surge may drive demand for HVAC systems, structural fasteners, and mechanical components, though defense/aerospace/nuclear applications remain unclear from this article.",
         "category": "Infrastructure",
         "urgency": "low"
-      }
-    },
-    {
-      "title": "Most new data centers in the U.S. are coming to rural areas - Pew Research Center",
-      "url": "https://news.google.com/rss/articles/CBMirgFBVV95cUxPZER6VWdOUmF3UHlDa29OV2M5a21rWUF0dGR4d2xjQzdvRDlxVDBkM0o0czU2ZUwtZk5rU0liWGttZVVickNhVl9IQmxkeGcxYUxRWjRoamVxVG5HS2FZZGVXY1p1UFA3SUdubnRSc0tueTZ0Z2pnWElSVEhVNXo3Q09TTFB2d1l6ZkdXSlUtQ1pqODNOSGl6QzQwU2FmR3dJVmhlV3FwYUtXZFowWXc?oc=5",
-      "summary": "Most new data centers in the U.S. are coming to rural areas&nbsp;&nbsp;Pew Research Center",
-      "source": "Google News — DC Southeast",
-      "rss": true,
-      "analysis": {
-        "insight": "Data center expansion into rural U.S. areas creates infrastructure buildout opportunities, driven by land availability, lower costs, and power grid access needs. This trend supports demand for precision components in cooling systems, power distribution, and structural support across multiple sectors.",
-        "tickers": [
-          "EQIX",
-          "DLR",
-          "NVDA"
-        ],
-        "rmfi": "Rural data center buildout generates potential sales for precision-machined cooling system components, power infrastructure parts, and structural fasteners/assemblies — particularly for thermal management systems and modular power solutions.",
-        "category": "Infrastructure",
-        "urgency": "medium"
       }
     },
     {
@@ -1693,14 +1679,14 @@
       "source": "Google News — DC Southeast",
       "rss": true,
       "analysis": {
-        "insight": "North Carolina is proposing legislation to reduce hyperscale AI data center costs, likely through tax incentives or infrastructure support, which could accelerate regional AI infrastructure development and attract major cloud/AI operators to the state.",
+        "insight": "North Carolina's proposed AI infrastructure bill aims to reduce hyperscale data center costs, likely through tax incentives or expedited permitting for AI compute facilities. This signals state-level competition for data center investment and could drive demand for precision components in cooling systems, power distribution, and structural supports.",
         "tickers": [
           "NVDA",
           "MSFT",
           "AMZN",
           "GOOGL"
         ],
-        "rmfi": "Potential opportunity: NC data center expansion could drive demand for precision-machined cooling system components, power distribution hardware, and structural support parts for hyperscale facilities.",
+        "rmfi": "Potential opportunity for RMFI to supply precision-machined components for data center cooling systems, power infrastructure hardware, and structural assemblies as North Carolina attracts hyperscale AI facility investments.",
         "category": "Infrastructure",
         "urgency": "medium"
       }
@@ -1712,16 +1698,14 @@
       "source": "Google News — DC Southeast",
       "rss": true,
       "analysis": {
-        "insight": "Data center water consumption in rural America is creating infrastructure strain and regulatory pressure, driving demand for efficient cooling solutions and alternative power technologies. This creates opportunities for companies supplying advanced cooling components and nuclear SMR systems as alternatives to water-intensive operations.",
+        "insight": "Data centers' massive water consumption is creating infrastructure strain and regulatory pressure in rural communities, driving demand for efficient cooling solutions and creating supply chain opportunities for precision components.",
         "tickers": [
+          "EQIX",
+          "DLR",
           "NVDA",
-          "MSFT",
-          "AMZN",
-          "GOOGL",
-          "OKLO",
-          "BWXT"
+          "MSFT"
         ],
-        "rmfi": "Precision cooling systems, thermal management components for data center infrastructure, and potential demand for precision parts in small modular reactor (SMR) manufacturing as data centers explore nuclear power alternatives to reduce water dependency.",
+        "rmfi": "Opportunity for RMFI to supply precision-machined cooling system components, heat exchanger parts, and water recirculation equipment for data center operators facing rural infrastructure constraints and sustainability pressures.",
         "category": "Infrastructure",
         "urgency": "high"
       }
@@ -1733,31 +1717,46 @@
       "source": "Google News — DC Southeast",
       "rss": true,
       "analysis": {
-        "insight": "Fiber industry faces dual pressures from BEAD program compliance burdens and data center operator backlash, potentially slowing broadband infrastructure deployment that underpins AI/cloud computing expansion.",
+        "insight": "Fiber industry faces regulatory compliance burden from BEAD (Broadband Equity, Access, and Deployment) program while simultaneously experiencing backlash from data center operators, creating tension between broadband expansion mandates and infrastructure demands.",
         "tickers": [
           "EQIX",
-          "DLR",
-          "VRT"
+          "DLR"
         ],
-        "rmfi": "Potential opportunity: Data center operators' infrastructure concerns may drive demand for precision-machined cooling system components, power distribution equipment, and structural supports as they navigate fiber connectivity requirements.",
+        "rmfi": "Data center operators' resistance to fiber buildout could create opportunities for precision cooling and power distribution component manufacturing as data centers seek alternative solutions to meet their infrastructure needs.",
         "category": "Infrastructure",
         "urgency": "medium"
       }
     },
     {
-      "title": "EnCore receives BLM authorization for dormant uranium project - American Nuclear Society -- ANS",
-      "url": "https://news.google.com/rss/articles/CBMisAFBVV95cUxNRkU3SWlHbVBhYkl5cUJ3eFVTVzlkMXY1SDlqdHJpUGdxejZDSXlHbVNNcDVlLW94ZVpQX0h5Y2Y5YXJvQmI3Y2t1Rl85bllPeUlKQTBtNVZqUlFLNl9fdHN4TFNxUTVzZlBCM3MxX2lsUWNhYlhaS2txSnJPSDJIdm9qV3RQTFRJQjEzQkduc2JkLVR3ejhLN3lvdDdzMXpNdVI1ejlFeUxtd2lEclZrbA?oc=5",
-      "summary": "EnCore receives BLM authorization for dormant uranium project&nbsp;&nbsp;American Nuclear Society -- ANS",
+      "title": "Nebius Touts $10B, 310 MW Data Center Plan - Data Center Knowledge",
+      "url": "https://news.google.com/rss/articles/CBMixwFBVV95cUxNeUxQNmxWQlU2RHhZN3NOTFRvZ3FJa3ZhSWNWdHZjWHFIcmx5RHp6bHBsWFVaaGYzbnd3ZlFRN3VabGJETFVuY0hDTWJMRVE5YXVOUXd2c0o0YTF0RlpSQW1nZEJkZmNXcEs2QTUxM3FZU0NhbElyWjVjTTc2UHhlUXluVjJZTGRlNTNLX2NUSTRHN0ROTmxCUjhGTENHRGpWMUdDVHZPdFdWMHZrc2drcW9EaGd6WkQ3WW00TGZkNThWTjF0TW1J?oc=5",
+      "summary": "Nebius Touts $10B, 310 MW Data Center Plan&nbsp;&nbsp;Data Center Knowledge",
+      "source": "Google News — DC Southeast",
+      "rss": true,
+      "analysis": {
+        "insight": "Nebius announced a $10B, 310 MW data center expansion plan, signaling major infrastructure investment to support AI/cloud computing demand. This represents significant opportunity in the data center buildout cycle for precision components and thermal management solutions.",
+        "tickers": [
+          "EQIX",
+          "DLR"
+        ],
+        "rmfi": "RMFI could pursue opportunities supplying precision-machined cooling system components, power distribution hardware, and structural fasteners for Nebius's 310 MW data center construction and infrastructure buildout.",
+        "category": "Infrastructure",
+        "urgency": "medium"
+      }
+    },
+    {
+      "title": "NRC posts hearing request notice for Belews Creek ESP application - American Nuclear Society -- ANS",
+      "url": "https://news.google.com/rss/articles/CBMitgFBVV95cUxQazQwOWV2dFBPbmZmTU1Sa0FTN2tCMk04eS1zNHdzU19BOTczcnZ0NmVQaFpmWGJaV3NHT0xLQUYtS0p0VVQyVXdISktQakZpNW5MUU1TY3lMdnVLTTJhdHNSUENzeklnN21fcWdoMk9BX19uaHB2RjFfTE5hYzROZjYyTU1SbkdnM29FRXFrTWJDbUVIbi1sSmI5RS1YSTgyaEktckV4X2F4YnJIcm5DcFVPLXZYUQ?oc=5",
+      "summary": "NRC posts hearing request notice for Belews Creek ESP application&nbsp;&nbsp;American Nuclear Society -- ANS",
       "source": "Google News — Nuclear Permit",
       "rss": true,
       "analysis": {
-        "insight": "EnCore Energy received BLM authorization to restart a dormant uranium project, signaling increased U.S. domestic uranium supply potential amid growing nuclear energy demand for power generation and SMR development.",
+        "insight": "NRC hearing request for Belews Creek Energy Storage Project (ESP) indicates regulatory progress on a grid-scale energy storage facility that could support nuclear and renewable integration. This signals advancing infrastructure investment in energy storage solutions critical for grid modernization.",
         "tickers": [
-          "CCJ",
-          "LEU",
-          "OKLO"
+          "BWXT",
+          "CEG"
         ],
-        "rmfi": "Potential opportunity in precision machining components for uranium extraction equipment, processing facilities, and downstream nuclear reactor manufacturing as domestic uranium production ramps up.",
+        "rmfi": "Potential opportunity for precision machining components in energy storage system assembly, thermal management equipment for grid-scale battery systems, or support equipment for adjacent nuclear facilities.",
         "category": "Energy",
         "urgency": "medium"
       }
@@ -1769,15 +1768,32 @@
       "source": "Google News — Nuclear Permit",
       "rss": true,
       "analysis": {
-        "insight": "The NRC's approval of 13 reactor license renewals in 2025 signals sustained regulatory support for nuclear energy expansion, potentially driving increased demand for precision components and specialized manufacturing in the nuclear supply chain.",
+        "insight": "The NRC approved 13 reactor license renewals in 2025, extending operational life for existing nuclear capacity and supporting long-term grid stability. This regulatory momentum bolsters the nuclear power sector amid growing energy demand from data centers and AI infrastructure.",
         "tickers": [
+          "CEG",
           "BWXT",
-          "CCJ",
-          "CEG"
+          "CCJ"
         ],
-        "rmfi": "Nuclear reactor license renewals create opportunities for RMFI to supply precision-machined components for reactor systems, cooling systems, and safety equipment as plants undergo maintenance and modernization cycles.",
+        "rmfi": "Renewed reactor licenses drive demand for precision-machined components in reactor maintenance, replacement parts for aging systems, and potential supply chain work for nuclear facility upgrades and safety system retrofits.",
         "category": "Energy",
         "urgency": "medium"
+      }
+    },
+    {
+      "title": "Constellation Seeks Early Site Permit at Oswego, NY - Neutron Bytes",
+      "url": "https://news.google.com/rss/articles/CBMikAFBVV95cUxQaGNMVHB1UTNkY2FrMG9mQ1BQU0cyRTVXZUtDeHlFTmtjTHRmUFJEVDdPb19Oc0EtdEp4aUlHcU1ScTZpYlFRVGEwV3VlaFRycVc1RHZDX2g2SC1GQ2Nhc1B0WE14U0t3Z1l6YjFjODZwYzJtTTl0cEpZdFh3dENyS3cyYjFKVkFKNXU2NDc5cGU?oc=5",
+      "summary": "Constellation Seeks Early Site Permit at Oswego, NY&nbsp;&nbsp;Neutron Bytes",
+      "source": "Google News — Nuclear Permit",
+      "rss": true,
+      "analysis": {
+        "insight": "Constellation Energy is pursuing an early site permit for a nuclear facility at Oswego, NY, signaling accelerated development of nuclear power capacity likely to support data center and industrial power demand.",
+        "tickers": [
+          "CEG",
+          "BWXT"
+        ],
+        "rmfi": "Potential supply opportunity for precision-machined components used in nuclear reactor construction, containment systems, and cooling infrastructure for Oswego facility.",
+        "category": "Energy",
+        "urgency": "high"
       }
     },
     {
@@ -1787,31 +1803,13 @@
       "source": "Google News — Nuclear Permit",
       "rss": true,
       "analysis": {
-        "insight": "TRISO-X obtained the first NRC Category II license for commercial advanced nuclear fuel fabrication, a critical regulatory milestone enabling production of TRISO fuel for small modular reactors (SMRs) and advanced nuclear applications. This represents significant momentum in the domestic nuclear fuel supply chain, directly supporting the growing SMR industry and U.S. energy independence goals.",
+        "insight": "TRISO-X's first NRC Category II license for commercial advanced nuclear fuel production validates the commercial viability of TRISO fuel for next-generation reactors, accelerating the deployment timeline for small modular reactors (SMRs) and creating significant supply chain demand.",
         "tickers": [
           "OKLO",
           "BWXT",
-          "SMR"
+          "CCJ"
         ],
-        "rmfi": "RMFI should monitor TRISO-X and SMR developers (OKLO, NuScale, X-energy) for precision machining opportunities in fuel assembly components, reactor vessel fabrication, and high-tolerance nuclear-grade parts manufacturing.",
-        "category": "Energy",
-        "urgency": "high"
-      }
-    },
-    {
-      "title": "Duke Energy Submits Early Site Permit at Coal Plant Site - Neutron Bytes",
-      "url": "https://news.google.com/rss/articles/CBMimAFBVV95cUxNMUhScWdFWDVZdmx0VWFxSjNlc3lOc09ySzF0RlYyY21BN2ZKSFBUbFdCSlFZTWNXYXNWVzBtc2xZeGJBWGU2NXZXb1VkdFJnTnlSbWZJai1wUVBXTnBFSnJXWjNTQ1VsSVVKYmptZkIwVG9pcm5HSHRrak9ld215em80YVZlVDNjZkVUMXEyam1menlwOG9MSg?oc=5",
-      "summary": "Duke Energy Submits Early Site Permit at Coal Plant Site&nbsp;&nbsp;Neutron Bytes",
-      "source": "Google News — Nuclear Permit",
-      "rss": true,
-      "analysis": {
-        "insight": "Duke Energy's early site permit submission at a coal plant site suggests potential repurposing of existing infrastructure, likely for nuclear SMR development or grid modernization. This signals major utility investment in next-generation power generation amid energy demand surge.",
-        "tickers": [
-          "DUK",
-          "BWXT",
-          "SMR"
-        ],
-        "rmfi": "Potential opportunity: Duke's SMR or nuclear modernization projects could require precision-machined components for reactor systems, cooling systems, and equipment assembly—direct sales potential if RMFI pursues nuclear supply chain qualification.",
+        "rmfi": "Precision machining opportunity: TRISO-X fuel fabrication scale-up and SMR reactor construction will require custom-machined components for fuel assembly hardware, reactor vessel internals, and thermal management systems.",
         "category": "Energy",
         "urgency": "high"
       }
@@ -1823,7 +1821,7 @@
       "source": "Seeking Alpha — Markets",
       "rss": true,
       "analysis": {
-        "insight": "Stocks can decline after beating earnings due to missed guidance, margin compression, or market expectations already priced in—a critical reminder that beat-and-raise alone doesn't guarantee upside. For Randy, this underscores the importance of tracking defense/aerospace customer guidance and margin trends rather than headline earnings surprises.",
+        "insight": "Stocks often decline after earnings beats due to unmet forward guidance, margin concerns, or macro headwinds—a crucial reminder that historical performance doesn't guarantee future stock movement. For traders and manufacturers, this underscores the importance of analyzing guidance and operational metrics beyond headline earnings numbers.",
         "tickers": [],
         "rmfi": null,
         "category": "Markets",
@@ -1831,15 +1829,15 @@
       }
     },
     {
-      "title": "AutoZone (AZO) Earnings Beat And Bigger Buyback Put Valuation Back In Focus - simplywall.st",
-      "url": "https://news.google.com/rss/articles/CBMivgFBVV95cUxPWWFRa05jLVdMNUpDel9ubDZ4T3k4VS1ra2F0VjRac0hZMHdkV3gxS0VJUlJUTFFMcnZjWjFjczdpZzhzTWQ1SXlWS19SZ3BLTExjOWV1NFpfbGFZVng3RXJWb2g3bExCRGZVS2ZnTnZhMGFBeldVbkpzVGdUcEExeXNGZU5DWWdFMlRia1RaOU1JcWFoRjZGd0I1WmJOeV8xcWNZdDVHUWdWMzczQWZ4cnBWcXlSMFlUY2FlaFln0gHDAUFVX3lxTE1BaXlZeUxuUW9IU0FMVUpOYkNDbDdMcURqQklxQldkVUd2WGRyTl9mZHlhT1BrSF9qako5TkhvLVFjdmZXYlk4aU91OGZVbmdxY3dyYWdVYjdYNFJnNklMcTZIS0d3amNiNjRsZktXcWUtdFJpcWNkSUQ4ZjJtMDhRZ1QtbU1JTzFOQ0tubUxUSk1LXy1QM2dfQ3B1dE5Sd00zVW5WbHRscEFDT0hPMl9hQ2hfLUFlN19aYjZDaV9qQV8zNA?oc=5",
-      "summary": "AutoZone (AZO) Earnings Beat And Bigger Buyback Put Valuation Back In Focus&nbsp;&nbsp;simplywall.st",
+      "title": "TETRA Technologies (TTI) Earnings Beat Puts Valuation Back In Focus - simplywall.st",
+      "url": "https://news.google.com/rss/articles/CBMiywFBVV95cUxPaXIwNDgtWmVkQ0pDUWNYRTM2UWt3MWdLVEJOSDBMWV9fZGxZakJ4LWNsd1Q5X044QW9QSDlfaThtX21VLXhONjFISkN3OEFpbGFHRGFIcjlqMEVYeTNVOV9LUk1UWXVKTnVqMGxBY0plLW9kT1doUWNZZDlwaXJ4VTFkOEFmNUNpcElNb0pyUTZpWXJGUjZhUXZSUDg2OWRQVnNsMzdrT3ZVZ1d0Rk82NVZ3OWhuSDd1NmFtS3gxd2lOU1hBYi1vTk5uONIB0AFBVV95cUxPNHNIWFBKN29qZnlCWUg5RW93eEJTQ0x5SkJKRlRaNTdCakxNSUllSlZLdlZDLURscnFZMnhHeGU1WXdhMDhhbmJiNzFFNVNiT1l6ZlhhQWtsSUNjSEhpSzMxb1FNSzJONGJwZ1Z1d3c4TklONVhaZ0ZhczRnd0FRUEdpQUR6TDdMeEVxNHo5V0NxVGFMT2JRc1hYYVctOU41NWYxNmxhMXF1RUNhZ01ZUlRIcS1qMXNkQlM3MFljeklIR1VWeTFzeXcya2RnNzJs?oc=5",
+      "summary": "TETRA Technologies (TTI) Earnings Beat Puts Valuation Back In Focus&nbsp;&nbsp;simplywall.st",
       "source": "Seeking Alpha — Markets",
       "rss": true,
       "analysis": {
-        "insight": "AutoZone beat earnings and expanded share buybacks, signaling management confidence despite economic uncertainty; however, the stock's valuation metrics remain stretched relative to historical averages, which could limit upside for value-conscious investors.",
+        "insight": "TETRA Technologies beat earnings expectations, reigniting investor interest in its valuation after recent market skepticism. The company's operational performance suggests potential upside if market reassesses its pricing relative to fundamentals.",
         "tickers": [
-          "AZO"
+          "TTI"
         ],
         "rmfi": null,
         "category": "Markets",
@@ -1853,13 +1851,12 @@
       "source": "Seeking Alpha — Markets",
       "rss": true,
       "analysis": {
-        "insight": "Micron's quadrupled revenue signals strong demand for memory/storage in AI data centers and cloud infrastructure, benefiting the semiconductor supply chain and downstream manufacturers serving these sectors.",
+        "insight": "Micron's revenue quadrupling signals surging demand for memory chips driven by AI data center expansion, benefiting the broader semiconductor supply chain and downstream manufacturers dependent on chip availability.",
         "tickers": [
           "MU",
-          "NVDA",
-          "MSFT"
+          "NVDA"
         ],
-        "rmfi": "Potential opportunity: AI data center buildout drives demand for precision cooling solutions, power distribution components, and server rack hardware—RMFI should assess customer expansion plans among hyperscalers and data center OEMs.",
+        "rmfi": "Strong data center growth creates demand for precision cooling components, power delivery systems, and structural assemblies for server infrastructure — potential B2B machining opportunities with Micron customers and their supply chains.",
         "category": "AI/Tech",
         "urgency": "high"
       }
@@ -1871,27 +1868,29 @@
       "source": "Seeking Alpha — Markets",
       "rss": true,
       "analysis": {
-        "insight": "Micron's strong Q3 earnings beat and 18% premarket surge signals robust demand for memory chips, likely driven by AI data center buildout and cloud infrastructure expansion. This reflects healthy demand across semiconductor supply chains that support defense, aerospace, and industrial sectors.",
+        "insight": "Micron's Q3 earnings beat and 18% premarket surge indicates strong demand for memory chips, likely driven by AI/data center buildout and defense modernization programs requiring high-performance semiconductors.",
         "tickers": [
-          "MU"
+          "MU",
+          "NVDA",
+          "MSFT"
         ],
-        "rmfi": "Potential indirect opportunity: Strong semiconductor demand indicates increased data center construction and cooling/power infrastructure expansion, which could drive demand for precision-machined thermal management components and server rack hardware for RMFI's industrial/aerospace customer base.",
+        "rmfi": "Potential opportunity for precision machining components in data center cooling systems and power delivery infrastructure supporting Micron's chip production capacity expansion.",
         "category": "AI/Tech",
-        "urgency": "medium"
+        "urgency": "high"
       }
     },
     {
-      "title": "Here’s How Much Traders Expect Micron's Stock Could Move After Earnings - Investopedia",
-      "url": "https://news.google.com/rss/articles/CBMisAFBVV95cUxOODYzNlpFOW00SlJWaDBrUGpHQmJGcmFSZXN5bFRxM0VjZTNoc201RkVoUmRqNUg5bi1seWVrZ1A3dWxSRUpkUFVNcXI2U0wyS0VjdTB6S0d3X2Z0U1dkRk1YU1NsNXlHWVlNNHh0ZjFadDVYNmR4bUNNSFhJYTFFZ1RSNmdGbWM4RmZnMW95YmpXdnBDczB2VnVPUTlnQ1BxMDg3dmE3S3dkbHUtb2pUdA?oc=5",
-      "summary": "Here’s How Much Traders Expect Micron's Stock Could Move After Earnings&nbsp;&nbsp;Investopedia",
+      "title": "Cerebras' First Post-IPO Earnings Beat Wall Street Projections. The Stock Is Falling Anyway - Investopedia",
+      "url": "https://news.google.com/rss/articles/CBMizAFBVV95cUxOaVNRUkZvaV9OZGcxeTZSY1p1RWx6WkRiWndoM1Ewenh3dHBhdVVZLWhRMFFyRkRVTTNqaXp1bzhEeS1TUC1DOUk3WVJyTU5FelFyemNCXzhKM0Vvb0lBeUp5dFoweHRQbV80WWlLR3lwVmFYWWswVDRiaUtsSmxsTEtXY1Jpc3YtTTU4T2RxLTlUMkwzeFJtekVMMXFOWFoyU1FqZ1Y1Tk5sbzI3cFUwcFpVSUl3bjdOTll2bGNIMzNaTWs3ZEQ4anloa3o?oc=5",
+      "summary": "Cerebras' First Post-IPO Earnings Beat Wall Street Projections. The Stock Is Falling Anyway&nbsp;&nbsp;Investopedia",
       "source": "Seeking Alpha — Markets",
       "rss": true,
       "analysis": {
-        "insight": "The article discusses expected stock price volatility for Micron (MU) following earnings results, likely driven by semiconductor demand signals. For Randy, this indicates potential market movements in the chip sector that could affect defense/aerospace supply chain dynamics and data center spending trends.",
+        "insight": "Cerebras beat earnings expectations but the stock declined, suggesting market concerns about valuation, guidance, or AI chip competition despite operational success. This illustrates how AI hardware vendors face intense scrutiny on growth sustainability amid slowing demand cycles.",
         "tickers": [
-          "MU"
+          "CRBS"
         ],
-        "rmfi": "Micron's earnings could signal data center build-out momentum; strong results would validate increased demand for cooling solutions, power distribution components, and precision-machined server hardware that RMFI may supply to OEMs or system integrators.",
+        "rmfi": "Cerebras' wafer-scale AI chips power data centers requiring precision cooling systems, power distribution components, and structural mounting solutions—potential OEM supply opportunities for RMFI if Cerebras scales production.",
         "category": "AI/Tech",
         "urgency": "medium"
       }
@@ -1903,13 +1902,12 @@
       "source": "Defense News",
       "rss": false,
       "analysis": {
-        "insight": "NATO allies are committing to major Arctic defense modernization including ice-breakers, submarines, drones, and satellites in response to Russian military expansion and Trump's pressure, creating sustained defense spending opportunities across multiple platforms and components.",
+        "insight": "NATO allies are launching Arctic Sentry to bolster Arctic defense capabilities against Russian modernization, requiring massive long-term investments in icebreakers, submarines, drones, and satellites—creating sustained defense procurement opportunities as Europe accelerates military spending in a strategically critical region.",
         "tickers": [
-          "RTX",
-          "NOC",
-          "GD"
+          "BWXT",
+          "ETN"
         ],
-        "rmfi": "Arctic defense buildup requires precision machining for submarine propulsion systems, ice-breaker structural components, satellite deployment mechanisms, and cold-hardened defense electronics—strong opportunity for RMFI to pursue Tier-1 defense contractor subcontracts.",
+        "rmfi": "Potential opportunity: Arctic defense buildup will require precision-machined components for submarine systems, icebreaker propulsion/hull assemblies, drone guidance systems, and satellite hardware—BWXT and other defense primes will need sub-tier manufacturing support.",
         "category": "Defense",
         "urgency": "high"
       }
@@ -1921,9 +1919,9 @@
       "source": "Defense News",
       "rss": false,
       "analysis": {
-        "insight": "Romania's €223M corvette purchase from Turkey marks Turkey's first warship export to an EU/NATO member, signaling expanding Turkish defense manufacturing capabilities and potential new export market dynamics in Eastern European naval modernization.",
+        "insight": "Turkey successfully delivered its first warship to a NATO/EU member, establishing itself as a credible naval exporter and signaling strengthening Turkey-Romania defense ties that could reshape Black Sea security dynamics and expand Turkish defense industrial capacity.",
         "tickers": [],
-        "rmfi": "Potential opportunity for precision machining components in corvette systems integration—fire control systems, radar mounts, weapon system assemblies, and follow-on €42M upgrade package (VLS, CIWS, tracking sensors) may require precision-machined parts for NATO/EU defense contractors.",
+        "rmfi": "Potential opportunity: Romania's follow-on €42M procurement package (VLS systems, 35mm CIWS, depth charges, sensors) and NSM missile integration may require precision-machined components for fire control systems, weapon mounts, and sensor housings—worth monitoring for Turkish/Romanian defense supplier partnerships.",
         "category": "Defense",
         "urgency": "medium"
       }
@@ -1935,9 +1933,9 @@
       "source": "Defense News",
       "rss": false,
       "analysis": {
-        "insight": "Tytan Technologies is ramping counter-drone production to 3,000 units/month with new German factory launching August 2026, capitalizing on proven Ukraine combat effectiveness and NATO adoption. This signals accelerating defense spending on autonomous drone systems across Europe, with expansion plans into Poland and Hungary.",
+        "insight": "Tytan Technologies is scaling counter-drone interceptor production to 3,000 units/month with a new German factory, signaling explosive growth in autonomous defense systems where AI-powered solutions are 200x cheaper than legacy platforms. This reflects a major European defense modernization trend driven by Ukraine conflict validation.",
         "tickers": [],
-        "rmfi": "Potential opportunity: Tytan's production scaling to 3,000 interceptors/month may require precision-machined components for drone frames, motor assemblies, and autonomous system housings—worth outreach to understand their supply chain requirements and manufacturing tolerances.",
+        "rmfi": "Potential opportunity: Tytan's scaling to 3,000 interceptors/month likely requires precision machining for drone airframes, motor housings, structural components, and autonomous systems hardware—RMFI should monitor Tytan's supply chain partnerships and consider outreach to Munich facility.",
         "category": "Defense",
         "urgency": "high"
       }
@@ -1949,13 +1947,11 @@
       "source": "Defense News",
       "rss": false,
       "analysis": {
-        "insight": "Ukrainian drone manufacturer Fire Point is expanding from offensive long-range strike systems (60% of Ukraine's deep-strike capability) into ballistic missile defense via partnership with German firm Hensoldt, positioning itself as a critical dual-use supplier in the evolving air-defense market.",
-        "tickers": [
-          "BWXT"
-        ],
-        "rmfi": "RMFI could pursue precision machining contracts for Fire Point's expanding Freyja ballistic missile defense system production, or supply critical components for drone/missile guidance and structural assemblies as Fire Point scales manufacturing capacity.",
+        "insight": "Ukrainian drone manufacturer Fire Point is expanding from offensive long-range strike systems into ballistic missile defense via partnership with German radar firm Hensoldt, positioning itself as a dual-capability supplier in the escalating deep-strike warfare ecosystem.",
+        "tickers": [],
+        "rmfi": "Potential opportunity: Fire Point's expansion into missile defense systems (Freyja) and increased drone production may require precision-machined components for guidance systems, structural assemblies, and radar integration hardware — worth monitoring for subcontract opportunities with German/Ukrainian defense supply chains.",
         "category": "Defense",
-        "urgency": "high"
+        "urgency": "medium"
       }
     },
     {
@@ -1965,13 +1961,12 @@
       "source": "Defense News",
       "rss": false,
       "analysis": {
-        "insight": "Ukraine's DART balloon-launched missile with satellite guidance and EW-resistant design represents a significant shift in asymmetric warfare, demonstrating how low-cost autonomous systems can penetrate Russian air defenses and reshape battlefield dynamics—a trend that may accelerate Western defense procurement and manufacturing demand.",
+        "insight": "Ukraine's new DART balloon-launched missile system demonstrates asymmetric warfare innovation using satellite guidance and EW-resistant design, signaling sustained demand for advanced defense manufacturing capabilities and potential NATO interest in similar low-cost, high-impact strike platforms.",
         "tickers": [
-          "RTX",
-          "NOC",
-          "LMT"
+          "BWXT",
+          "ETN"
         ],
-        "rmfi": "Potential opportunity in precision-machined components for satellite guidance systems, stratospheric balloon payload deployment mechanisms, and solid-fuel engine housings as Western defense contractors scale asymmetric drone/autonomous weapon platforms.",
+        "rmfi": "Potential opportunity: precision machining for satellite guidance systems, solid-fuel engine components, and stratospheric balloon payload integration hardware for next-generation defense contractors seeking to replicate Ukraine's low-cost strike platform model.",
         "category": "Defense",
         "urgency": "high"
       }
@@ -1983,33 +1978,15 @@
       "source": "Defense News",
       "rss": false,
       "analysis": {
-        "insight": "China is misguidedly focusing on technology-based anti-stealth defenses rather than integrated operational tactics, suggesting U.S. defense superiority in aerial warfare will likely persist longer than some analysts feared. This validates continued heavy investment in advanced U.S. defense platforms and their supporting supply chains.",
+        "insight": "China is strategically misdirecting resources toward sensor technology to counter U.S. stealth, believing the advantage is purely technological when it's actually operational integration—this asymmetry could prolong U.S. air superiority and increase demand for advanced defense manufacturing and integration systems.",
         "tickers": [
-          "LMT",
           "RTX",
+          "LMT",
           "NOC"
         ],
-        "rmfi": "Potential opportunity: increased demand for precision-machined components in next-gen U.S. stealth aircraft development and integrated warfare system platforms, as the U.S. doubles down on tactical/operational superiority beyond stealth tech alone.",
+        "rmfi": "Potential opportunity: U.S. defense contractors will likely increase orders for precision-machined components in integrated avionics systems, sensor arrays, and fire control systems as the Pentagon emphasizes operational integration over standalone stealth technology.",
         "category": "Defense",
         "urgency": "medium"
-      }
-    },
-    {
-      "title": "Kyiv’s drone leverage moved the US. Moscow could be next, a top Ukrainian official says.",
-      "url": "https://www.defensenews.com/pentagon/2026/06/22/kyivs-drone-leverage-moved-the-us-moscow-could-be-next-a-top-ukrainian-official-says/",
-      "summary": "",
-      "source": "Defense News",
-      "rss": false,
-      "analysis": {
-        "insight": "Ukraine is transitioning from aid recipient to weapons manufacturer/technology partner, securing production licenses for interceptor missiles and anti-ballistic defenses from the US and Germany. This represents a major shift in US defense procurement strategy and signals growing demand for advanced drone/missile defense systems.",
-        "tickers": [
-          "RTX",
-          "LMT",
-          "NOC"
-        ],
-        "rmfi": "Potential opportunity: Ukrainian and Western defense contractors ramping interceptor missile and anti-ballistic defense production will need precision-machined components for guidance systems, fuzing mechanisms, and structural assemblies — RMFI should monitor prime contractor subcontracting announcements from RTX, LMT, and German suppliers.",
-        "category": "Defense",
-        "urgency": "high"
       }
     },
     {
@@ -2019,14 +1996,29 @@
       "source": "Defense News",
       "rss": false,
       "analysis": {
-        "insight": "Ukraine's TrophyLab platform formalizes intelligence sharing on captured Russian weapons with NATO allies and defense contractors, accelerating reverse-engineering and countermeasure development across the Western defense industrial base.",
+        "insight": "Ukraine's TrophyLab platform formalizes intelligence sharing of captured Russian military hardware with allied defense companies and governments, accelerating reverse-engineering and countermeasures development across NATO and partners. This creates sustained demand for precision engineering, component analysis, and weapons system modernization over multiple years.",
         "tickers": [
           "RTX",
-          "LMT",
           "NOC",
-          "BA"
+          "LMT"
         ],
-        "rmfi": "Potential opportunity: Major defense primes (RTX, LMT, NOC) analyzing captured Russian systems through TrophyLab will require precision-machined components for countermeasures, electronic warfare hardening, and new platform development—RMFI should monitor RFQs from Tier-1 contractors implementing findings from the 225+ technical studies now accessible.",
+        "rmfi": "High opportunity: RTX, NOC, and LMT will likely compete for TrophyLab-enabled contract awards for reverse-engineering Russian systems, hardening U.S./allied platforms, and manufacturing upgraded components—RMFI should monitor defense prime RFQs for precision machined parts related to countermeasures, electronic warfare modules, and hardened subsystems.",
+        "category": "Defense",
+        "urgency": "high"
+      }
+    },
+    {
+      "title": "Show Coverage: Eurosatory 2026",
+      "url": "https://www.defensenews.com/eurosat2026/",
+      "summary": "",
+      "source": "Defense News",
+      "rss": false,
+      "analysis": {
+        "insight": "European defense spending accelerates with major procurement programs (Poland drones, KNDS tank IPO with German backing) and satellite capacity expansion (ICEYE doubling by 2027), signaling sustained elevated defense budgets and industrial consolidation across NATO allies.",
+        "tickers": [
+          "KNDS"
+        ],
+        "rmfi": "KNDS tank production ramp and General Atomics missile/railgun manufacturing could create subcontracting opportunities for precision-machined components, actuators, and assemblies in turrets, fire control systems, and weapon platforms.",
         "category": "Defense",
         "urgency": "high"
       }
@@ -2038,14 +2030,14 @@
       "source": "Federal Times",
       "rss": false,
       "analysis": {
-        "insight": "VA's 367 active AI systems—including 215 high-impact deployments across healthcare, benefits, and IT operations—signal massive federal AI infrastructure expansion requiring robust computational resources; this validates growing demand for enterprise AI platforms (Microsoft, commercial tools) and underscores government's accelerating digital modernization spending.",
+        "insight": "VA's 367 AI systems deployment—including 215 high-impact applications across healthcare, benefits, and operations—signals accelerating federal AI adoption and validates commercial AI platform demand (MSFT Copilot, GitHub Copilot). This demonstrates large-scale government AI infrastructure buildout that will drive sustained demand for cloud compute, data center expansion, and supporting hardware components.",
         "tickers": [
           "MSFT",
           "NVDA"
         ],
-        "rmfi": "Limited direct opportunity—VA AI deployment focuses on software/clinical tools rather than precision-machined components; however, underlying datacenter expansion supporting 50K+ personnel's AI tool usage could eventually drive demand for server cooling systems and power distribution hardware if RMFI pursues federal tech infrastructure contracts.",
+        "rmfi": "VA's massive AI infrastructure buildout across 367 systems and 50,000+ personnel could create demand for precision-machined cooling systems, power distribution components, and server mounting hardware for VA data center expansion supporting clinical AI tools and benefits processing automation.",
         "category": "AI/Tech",
-        "urgency": "medium"
+        "urgency": "high"
       }
     },
     {
@@ -2055,10 +2047,10 @@
       "source": "Federal Times",
       "rss": false,
       "analysis": {
-        "insight": "Article about federal salary negotiation procedures has no relevance to equity markets, defense contractors, or crypto trading.",
+        "insight": "Article discusses federal salary negotiation procedures for government employees, with no relevance to equity markets, defense contracting, or technology sectors.",
         "tickers": [],
         "rmfi": null,
-        "category": "Other",
+        "category": "Government",
         "urgency": "low"
       }
     },
@@ -2069,49 +2061,49 @@
       "source": "Federal Times",
       "rss": false,
       "analysis": {
-        "insight": "The GWOT Memorial Foundation is designing a new Global War on Terrorism memorial with public input, signaling continued government focus on military commemoration and defense sector engagement.",
+        "insight": "The Global War on Terrorism Memorial Foundation is soliciting public feedback on its design, indicating active planning and funding for a major commemorative infrastructure project that could involve construction, materials, and specialized components over the coming years.",
         "tickers": [],
-        "rmfi": null,
+        "rmfi": "Potential opportunity in precision machining components for memorial construction hardware, structural fasteners, or specialized metalwork if RMFI can position for government/defense memorial contracts through appropriate channels.",
         "category": "Government",
         "urgency": "low"
       }
     }
   ],
   "gmail": {
-    "fetchedAt": "2026-06-28T00:08:18.368Z",
+    "fetchedAt": "2026-06-28T12:59:14.722Z",
     "account": "randybarclay1@gmail.com",
     "count": 3,
     "messages": [
+      {
+        "subject": "🧠 Claude's Take — Saturday, June 27, 2026 [CAUTIOUS]",
+        "from": "\"Claude's Take\" <onboarding@resend.dev>",
+        "date": "Sun, 28 Jun 2026 00:08:36 +0000",
+        "snippet": "🧠 Claude&#39;s Morning Take Saturday, June 27, 2026 CAUTIOUS 126 articles · 37 high-urgency 📈 TOP TRADE THIS WEEK BWXT — Nuclear SMR momentum is hitting a critical mass this week with NRC approving"
+      },
+      {
+        "subject": "Morning Briefing — Saturday, June 27, 2026",
+        "from": "\"Randy's Briefing\" <onboarding@resend.dev>",
+        "date": "Sun, 28 Jun 2026 00:08:17 +0000",
+        "snippet": "Morning Briefing Saturday, June 27, 2026 Claude read 128 articles across 27 sources — 126 AI-analyzed 📋 TODAY&#39;S TOP 3 TAKEAWAYS 📈 TRADER Bitcoin faces fresh capitulation risk as large BTC holders"
+      },
       {
         "subject": "Morning Briefing — Saturday, June 27, 2026",
         "from": "\"Randy's Briefing\" <onboarding@resend.dev>",
         "date": "Sat, 27 Jun 2026 12:56:47 +0000",
         "snippet": "Morning Briefing Saturday, June 27, 2026 Claude read 117 articles across 27 sources — 117 AI-analyzed 📋 TODAY&#39;S TOP 3 TAKEAWAYS 📈 TRADER Capital is rotating hard from crypto into AI/tech equities—"
-      },
-      {
-        "subject": "Randy's Money",
-        "from": "Randy Barclay <randybarclay1@gmail.com>",
-        "date": "Fri, 26 Jun 2026 21:29:27 -0700",
-        "snippet": "https://rmfi-tool-app.vercel.app/randys-money.html"
-      },
-      {
-        "subject": "Morning Briefing — Friday, June 26, 2026",
-        "from": "\"Randy's Briefing\" <onboarding@resend.dev>",
-        "date": "Sat, 27 Jun 2026 01:58:19 +0000",
-        "snippet": "Morning Briefing Friday, June 26, 2026 | Auto-scraped with Playwright Claude read 11 articles this morning — 11 analyzed with AI 🛡️ Defense NATO allies promised Trump they&#39;d secure the Arctic; they"
       }
     ]
   },
   "claudeAdvice": {
-    "topTrade": "BWXT — Nuclear SMR momentum is hitting a critical mass this week with NRC approving TerraPower's construction permit, Holtec's partial SMR-300 permit at Palisades, OPG's BWRX-300 license application, Texas SMR licensing milestone, TRISO-X's first-ever commercial nuclear fuel license, and Meta committing 6.6 GW to nuclear AI power. This is not scattered news — it's a synchronized regulatory and commercial breakout for the entire SMR supply chain. BWXT is the primary domestic precision nuclear components manufacturer tied to nearly every one of these programs. Watch for BWXT to gap up Monday open; if it holds above its prior week close on volume, add aggressively. The catalyst window is now.",
-    "redFlag": "U.S. military strikes on Iranian targets after a Strait of Hormuz tanker hit while ceasefire talks were supposedly underway. This is a dangerous escalation — oil price spike risk is real, which could pressure industrial input costs for RMFI (metals, energy) and trigger a broader risk-off move Monday. Also watch: Bitcoin at 21-month lows with $1.3B in ETF outflows and whale short positions re-opened — if this bleeds into broader risk sentiment Monday morning, growth and small-cap names could open weak.",
-    "rmfiAction": "Call Holtec International's supply chain procurement team Monday morning and pitch RMFI's aerospace-grade precision machining capabilities for the SMR-300 reactor vessel internals, control rod drive mechanisms, and heat exchanger components at the Palisades site. Holtec just received partial NRC construction permit approval — they are actively qualifying vendors RIGHT NOW before construction phase begins. Lead with RMFI's defense/aerospace tolerances and quality certifications (AS9100, ITAR if applicable) as direct analogs to nuclear-grade requirements. This is the highest-leverage call Randy can make this week.",
+    "topTrade": "BWXT — The nuclear catalyst stack has never been denser: NRC approved TerraPower's construction permit, Holtec submitted SMR-300 twin-reactor license application at Palisades, OPG filed BWRX-300 operating license, TRISO-X landed first-ever NRC Category II commercial fuel fabrication license, Meta committed 6.6 GW of nuclear power for AI, and NGA is actively lobbying governors for SMR adoption. BWXT is the primary U.S. domestic supplier for reactor components, fuel systems, and nuclear-grade manufacturing across nearly all of these programs. Watch for BWXT to break above its recent resistance on Monday open — if it gaps up on nuclear news momentum, that's confirmation. Set a stop below the prior week's low.",
+    "redFlag": "Bitcoin hit a 21-month low with $1.3B in ETF outflows this week, gold and silver selling off simultaneously, and Q1 consumer spending nearly stalling despite the GDP beat. This is a classic risk-off rotation signal. If Monday opens with broad equity weakness, growth and speculative positions are vulnerable. The GDP revision was driven by government spending and business capex — not the consumer — which means any softness in this week's jobs data could accelerate a defensive rotation. Watch Friday's jobs report closely; a miss could reprice rate-cut expectations and drag markets.",
+    "rmfiAction": "Call Raytheon (RTX) procurement directly this week. RTX announced domestic acceleration of a critical material supply chain for both commercial and defense applications — they will need precision-machined components to support that buildout. Simultaneously, the INSS report confirms the U.S. defense industrial base cannot surge munitions production fast enough. Pitch RMFI's capacity for mission-critical, tight-tolerance defense components — specifically artillery fuzing parts, propulsion housings, or ammunition-related subassemblies. Reference the munitions surge gap explicitly. RTX is the right door: they're expanding domestic supply chain, they're publicly under pressure to produce, and the Iran escalation means this isn't a slow-burn opportunity.",
     "watchTickers": [
       "BWXT",
-      "RTX",
-      "RKLB"
+      "SMR",
+      "MU"
     ],
     "marketMood": "cautious",
-    "wildcard": "SpaceX's fast-tracked Nasdaq-100 inclusion is going to trigger massive forced ETF buying from QQQ and related passive funds — the mechanics of this rebalancing will create unusual capital flows into aerospace/space supply chain names as passive investors pile in. Rocket Lab (RKLB) and defense-adjacent space suppliers could catch a sympathy bid early in the week before the market refocuses on Iran escalation risk. Watch RKLB Monday pre-market."
+    "wildcard": "Tytan Technologies (German counter-drone startup) is targeting 3,000 interceptors per month from a new factory. That scale requires a serious precision machining supply chain almost immediately — and nobody is covering this angle yet. If RMFI has any existing relationships with European defense primes or NATO supply chain intermediaries, this is the kind of program where a small U.S. shop with aerospace certifications could land a meaningful subcontract before the big primes even write an RFQ."
   }
 }
