@@ -2880,23 +2880,56 @@ function computeYTD(sym, currentPrice) {
 
 async function fetchMarketStrip() {
   renderMarketsStrip(); // show cached values immediately; fresh data overwrites below
-  // Always fetch all markets — futures prices change throughout the day
   const fetchSyms = MARKETS_SYMS.map(s => MARKETS_FUTURES[s] || s);
+  // Sanity bounds — Stooq returns stale expired-contract prices that look plausible but are years old
+  const PRICE_BOUNDS = { 'GLD': [500, 15000], 'SLV': [5, 500], 'USO': [20, 300], 'BNO': [20, 300] };
+  const goodIds = {};
+
   try {
     const r = await fetch(`/api/stock?syms=${encodeURIComponent(fetchSyms.join(','))}`, { signal: AbortSignal.timeout(10000) });
-    if (!r.ok) return;
-    const results = (await r.json())?.quoteResponse?.result || [];
-    for (const q of results) {
-      if (!q.regularMarketPrice) continue;
-      // Map futures ticker back to display ID (e.g. GC=F → GLD)
-      const displayId = FUTURES_TO_ID[q.symbol] || q.symbol;
-      if (!stockData[displayId]) stockData[displayId] = { name: STOCK_NAMES[displayId] || q.shortName || displayId };
-      stockData[displayId].price     = q.regularMarketPrice;
-      stockData[displayId].changePct = sanePct(q.regularMarketChangePercent);
+    if (r.ok) {
+      const results = (await r.json())?.quoteResponse?.result || [];
+      for (const q of results) {
+        if (!q.regularMarketPrice) continue;
+        const displayId = FUTURES_TO_ID[q.symbol] || q.symbol;
+        const [min, max] = PRICE_BOUNDS[displayId] || [0, Infinity];
+        if (q.regularMarketPrice < min || q.regularMarketPrice > max) continue; // reject stale data
+        if (!stockData[displayId]) stockData[displayId] = { name: STOCK_NAMES[displayId] || q.shortName || displayId };
+        stockData[displayId].price     = q.regularMarketPrice;
+        stockData[displayId].changePct = sanePct(q.regularMarketChangePercent);
+        goodIds[displayId] = true;
+      }
     }
-    save('rm_stockData', stockData);
-    renderMarketsStrip();
   } catch(e) { console.warn('market strip fetch:', e.message); }
+
+  // Client-side fallback: browser IP isn't blocked by Yahoo Finance
+  const missingSyms = fetchSyms.filter(fs => !goodIds[FUTURES_TO_ID[fs] || fs]);
+  if (missingSyms.length) {
+    for (const host of ['query1', 'query2']) {
+      try {
+        const r = await fetch(
+          `https://${host}.finance.yahoo.com/v8/finance/quote?symbols=${encodeURIComponent(missingSyms.join(','))}&fields=regularMarketPrice,regularMarketChangePercent,shortName`,
+          { signal: AbortSignal.timeout(8000) }
+        );
+        if (!r.ok) continue;
+        const data = await r.json();
+        const results = data?.quoteResponse?.result || [];
+        for (const q of results) {
+          if (!q.regularMarketPrice) continue;
+          const displayId = FUTURES_TO_ID[q.symbol] || q.symbol;
+          const [min, max] = PRICE_BOUNDS[displayId] || [0, Infinity];
+          if (q.regularMarketPrice < min || q.regularMarketPrice > max) continue;
+          if (!stockData[displayId]) stockData[displayId] = { name: STOCK_NAMES[displayId] || q.shortName || displayId };
+          stockData[displayId].price     = q.regularMarketPrice;
+          stockData[displayId].changePct = sanePct(q.regularMarketChangePercent);
+        }
+        if (results.length) break;
+      } catch (_) {}
+    }
+  }
+
+  save('rm_stockData', stockData);
+  renderMarketsStrip();
 }
 
 async function fetchStocks() {
