@@ -1112,6 +1112,8 @@ function fmtPct(n) {
   if (n == null || isNaN(n)) return '--';
   return (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
 }
+// Treat single-day moves > 25% as corporate actions (spinoffs, splits) — show null instead
+function sanePct(n) { return (n != null && Math.abs(n) <= 25) ? n : null; }
 function fmtBig(n) {
   if (n == null || isNaN(n)) return '--';
   if (n >= 1e12) return '$' + (n/1e12).toFixed(2) + 'T';
@@ -2890,7 +2892,7 @@ async function fetchMarketStrip() {
       const displayId = FUTURES_TO_ID[q.symbol] || q.symbol;
       if (!stockData[displayId]) stockData[displayId] = { name: STOCK_NAMES[displayId] || q.shortName || displayId };
       stockData[displayId].price     = q.regularMarketPrice;
-      stockData[displayId].changePct = q.regularMarketChangePercent || null;
+      stockData[displayId].changePct = sanePct(q.regularMarketChangePercent);
     }
     save('rm_stockData', stockData);
     renderMarketsStrip();
@@ -2917,7 +2919,7 @@ async function fetchStocks() {
       stockData[sym] = {
         price:     meta.regularMarketPrice,
         change:    meta.regularMarketPrice - prevClose,
-        changePct: meta.regularMarketChangePercent || ((meta.regularMarketPrice - prevClose) / prevClose * 100),
+        changePct: sanePct(meta.regularMarketChangePercent ?? ((meta.regularMarketPrice - prevClose) / prevClose * 100)),
         high52:    meta.fiftyTwoWeekHigh || null,
         low52:     meta.fiftyTwoWeekLow  || null,
         ytdPct:    computeYTD(sym, meta.regularMarketPrice),
@@ -3126,7 +3128,7 @@ async function fetchStock52W() {
         // Use Yahoo Finance price when Alpaca didn't provide one (market closed, IEX gap, etc.)
         if (q.regularMarketPrice != null && !stockData[sym].price) {
           stockData[sym].price     = q.regularMarketPrice;
-          stockData[sym].changePct = q.regularMarketChangePercent || null;
+          stockData[sym].changePct = sanePct(q.regularMarketChangePercent);
           stockData[sym].change    = null;
           stockData[sym].ytdPct    = computeYTD(sym, q.regularMarketPrice);
           stockData[sym].name      = stockData[sym].name || q.shortName || sym;
@@ -3137,6 +3139,40 @@ async function fetchStock52W() {
       }
     } catch(e) { console.warn('52W fetch batch:', e.message); }
   }));
+
+  // Client-side fallback: fetch 52W data directly from Yahoo Finance
+  // Browser residential IP bypasses the Vercel datacenter IP blocks
+  const missing52W = allSyms.filter(s => stockData[s] && stockData[s].high52 == null);
+  if (missing52W.length) {
+    const b52 = [];
+    for (let i = 0; i < missing52W.length; i += 20) b52.push(missing52W.slice(i, i + 20));
+    for (const batch of b52) {
+      for (const host of ['query1', 'query2']) {
+        try {
+          const r = await fetch(
+            `https://${host}.finance.yahoo.com/v8/finance/quote?symbols=${encodeURIComponent(batch.join(','))}&fields=fiftyTwoWeekHigh,fiftyTwoWeekLow,regularMarketChangePercent`,
+            { signal: AbortSignal.timeout(8000) }
+          );
+          if (!r.ok) continue;
+          const data = await r.json();
+          const results = data?.quoteResponse?.result || [];
+          for (const q of results) {
+            const sym = q.symbol;
+            if (!stockData[sym]) stockData[sym] = { name: STOCK_NAMES[sym] || sym };
+            if (q.fiftyTwoWeekHigh != null) { stockData[sym].high52 = q.fiftyTwoWeekHigh; updated = true; }
+            if (q.fiftyTwoWeekLow  != null) { stockData[sym].low52  = q.fiftyTwoWeekLow;  updated = true; }
+            // Also fill in changePct if missing and sane
+            if (q.regularMarketChangePercent != null && stockData[sym].changePct == null) {
+              const p = sanePct(q.regularMarketChangePercent);
+              if (p != null) { stockData[sym].changePct = p; updated = true; }
+            }
+          }
+          if (results.length) break;
+        } catch (_) {}
+      }
+    }
+  }
+
   if (updated) { save('rm_stockData', stockData); renderStockGrid(); renderMarketsStrip(); renderDailyPicks(); renderCongressBuys(); }
 }
 
@@ -3168,7 +3204,7 @@ async function fetchStockHistory() {
                 stockData[sym] = {
                   price:     meta.regularMarketPrice,
                   change:    meta.regularMarketPrice - prevClose,
-                  changePct: meta.regularMarketChangePercent || ((meta.regularMarketPrice - prevClose) / prevClose * 100),
+                  changePct: sanePct(meta.regularMarketChangePercent ?? ((meta.regularMarketPrice - prevClose) / prevClose * 100)),
                   high52:    meta.fiftyTwoWeekHigh || null,
                   low52:     meta.fiftyTwoWeekLow  || null,
                   ytdPct:    null,
@@ -3413,7 +3449,7 @@ async function fetchCongressBuys(force = false) {
           if (q.regularMarketPrice != null && !stockData[q.symbol]?.price) {
             stockData[q.symbol] = {
               price:     q.regularMarketPrice,
-              changePct: q.regularMarketChangePercent || null,
+              changePct: sanePct(q.regularMarketChangePercent),
               change:    null,
               name:      STOCK_NAMES[q.symbol] || q.shortName || q.symbol,
             };

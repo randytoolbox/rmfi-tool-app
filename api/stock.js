@@ -130,7 +130,7 @@ module.exports = async function handler(req, res) {
 
   res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
 
-  let price = null, prevClose = null, changePct = null;
+  let price = null, prevClose = null, changePct = null, high52 = null, low52 = null, shortName = sym;
 
   if (keyId && secretKey) {
     try {
@@ -162,6 +162,9 @@ module.exports = async function handler(req, res) {
           price     = meta.regularMarketPrice;
           prevClose = meta.previousClose || meta.chartPreviousClose || price;
           changePct = meta.regularMarketChangePercent ?? (price && prevClose ? (price - prevClose) / prevClose * 100 : null);
+          high52    = meta.fiftyTwoWeekHigh  || null;
+          low52     = meta.fiftyTwoWeekLow   || null;
+          shortName = meta.shortName || sym;
         }
       }
     } catch (_) {}
@@ -173,7 +176,7 @@ module.exports = async function handler(req, res) {
     chart: { result: [{ meta: {
       regularMarketPrice: price, previousClose: prevClose,
       regularMarketChangePercent: changePct,
-      fiftyTwoWeekHigh: null, fiftyTwoWeekLow: null, shortName: sym,
+      fiftyTwoWeekHigh: high52, fiftyTwoWeekLow: low52, shortName: shortName,
     }}]}
   });
 };
