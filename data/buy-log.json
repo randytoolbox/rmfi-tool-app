@@ -1,0 +1,86 @@
+{
+  "date": "2026-06-29",
+  "generatedAt": "2026-06-29T14:59:46.133Z",
+  "spyTrend": null,
+  "trades": [
+    {
+      "symbol": "PLTR",
+      "name": "Palantir Technologies Inc.",
+      "qty": 2,
+      "price": 117.615,
+      "value": 235.23,
+      "notional": 275,
+      "score": 20,
+      "breakdown": {
+        "fromHighPts": 20,
+        "momentumPts": 0,
+        "epsPts": 0,
+        "relStrengthPts": 0,
+        "volPts": 0,
+        "contractPts": 0,
+        "congressPts": 0,
+        "fromHighPct": -43.32353508095606,
+        "trendLong": null,
+        "volSurge": null
+      }
+    }
+  ],
+  "topCandidates": [
+    {
+      "symbol": "PLTR",
+      "score": 20,
+      "price": 117.615,
+      "fromHighPct": -43.3,
+      "congressBuy": false
+    },
+    {
+      "symbol": "NOC",
+      "score": 20,
+      "price": 495.48,
+      "fromHighPct": -36,
+      "congressBuy": false
+    },
+    {
+      "symbol": "BAH",
+      "score": 20,
+      "price": 64.105,
+      "fromHighPct": -46.6,
+      "congressBuy": false
+    },
+    {
+      "symbol": "LDOS",
+      "score": 20,
+      "price": 102.11,
+      "fromHighPct": -50.4,
+      "congressBuy": false
+    },
+    {
+      "symbol": "CEG",
+      "score": 20,
+      "price": 258.88,
+      "fromHighPct": -37.3,
+      "congressBuy": false
+    },
+    {
+      "symbol": "ORCL",
+      "score": 20,
+      "price": 148.54,
+      "fromHighPct": -57,
+      "congressBuy": false
+    },
+    {
+      "symbol": "CRM",
+      "score": 20,
+      "price": 160.69,
+      "fromHighPct": -41.9,
+      "congressBuy": false
+    },
+    {
+      "symbol": "PYPL",
+      "score": 20,
+      "price": 44.385,
+      "fromHighPct": -44.2,
+      "congressBuy": false
+    }
+  ]
+}
