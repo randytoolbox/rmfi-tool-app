@@ -13,6 +13,7 @@ Upload or paste this document at the start of any new Claude session and say:
 
 **Randy Barclay** — Sole owner and Managing Member
 - 40+ years precision manufacturing, CNC programming/machining (5-axis), ISO 9001 environments
+- Oil/gas field background — directly relevant to remote work-site power market
 - Currently employed full-time as machine shop manager at RMFI (Sunnyvale, CA)
 - Planning to relocate to Idaho for RLB Solar operations
 - Self-funded ~$50,000 into the patent and prototype development
@@ -75,10 +76,13 @@ Upload or paste this document at the start of any new Claude session and say:
 
 ## 4. THE TECHNOLOGY STRATEGY
 
-**Current system (original prototype — outdated):**
+**Original prototype — field-tested, 5 years real-world use:**
 - Mechanical switching
 - Remote-control operation
 - Dual-direction tilt capability
+- Survived highway transport (CA-OR-ID routes), high wind, long-term outdoor exposure
+- Key components: 80/20 aluminum extrusion (structural), Hayden motors (actuators), Victron charge controller integration
+- Compatible with domestic solar panels including First Solar modules
 
 **Next-generation upgrade plan:**
 - GPS-based solar positioning using astronomical algorithms (open-loop primary tracking)
@@ -114,17 +118,19 @@ Upload or paste this document at the start of any new Claude session and say:
 
 **Top target markets (ranked by priority):**
 
+**PRIMARY MARKETS FOR DOE SBIR PROPOSAL (emphasize these):**
+
 | Rank | Market | Why |
 |------|--------|-----|
-| 1 | Mobile communications trailers (COW/COLT) | Telecom diesel generator market ~$1.5-2.5B; acute fuel logistics pain; high ability to pay; licensing to COW OEMs |
-| 2 | Emergency response / disaster relief trailers | $1.3B → $3.9B market; FEMA/DOE grant alignment; life-safety urgency |
-| 3 | Security & surveillance trailers | Large installed base; generator refueling is recurring pain; licensing to LVT-style manufacturers |
-| 4 | Utility service & distribution trailers | Utilities have largest capex; DOE grid resilience funding direct fit |
+| 1 | SAR (Search & Rescue) command trailers — western states | Direct DOE/emergency-resilience alignment; Randy has field background relevant here |
+| 2 | Oil & gas remote field offices / wellsite power | Randy's oil/gas background = credibility; high diesel delivery cost; high ability to pay |
+| 3 | Emergency response / disaster relief trailers | $1.3B → $3.9B market; FEMA/DOE grant alignment; life-safety urgency |
+| 4 | Mobile communications trailers (COW/COLT) | Telecom diesel generator market ~$1.5-2.5B; fuel logistics pain |
 | 5 | Remote environmental monitoring stations | USGS, EPA, state agencies; eliminate battery-swap site visits |
-| 6 | Oil & gas remote field offices / wellsite power | High diesel delivery cost; high ability to pay |
-| 7 | Construction site trailers | Large market; moderate urgency |
-| 8 | Military / expeditionary tactical power | DOD SBIR path; long sales cycles |
-| 9 | Agricultural remote power | USDA REAP grants; price-sensitive buyers |
+| 6 | Security & surveillance trailers | Generator refueling pain; licensing potential |
+| 7 | Utility service & distribution trailers | DOE grid resilience funding direct fit |
+| 8 | Construction site trailers | Large market; moderate urgency |
+| 9 | Agricultural remote power | USDA REAP grants; price-sensitive |
 | 10 | Event/production mobile power | Quick pilot potential; limited grant fit |
 
 **Why tracking beats adding more panels (for every market):**
@@ -140,7 +146,11 @@ Upload or paste this document at the start of any new Claude session and say:
 
 ## 6. THE GRANTS
 
-### Grant 1 — DOE SBIR Phase I (PRIMARY, MOST IMPORTANT)
+### Grant 1 — DOE SBIR Phase I (ONLY ACTIVE GRANT — AFWERX DROPPED)
+
+**AFWERX decision (confirmed June 2026):** AFWERX Open Topic requires finding an Air Force unit willing to sign a memorandum as your "champion" within a short window. Without existing defense relationships or a defense-specific track record, this is low-probability. Dropped as a near-term target. Revisit after DOE win or commercial traction.
+
+### Grant 1 — DOE SBIR Phase I (PRIMARY)
 
 | Detail | Info |
 |--------|------|
