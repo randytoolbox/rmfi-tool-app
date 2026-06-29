@@ -2881,7 +2881,7 @@ function computeYTD(sym, currentPrice) {
 async function fetchMarketStrip() {
   // Sanity bounds — Stooq returns stale expired-contract prices that look plausible but are years old
   // Gold hasn't been < $500 since 2005; Brent/WTI always trade within $20 of each other above $50
-  const PRICE_BOUNDS = { 'GLD': [500, 15000], 'SLV': [10, 500], 'USO': [30, 250], 'BNO': [50, 250] };
+  const PRICE_BOUNDS = { 'GLD': [500, 15000], 'SLV': [10, 500], 'USO': [40, 130], 'BNO': [40, 130] };
 
   // Clear any cached commodity prices that fail sanity — prevents stale bad data persisting across sessions
   for (const [id, [min, max]] of Object.entries(PRICE_BOUNDS)) {
@@ -2919,7 +2919,7 @@ async function fetchMarketStrip() {
     for (const host of ['query1', 'query2']) {
       try {
         const r = await fetch(
-          `https://${host}.finance.yahoo.com/v8/finance/quote?symbols=${encodeURIComponent(missingSyms.join(','))}&fields=regularMarketPrice,regularMarketChangePercent,shortName`,
+          `https://${host}.finance.yahoo.com/v8/finance/quote?symbols=${missingSyms.join(',')}&fields=regularMarketPrice,regularMarketChangePercent,shortName`,
           { signal: AbortSignal.timeout(8000) }
         );
         if (!r.ok) continue;
