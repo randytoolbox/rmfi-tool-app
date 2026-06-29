@@ -2879,10 +2879,18 @@ function computeYTD(sym, currentPrice) {
 }
 
 async function fetchMarketStrip() {
-  renderMarketsStrip(); // show cached values immediately; fresh data overwrites below
-  const fetchSyms = MARKETS_SYMS.map(s => MARKETS_FUTURES[s] || s);
   // Sanity bounds — Stooq returns stale expired-contract prices that look plausible but are years old
-  const PRICE_BOUNDS = { 'GLD': [500, 15000], 'SLV': [5, 500], 'USO': [20, 300], 'BNO': [20, 300] };
+  // Gold hasn't been < $500 since 2005; Brent/WTI always trade within $20 of each other above $50
+  const PRICE_BOUNDS = { 'GLD': [500, 15000], 'SLV': [10, 500], 'USO': [30, 250], 'BNO': [50, 250] };
+
+  // Clear any cached commodity prices that fail sanity — prevents stale bad data persisting across sessions
+  for (const [id, [min, max]] of Object.entries(PRICE_BOUNDS)) {
+    const p = stockData[id]?.price;
+    if (p != null && (p < min || p > max)) { if (stockData[id]) stockData[id].price = null; }
+  }
+  renderMarketsStrip(); // show cached values (bad commodity prices now cleared to --)
+
+  const fetchSyms = MARKETS_SYMS.map(s => MARKETS_FUTURES[s] || s);
   const goodIds = {};
 
   try {
