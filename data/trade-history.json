@@ -1,0 +1,20 @@
+{
+  "trades": [
+    {
+      "date": "2026-06-30",
+      "symbol": "LUMN",
+      "pl": -16.0597,
+      "plPct": -4.8660000000000005,
+      "reason": "Stop loss at -4.87% 🛑",
+      "type": "stock",
+      "daysHeld": 5
+    }
+  ],
+  "summary": {
+    "totalTrades": 1,
+    "wins": 0,
+    "losses": 1,
+    "winRate": 0,
+    "totalPL": -16.06
+  }
+}
