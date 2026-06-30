@@ -193,6 +193,17 @@ contested logistics environment."
 - GOOGL — DeepMind robotics
 - SYM (Symbotic) — warehouse automation, Walmart backlog
 - AUR (Aurora Innovation) — autonomous trucking
+- ASML — near-monopoly on EUV lithography machines needed for advanced AI chips
+- LRCX (Lam Research) — wafer etching/deposition equipment, semiconductor manufacturing
+- TSM — chip foundry, mentioned alongside NVDA as core Physical AI beneficiary
+
+### "Picks and shovels" thesis (from 247wallst.com article, June 30 2026):
+RBC Capital projects a $9T humanoid robotics market by 2050. Robot makers (Tesla
+Optimus, Figure AI) will face fierce competition and margin pressure like car makers.
+Equipment suppliers (ASML, LRCX) have durable moats and benefit no matter who wins
+the robot race — classic toolmaker-beats-end-product pattern seen in internet/smartphone/
+AI waves. Good for Policy Watch: semiconductor supply chain, CHIPS Act follow-ons,
+export controls on advanced tech to China = volatility + opportunity.
 
 ### Trading notes:
 - Monitor NVIDIA earnings for robotics revenue growth
@@ -221,12 +232,33 @@ wins AND losses in public." Transparency is the brand.
 
 ## OUTSTANDING TO-DO LIST
 
-### Dashboard fixes needed:
+### Dashboard fixes needed (HIGH PRIORITY — do first):
 1. Verify WTI Oil now shows ~$70 after hard refresh (commit 3df7d3b fix)
 2. Fix HON day-change in text report generator (apply sanePct filter there too)
 3. Verify BTC Dominance is populating
 4. Fix 52W data showing "--" in generated report text
-5. Add "Physical AI Watchlist" card (TSLA, NVDA, SYM, AUR)
+5. Add "Physical AI / Semiconductor Watchlist" card (TSLA, NVDA, SYM, AUR, ASML,
+   LRCX, TSM) with mini-charts and consistent Day $/YTD/52W data on every tile
+6. Add LRCX to Robot Paper Trades simulation list — show simulated vs actual performance
+7. Policy Watch: add semiconductor/chip keywords (tariffs, CHIPS Act, export controls)
+
+### New features (next wave, after high-priority fixes):
+1. Swing Trade Ideas card — combine Congress trades + news + technicals into a single
+   signal (e.g. "LRCX dip buy zone near $X")
+2. Beginner Learning Mode — tooltips explaining terms on each tile ("What is volatility?")
+3. Expand CSV export to cover full portfolio + watchlist, not just one view
+4. Daily Briefing Summary screen — one view pulling top signals, robot performance, news
+
+### Marketing / launch (last week before going public):
+1. Prepare 5-10 demo screenshots or a 1-minute walkthrough video
+2. X/Twitter thread ideas: "How my robot paper traded LRCX this week", "Congress buys
+   in semis — what it means"
+3. Target communities: r/stocks, r/Daytrading, trading Discord groups
+
+### Quick wins (no Claude session needed):
+1. Add ASML, LRCX and other semiconductor peers to the watchlist manually
+2. Document the robot's current buy/sell rules clearly for when showing others
+3. Test the app on different devices/browsers
 
 ### Solar system project:
 1. Write capability statement / one-pager for DoD/AFWERX
