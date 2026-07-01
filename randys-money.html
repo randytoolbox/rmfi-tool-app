@@ -418,6 +418,92 @@
   .sc-pin-btn.pinned { background:#7c5cbf22; color:#d4b8ff; }
   .sc-pin-btn:hover { background:#7c5cbf44; }
   .sc-pin-label { font-size:10px; color:#b08fff; font-weight:700; letter-spacing:.04em; }
+
+  /* ── Ticker Tape ──────────────────────────────────────────────────────────── */
+  #tickerWrap {
+    background: #020810;
+    border-top: 1px solid #0a2040;
+    border-bottom: 1px solid #152a45;
+    height: 34px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    user-select: none;
+  }
+  #tickerLiveLabel {
+    flex-shrink: 0;
+    padding: 0 12px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .1em;
+    color: #f87171;
+    background: #020810;
+    border-right: 1px solid #152a45;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    z-index: 2;
+  }
+  .ticker-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #f87171;
+    flex-shrink: 0;
+    animation: ticker-blink 1.2s ease-in-out infinite;
+  }
+  @keyframes ticker-blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.15; }
+  }
+  #tickerViewport {
+    flex: 1;
+    overflow: hidden;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    position: relative;
+  }
+  #tickerViewport::before,
+  #tickerViewport::after {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 28px;
+    z-index: 1;
+    pointer-events: none;
+  }
+  #tickerViewport::before { left:  0; background: linear-gradient(90deg,  #020810, transparent); }
+  #tickerViewport::after  { right: 0; background: linear-gradient(270deg, #020810, transparent); }
+  #tickerTrack {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    animation: ticker-scroll 80s linear infinite;
+    will-change: transform;
+  }
+  #tickerTrack:hover { animation-play-state: paused; cursor: default; }
+  @keyframes ticker-scroll {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  .t-item {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    padding: 0 18px;
+    font-size: 12px;
+    border-right: 1px solid #0d2040;
+    line-height: 34px;
+  }
+  .t-sym   { font-weight: 800; color: #7fb8f0; font-size: 11px; letter-spacing: .04em; }
+  .t-price { font-weight: 600; color: #ddeeff; font-size: 12px; }
+  .t-chg   { font-size: 10.5px; font-weight: 700; }
+  .t-up    { color: #4ade80; }
+  .t-dn    { color: #f87171; }
+  .t-neu   { color: #6a8aaa; }
 </style>
 </head>
 <body>
@@ -468,6 +554,13 @@ function acceptDisclaimer() {
     <div class="sub">Crypto Portfolio Tracker &amp; Report Generator</div>
   </div>
   <div class="sub" id="lastUpdated">Not loaded yet</div>
+</div>
+
+<div id="tickerWrap">
+  <div id="tickerLiveLabel"><span class="ticker-dot"></span>LIVE</div>
+  <div id="tickerViewport">
+    <div id="tickerTrack"><span id="tickerA"></span><span id="tickerB"></span></div>
+  </div>
 </div>
 
 <div class="topbar">
@@ -1428,6 +1521,7 @@ async function refreshAll() {
   try {
     await fetchLive();
     renderGrid();
+    renderTicker();
     renderMacro(); // BTC/ETH now available from fetchLive piggyback
     setTimeout(() => fetchMacro(), 3000); // delay 3s so fetchMacro doesn't race with fetchLive on CoinGecko rate limits
     // Fetch 2-yr history at most once per 6 hours (skip coins already cached)
@@ -1449,14 +1543,14 @@ async function refreshAll() {
     document.getElementById('lastUpdated').textContent = 'Updated ' + now;
     setStatus('ok', 'Crypto loaded — fetching stocks...');
     checkAlerts();
-    renderMarketsStrip(); renderDailyPicks(); // render from cache immediately (shows picks if cache is fresh)
+    renderMarketsStrip(); renderDailyPicks(); renderTicker(); // render from cache immediately (shows picks if cache is fresh)
     fetchMarketStrip(); // fast batch fetch for GLD/SLV/USO/BNO — non-blocking
     if (Date.now() - lastStockFetch >= STOCK_REFRESH_MS) {
       try {
         await fetchStocks();
         renderStockGrid(); checkStockAlerts(); lastStockFetch = Date.now();
-        renderMarketsStrip(); renderDailyPicks(); // re-render now that fresh stock prices are in
-      } catch(se) { console.warn('Stocks:', se); renderMarketsStrip(); renderDailyPicks(); }
+        renderMarketsStrip(); renderDailyPicks(); renderTicker(); // re-render now that fresh stock prices are in
+      } catch(se) { console.warn('Stocks:', se); renderMarketsStrip(); renderDailyPicks(); renderTicker(); }
     }
     setTimeout(() => fetchStockHistory(), 8000); // non-blocking, delayed to avoid racing with fetchStocks v8 calls
     setTimeout(() => fetchStock52W(), 3000);     // non-blocking, fills in 52W high/low
@@ -2962,6 +3056,7 @@ async function fetchMarketStrip() {
 
   save('rm_stockData', stockData);
   renderMarketsStrip();
+  renderTicker();
 }
 
 async function fetchStocks() {
@@ -3105,6 +3200,56 @@ function pickReason(sym) {
   return parts.length ? parts.join(' · ') : 'top watchlist position';
 }
 
+function renderTicker() {
+  const itemsA = document.getElementById('tickerA');
+  const itemsB = document.getElementById('tickerB');
+  if (!itemsA || !itemsB) return;
+
+  const fmtTickerPrice = (p, isCrypto) => {
+    if (p == null) return '--';
+    if (isCrypto && p >= 1000) return '$' + p.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
+    if (p >= 100) return '$' + p.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+    if (p >= 1)   return '$' + p.toFixed(4);
+    return '$' + p.toPrecision(4);
+  };
+
+  const chgSpan = pct => {
+    if (pct == null) return '';
+    const cls  = pct > 0.005 ? 't-up' : pct < -0.005 ? 't-dn' : 't-neu';
+    const sign = pct >= 0 ? '+' : '';
+    return `<span class="t-chg ${cls}">${sign}${pct.toFixed(2)}%</span>`;
+  };
+
+  const mktLabel = { SPY:'S&P 500', QQQ:'NASDAQ', GLD:'GOLD', SLV:'SILVER', USO:'WTI OIL', BNO:'BRENT' };
+
+  const parts = [];
+
+  for (const sym of MARKETS_SYMS) {
+    const d = stockData[sym];
+    if (!d?.price) continue;
+    parts.push(`<span class="t-item"><span class="t-sym">${mktLabel[sym]||sym}</span><span class="t-price">${fmtTickerPrice(d.price, false)}</span>${chgSpan(d.changePct)}</span>`);
+  }
+
+  for (const sym of portfolio) {
+    const d = liveData[sym];
+    if (!d?.price) continue;
+    parts.push(`<span class="t-item"><span class="t-sym">${sym}</span><span class="t-price">${fmtTickerPrice(d.price, true)}</span>${chgSpan(d.change24h)}</span>`);
+  }
+
+  for (const sym of stockWatchlist) {
+    if (MARKETS_SYMS.includes(sym)) continue;
+    const d = stockData[sym];
+    if (!d?.price) continue;
+    parts.push(`<span class="t-item"><span class="t-sym">${sym}</span><span class="t-price">${fmtTickerPrice(d.price, false)}</span>${chgSpan(d.changePct)}</span>`);
+  }
+
+  if (!parts.length) return;
+
+  const html = parts.join('');
+  itemsA.innerHTML = html;
+  itemsB.innerHTML = html;
+}
+
 function renderMarketsStrip() {
   MARKETS_SYMS.forEach(sym => {
     const d = stockData[sym];
@@ -3243,7 +3388,7 @@ async function fetchStock52W() {
     }
   }
 
-  if (updated) { save('rm_stockData', stockData); renderStockGrid(); renderMarketsStrip(); renderDailyPicks(); renderCongressBuys(); }
+  if (updated) { save('rm_stockData', stockData); renderStockGrid(); renderMarketsStrip(); renderDailyPicks(); renderCongressBuys(); renderTicker(); }
 }
 
 async function fetchStockHistory() {
@@ -4742,6 +4887,7 @@ renderCongressAllStars();
 renderTradeJournal();
 renderTrumpPosts();
 renderPolicyWatch();
+renderTicker();
 refreshAll();
 // Force-fetch news feeds on every page load regardless of cache
 setTimeout(() => { fetchTrumpPosts(true); fetchPolicyNews(true); }, 2000);
