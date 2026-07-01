@@ -1389,21 +1389,27 @@ async function fetchHistory(sym) {
   const res = await fetch(`/api/history?id=${encodeURIComponent(id)}&start=${twoYearsAgo}&end=${now}`);
   if (!res.ok) throw new Error('history ' + res.status);
   const json = await res.json();
-  const prices = (json.data || []).map(p => parseFloat(p.priceUsd)).filter(v => !isNaN(v));
-  if (prices.length < 10) return;
-  const mid = Math.floor(prices.length / 2);
-  const last1y = prices.slice(mid);
+  // Keep timestamps so we can correctly split 1Y vs 2Y by date, not by array midpoint.
+  // Math.floor(length/2) was wrong when CoinCap returns fewer than 730 data points (gaps/missing days).
+  const raw = (json.data || [])
+    .map(p => ({ price: parseFloat(p.priceUsd), time: parseFloat(p.time || 0) }))
+    .filter(p => !isNaN(p.price) && p.price > 0);
+  if (raw.length < 10) return;
+  const oneYearAgo = now - 365 * 24 * 60 * 60 * 1000;
+  const all2y   = raw.map(p => p.price);
+  const last1y  = raw.filter(p => p.time >= oneYearAgo).map(p => p.price);
+  const yr1data = last1y.length >= 5 ? last1y : all2y.slice(Math.floor(all2y.length / 2));
   histData[sym] = {
-    price2yAgo: prices[0],
-    high2y:     Math.max(...prices),
-    low2y:      Math.min(...prices),
-    price1yAgo: prices[mid],
-    high1y:     Math.max(...last1y),
-    low1y:      Math.min(...last1y),
+    price2yAgo: all2y[0],
+    high2y:     Math.max(...all2y),
+    low2y:      Math.min(...all2y),
+    price1yAgo: yr1data[0] || all2y[0],
+    high1y:     Math.max(...yr1data),
+    low1y:      Math.min(...yr1data),
   };
   // Compute 7d change from history and store in liveData
-  const p7 = prices[prices.length - 8];
-  const pNow = prices[prices.length - 1];
+  const p7   = all2y[all2y.length - 8];
+  const pNow = all2y[all2y.length - 1];
   if (p7 && liveData[sym]) liveData[sym].change7d = ((pNow - p7) / p7) * 100;
   save('rm_histData', histData);
 }
@@ -1425,7 +1431,8 @@ async function refreshAll() {
     renderMacro(); // BTC/ETH now available from fetchLive piggyback
     setTimeout(() => fetchMacro(), 3000); // delay 3s so fetchMacro doesn't race with fetchLive on CoinGecko rate limits
     // Fetch 2-yr history at most once per 6 hours (skip coins already cached)
-    const needsHist = portfolio.filter(s => !histData[s]);
+    // Also re-fetch if high1y === high2y (symptom of old midpoint-based split bug)
+    const needsHist = portfolio.filter(s => !histData[s] || histData[s].high1y === histData[s].high2y);
     const forceRefreshHist = Date.now() - lastCryptoHistFetch > CRYPTO_HIST_TTL_MS;
     const toFetch = forceRefreshHist ? portfolio : needsHist;
     if (toFetch.length) {
