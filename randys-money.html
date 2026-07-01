@@ -949,7 +949,7 @@ const _cachedLive = load('rm_liveData', null);
 let liveData      = (_cachedLive?.ts && Date.now() - _cachedLive.ts < 24 * 3600000) ? (_cachedLive.data || {}) : {};
 let histData      = load('rm_histData', {});   // persisted — survives page reloads
 let alertTargets  = load('rm_alertTargets', {});
-let triggeredAlerts = {};
+let triggeredAlerts = load('rm_triggeredAlerts', {});
 let arCountdownVal  = 120;
 let arEnabled       = true;
 let lastStockFetch  = 0;
@@ -1137,7 +1137,7 @@ let _cachedStockDataTs = load('rm_stockDataTs', 0);
 // Always seed from cache (even if stale) so picks render immediately; fresh fetch overwrites individual entries
 let stockData = Object.keys(_cachedStockData).length > 0 ? _cachedStockData : {};
 let stockAlerts      = load('rm_stockAlerts', {});
-let stockTriggered   = {};
+let stockTriggered   = load('rm_stockTriggered', {});
 let stockHoldings    = load('rm_stockHoldings', {}); // { SYM: { qty, cost } }
 let stockHistory     = load('rm_stockHistory', {});
 let lastHistoryFetch = load('rm_lastHistFetch', 0);
@@ -2081,6 +2081,9 @@ function showAlertToast(messages) {
 }
 
 function checkAlerts() {
+  // Auto-expire triggers older than 24h so alerts can fire again the next day
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+  Object.keys(triggeredAlerts).forEach(k => { if (triggeredAlerts[k] < cutoff) delete triggeredAlerts[k]; });
   const hits = [];
   portfolio.forEach(sym => {
     const target = alertTargets[sym];
@@ -2089,7 +2092,8 @@ function checkAlerts() {
     if (!d || !d.price) return;
     const targetPrice = parseFloat(target);
     if (d.price >= targetPrice && !triggeredAlerts[sym]) {
-      triggeredAlerts[sym] = true;
+      triggeredAlerts[sym] = Date.now();
+      save('rm_triggeredAlerts', triggeredAlerts);
       hits.push(`<b>${sym}</b> is at ${fmtPrice(d.price)} — your target was ${fmtPrice(targetPrice)}`);
     }
   });
@@ -4612,6 +4616,11 @@ function downloadStockCSV() {
 }
 
 function checkStockAlerts() {
+  // Auto-expire triggers older than 24h so alerts can fire again the next day
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+  let expired = false;
+  Object.keys(stockTriggered).forEach(k => { if (stockTriggered[k] < cutoff) { delete stockTriggered[k]; expired = true; } });
+  if (expired) save('rm_stockTriggered', stockTriggered);
   const hits = [];
   stockWatchlist.forEach(sym => {
     const alert = stockAlerts[sym];
@@ -4623,14 +4632,16 @@ function checkStockAlerts() {
     if (a.dip) {
       const tgt = parseFloat(a.dip);
       if (!stockTriggered[sym + '_dip'] && d.price <= tgt) {
-        stockTriggered[sym + '_dip'] = true;
+        stockTriggered[sym + '_dip'] = Date.now();
+        save('rm_stockTriggered', stockTriggered);
         hits.push(`<b>${sym}</b> dipped to ${fmtPrice(d.price)} — your dip alert: ${fmtPrice(tgt)}`);
       }
     }
     if (a.rise) {
       const tgt = parseFloat(a.rise);
       if (!stockTriggered[sym + '_rise'] && d.price >= tgt) {
-        stockTriggered[sym + '_rise'] = true;
+        stockTriggered[sym + '_rise'] = Date.now();
+        save('rm_stockTriggered', stockTriggered);
         hits.push(`<b>${sym}</b> rose to ${fmtPrice(d.price)} — your rise alert: ${fmtPrice(tgt)}`);
       }
     }
