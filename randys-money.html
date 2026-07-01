@@ -1300,16 +1300,26 @@ async function fetchMacro() {
       if (d.fearGreedLabel)       macroData.fearGreedLabel   = d.fearGreedLabel;
     }
   } catch(e) { console.warn('macro:', e.message); }
-  // Client-side CoinGecko fallback for BTC dominance (browser IPs aren't blocked)
+  // Client-side fallbacks for BTC dominance — CoinGecko then CoinLore (both free, no key)
   if (macroData.btcDominance == null) {
     try {
-      const cgR = await fetch('https://api.coingecko.com/api/v3/global');
+      const cgR = await fetch('https://api.coingecko.com/api/v3/global', { signal: AbortSignal.timeout(5000) });
       if (cgR.ok) {
         const cgD = (await cgR.json()).data || {};
         if (cgD.market_cap_percentage?.bitcoin != null) macroData.btcDominance = cgD.market_cap_percentage.bitcoin;
         if (cgD.total_market_cap?.usd && !macroData.totalMktCap) macroData.totalMktCap = cgD.total_market_cap.usd;
         if (cgD.market_cap_change_percentage_24h_usd != null && macroData.mktCapChange24h == null)
           macroData.mktCapChange24h = cgD.market_cap_change_percentage_24h_usd;
+      }
+    } catch (_) {}
+  }
+  if (macroData.btcDominance == null) {
+    try {
+      const clR = await fetch('https://api.coinlore.net/api/global/', { signal: AbortSignal.timeout(5000) });
+      if (clR.ok) {
+        const clD = (await clR.json())[0] || {};
+        if (clD.btc_d != null) macroData.btcDominance = parseFloat(clD.btc_d);
+        if (clD.total_mcap && !macroData.totalMktCap) macroData.totalMktCap = clD.total_mcap;
       }
     } catch (_) {}
   }
@@ -2883,7 +2893,12 @@ async function fetchMarketStrip() {
   // Gold hasn't been < $500 since 2005; Brent/WTI always trade within $20 of each other above $50
   const PRICE_BOUNDS = { 'GLD': [500, 15000], 'SLV': [10, 500], 'USO': [40, 130], 'BNO': [40, 130] };
 
-  // Clear any cached commodity prices that fail sanity — prevents stale bad data persisting across sessions
+  // Always wipe futures prices before fetching — they must come from a live browser fetch,
+  // never from stale localStorage (Stooq expired-contract prices pass bounds checks but are years old)
+  for (const id of Object.keys(MARKETS_FUTURES)) {
+    if (stockData[id]) stockData[id].price = null;
+  }
+  // Also bounds-check non-futures in case something else got corrupted
   for (const [id, [min, max]] of Object.entries(PRICE_BOUNDS)) {
     const p = stockData[id]?.price;
     if (p != null && (p < min || p > max)) { if (stockData[id]) stockData[id].price = null; }

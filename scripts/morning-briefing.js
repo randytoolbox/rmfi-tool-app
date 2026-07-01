@@ -465,8 +465,7 @@ async function sendEmail(html, briefingDate) {
   fs.writeFileSync(outPath, JSON.stringify(briefingData, null, 2));
   console.log(`\nSaved briefing.json (${allArticles.length} articles, ${briefingData.aiAnalyzed} AI-analyzed)`);
 
-  // Step 4: Generate top takeaways + send email
-  const topTakeaways = await generateTopTakeaways(allArticles);
+  // Step 4: Send email (topTakeaways already generated in Phase 4 above)
   const html = buildEmail(allArticles, briefingDate, topTakeaways);
   await sendEmail(html, briefingDate);
   console.log('Done.');
