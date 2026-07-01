@@ -270,4 +270,34 @@ wins AND losses in public." Transparency is the brand.
 2. Plan episode 2 (show a week of bot trading, wins + losses)
 
 ---
+
+## UI/UX FEEDBACK (from review session June 29, 2026)
+
+### What's working well:
+- Dark theme looks clean and professional
+- Top market tiles useful at a glance
+- Robot Paper Trades summary bar (Portfolio Value, Open P&L, Cash, Positions) is clear
+- Crypto cards (QNT/XDC) showing 1Y/2Y changes + highs/lows are detailed and useful
+- Bottom portfolio summary with CSV download is helpful
+
+### Main problem: density and readability
+The watchlist has too many tiles with missing data — overwhelming to scan, looks unfinished.
+Many tiles missing 52W High/Low (showing "--" everywhere).
+
+### Specific improvements (prioritized):
+1. HIGH — Fix 52W High/Low data populating (already deployed June 29, verify Wednesday)
+2. HIGH — Group watchlist tiles into sections:
+   - Broad Market ETFs (SPY, QQQ, DIA, IWM)
+   - Tech / Semiconductor (NVDA, ASML, LRCX, TSM, AAPL, MSFT, AMZN)
+   - Defense (LMT, RTX, PLTR, KTOS, GD)
+   - Energy / Oil (XLE, HAL, OXY, FRO, STNG)
+   - Industrial / Other (CAT, BE, HON, EMR, LUMN, BRK.B, PYPL, BRO, PFSI)
+3. HIGH — Make Robot Paper Trades section more prominent (it's the best feature)
+4. MEDIUM — Add "What's Notable Today" summary card near top — consolidate Congress
+   trades + supply chain alerts + top movers in one place
+5. MEDIUM — Add "Today's Robot Performance" and win rate somewhere visible
+6. LOW — Add sparklines/mini-charts to watchlist tiles
+7. LOW — Make market tiles collapsible to reduce vertical space
+
+---
 *End of catch-up document. Share this file with Claude at the start of the next session.*
