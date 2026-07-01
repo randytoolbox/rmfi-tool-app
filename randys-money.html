@@ -3201,17 +3201,21 @@ async function fetchStock52W() {
     } catch(e) { console.warn('52W fetch batch:', e.message); }
   }));
 
-  // Client-side fallback: fetch 52W data directly from Yahoo Finance
-  // Browser residential IP bypasses the Vercel datacenter IP blocks
+  // Client-side fetch: 52W data directly from Yahoo Finance (browser residential IP, not blocked)
+  // Stooq never returns 52W data so we ALWAYS need this path for high52/low52.
+  // Use small batches (8) with raw commas (not encodeURIComponent) to avoid Yahoo rate-limiting.
   const missing52W = allSyms.filter(s => stockData[s] && stockData[s].high52 == null);
   if (missing52W.length) {
     const b52 = [];
-    for (let i = 0; i < missing52W.length; i += 20) b52.push(missing52W.slice(i, i + 20));
-    for (const batch of b52) {
+    for (let i = 0; i < missing52W.length; i += 8) b52.push(missing52W.slice(i, i + 8));
+    for (let bi = 0; bi < b52.length; bi++) {
+      if (bi > 0) await new Promise(r => setTimeout(r, 400)); // brief pause between batches
+      const batch = b52[bi];
+      const symStr = batch.join(','); // raw commas — Yahoo rejects %2C encoded separators
       for (const host of ['query1', 'query2']) {
         try {
           const r = await fetch(
-            `https://${host}.finance.yahoo.com/v8/finance/quote?symbols=${encodeURIComponent(batch.join(','))}&fields=fiftyTwoWeekHigh,fiftyTwoWeekLow,regularMarketChangePercent`,
+            `https://${host}.finance.yahoo.com/v8/finance/quote?symbols=${symStr}&fields=fiftyTwoWeekHigh,fiftyTwoWeekLow,regularMarketChangePercent`,
             { signal: AbortSignal.timeout(8000) }
           );
           if (!r.ok) continue;
@@ -3222,7 +3226,6 @@ async function fetchStock52W() {
             if (!stockData[sym]) stockData[sym] = { name: STOCK_NAMES[sym] || sym };
             if (q.fiftyTwoWeekHigh != null) { stockData[sym].high52 = q.fiftyTwoWeekHigh; updated = true; }
             if (q.fiftyTwoWeekLow  != null) { stockData[sym].low52  = q.fiftyTwoWeekLow;  updated = true; }
-            // Also fill in changePct if missing and sane
             if (q.regularMarketChangePercent != null && stockData[sym].changePct == null) {
               const p = sanePct(q.regularMarketChangePercent);
               if (p != null) { stockData[sym].changePct = p; updated = true; }
