@@ -73,6 +73,23 @@
 
   /* Coin Cards */
   .coin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; }
+  .sector-header {
+    grid-column: 1 / -1;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: #5a8ab0;
+    padding: 14px 2px 6px;
+    border-bottom: 1px solid #0d2040;
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .sector-header:first-child { padding-top: 2px; }
+  .sector-header .sh-icon { font-size: 14px; }
+  .sector-header .sh-count { font-size: 10px; color: #2a4a6a; font-weight: 600; margin-left: 4px; }
 
   .coin-card {
     background: var(--panel);
@@ -1031,6 +1048,22 @@ const STOCK_NAMES = {
   // Clean Energy
   BE:'Bloom Energy (Fuel Cells / Data Center Power)',
 };
+
+// ── Sector Groups (for watchlist section headers) ─────────────────────────────
+const SECTOR_GROUPS = [
+  { label: 'Broad Market',          icon: '📊', syms: ['SPY','QQQ','DIA','IWM','VTI','VOO','RSP'] },
+  { label: 'Tech & AI',             icon: '💻', syms: ['NVDA','MSFT','AAPL','GOOGL','GOOG','AMZN','META','TSLA','PLTR','SNOW','CRM','ORCL','AMD','QCOM','MU','AMAT','LRCX','KLAC','TSM','ASML','SYM','AUR','INTC','AVGO','ARM','SMCI','ANET','VRT','IBM','SAP','XLK','MRVL','DELL','HPE'] },
+  { label: 'Defense & Gov IT',      icon: '🛡', syms: ['LMT','RTX','NOC','GD','BA','HII','KTOS','AXON','LDOS','SAIC','BAH','CACI','MANT','PSN','CRWD','PANW','ZS','S','FTNT','CYBR','L3T','HEI','TDG'] },
+  { label: 'Energy',                icon: '⚡', syms: ['XLE','XOM','CVX','OXY','COP','MRO','EOG','HAL','SLB','BKR','KMI','WMB','ET','STNG','FRO','DHT','XOP','DVN','PXD','FANG','USO','BNO','VLO','MPC','PSX'] },
+  { label: 'Nuclear & Clean Power', icon: '⚛', syms: ['CCJ','BWXT','OKLO','SMR','NNE','UEC','LEU','CEG','VST','NRG','TLN','BE','EQIX','DLR','ETN','NEE','AES'] },
+  { label: 'Commodities & Metals',  icon: '🪙', syms: ['GLD','SLV','GDX','GDXJ','GLDM','SIVR','PHYS'] },
+  { label: 'Financials',            icon: '🏦', syms: ['JPM','BAC','WFC','GS','MS','C','BRK.B','XLF','V','MA','AXP','COF','SCHW','BX','KKR'] },
+  { label: 'Health & Pharma',       icon: '💊', syms: ['JNJ','PFE','AMGN','MRK','ABBV','LLY','BMY','GILD','MRNA','XLV','UNH','CVS','CI'] },
+  { label: 'Industrial',            icon: '🏭', syms: ['CAT','HON','GE','EMR','ITW','MMM','XLI','DE','URI','PWR','NUE','MLM','VMC','FAST','GWW','ROK','TER','CGNX','ISRG','PATH','TRMB','MP','AMBA'] },
+  { label: 'Auto & EV',             icon: '🚗', syms: ['F','GM','RIVN','LCID','TM','HMC','STLA'] },
+  { label: 'Media & Consumer',      icon: '🎬', syms: ['DIS','NFLX','UBER','LYFT','ABNB','BKNG','CMCSA','WBD','PARA','SPOT'] },
+  { label: 'Telecom',               icon: '📡', syms: ['LUMN','T','VZ','TMUS','ERIC','NOK'] },
+];
 
 // ── Supply Chain Map ──────────────────────────────────────────────────────────
 // Prime contractor → their key suppliers/integrators/subcontractors.
@@ -3460,27 +3493,37 @@ async function fetchStockHistory() {
 function renderSparkline(sym) {
   const prices = stockHistory[sym];
   if (!prices || prices.length < 8) {
-    return '<div style="height:40px;opacity:0.25;font-size:9px;color:var(--muted);display:flex;align-items:center;padding:0 4px;">2-yr chart loading…</div>';
+    return '<div style="height:52px;opacity:0.2;font-size:9px;color:var(--muted);display:flex;align-items:center;padding:0 4px;">chart loading…</div>';
   }
-  const W = 200, H = 42, P = 3;
-  const min = Math.min(...prices), max = Math.max(...prices);
-  const rng = max - min || 1;
-  const pts = prices.map((v, i) => {
-    const x = P + (i / (prices.length - 1)) * (W - P * 2);
-    const y = H - P - ((v - min) / rng) * (H - P * 2);
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(' ');
+  const W = 200, H = 52, P = 4;
+  const mn = Math.min(...prices), mx = Math.max(...prices);
+  const rng = mx - mn || 1;
+  const coords = prices.map((v, i) => ({
+    x: P + (i / (prices.length - 1)) * (W - P * 2),
+    y: H - P - ((v - mn) / rng) * (H - P * 2)
+  }));
+  const pts = coords.map(c => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
   const first = prices[0], last = prices[prices.length - 1];
-  const clr = last >= first ? '#26a69a' : '#ef5350';
-  const dotY = (H - P - ((last - min) / rng) * (H - P * 2)).toFixed(1);
+  const up = last >= first;
+  const clr = up ? '#26d48c' : '#ef5350';
+  const lc = coords[coords.length - 1], fc = coords[0];
+  const polyPts = `${pts} ${lc.x.toFixed(1)},${(H - P + 1).toFixed(1)} ${fc.x.toFixed(1)},${(H - P + 1).toFixed(1)}`;
   const pct = ((last - first) / first * 100);
   const pctLabel = (pct >= 0 ? '+' : '') + pct.toFixed(1) + '% 2yr';
-  return `<div>
-    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:42px;display:block;margin:4px 0 0;">
-      <polyline points="${pts}" fill="none" stroke="${clr}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
-      <circle cx="${(W - P).toFixed(1)}" cy="${dotY}" r="2.5" fill="${clr}"/>
+  const gid = 'sg_' + sym.replace(/[^a-zA-Z0-9]/g, '_');
+  return `<div style="margin:6px 0 2px;">
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:52px;display:block;" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${clr}" stop-opacity="0.28"/>
+          <stop offset="100%" stop-color="${clr}" stop-opacity="0.02"/>
+        </linearGradient>
+      </defs>
+      <polygon points="${polyPts}" fill="url(#${gid})"/>
+      <polyline points="${pts}" fill="none" stroke="${clr}" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="${lc.x.toFixed(1)}" cy="${lc.y.toFixed(1)}" r="2.8" fill="${clr}"/>
     </svg>
-    <div style="font-size:9px;color:${clr};text-align:right;margin-bottom:2px;padding-right:3px;">${pctLabel}</div>
+    <div style="font-size:9px;color:${clr};text-align:right;padding-right:4px;margin-top:-2px;">${pctLabel}</div>
   </div>`;
 }
 
@@ -4375,7 +4418,7 @@ function renderStockGrid() {
     renderStockPortfolioSummary();
     return;
   }
-  grid.innerHTML = stockWatchlist.map(sym => {
+  function buildStockCard(sym) {
     const d = stockData[sym] || {};
     const loading = !d.price;
     const name = d.name || STOCK_NAMES[sym] || sym;
@@ -4386,7 +4429,6 @@ function renderStockGrid() {
     const hitTarget = (dipTgt !== null && d.price && d.price <= dipTgt) || (riseTgt !== null && d.price && d.price >= riseTgt);
     const fromHigh = d.price && d.high52 ? ((d.price - d.high52) / d.high52) * 100 : null;
 
-    // ── Earnings badge ───────────────────────────────────────────────────────
     const earn = earningsData[sym];
     let earningsBadge = '';
     if (earn?.earningsTs) {
@@ -4400,8 +4442,7 @@ function renderStockGrid() {
       }
     }
 
-    // ── Buy Zone badge (from screener data if available) ─────────────────────
-    const sr = screenerData.find ? screenerData.find(s => s.sym === sym) : null;
+    const sr = screenerData.find ? screenerData.find(sc => sc.sym === sym) : null;
     let zoneBadge = '';
     if (sr) {
       const { trend, distFromMa } = sr;
@@ -4418,6 +4459,13 @@ function renderStockGrid() {
       }
     }
 
+    const h = stockHoldings[sym] || {};
+    const hasPos = h.qty && h.cost;
+    const pnlDollar = hasPos && d.price ? (d.price - h.cost) * h.qty : null;
+    const pnlPct    = hasPos && d.price ? ((d.price - h.cost) / h.cost) * 100 : null;
+    const pnlColor  = pnlDollar == null ? '' : pnlDollar >= 0 ? 'var(--good)' : 'var(--bad)';
+    const curPrice  = d.price ? d.price.toFixed(2) : (h.cost || '');
+
     return `<div class="coin-card stock-card${loading ? ' loading' : ''}${hitTarget ? ' alert-hit' : ''}">
       <button class="remove-btn" onclick="removeStock('${sym}')" title="Remove">&#x2715;</button>
       <div class="ticker">${sym}</div>
@@ -4432,14 +4480,6 @@ function renderStockGrid() {
       <div class="row"><span class="label">52W High</span><span class="val">${fmtPrice(d.high52)}</span></div>
       <div class="row"><span class="label">52W Low</span><span class="val">${fmtPrice(d.low52)}</span></div>
       <div class="row"><span class="label">From High</span><span class="val ${cls(fromHigh)}">${fromHigh != null ? fmtPct(fromHigh) : '--'}</span></div>
-      ${(()=>{
-        const h = stockHoldings[sym] || {};
-        const hasPos = h.qty && h.cost;
-        const pnlDollar = hasPos && d.price ? (d.price - h.cost) * h.qty : null;
-        const pnlPct    = hasPos && d.price ? ((d.price - h.cost) / h.cost) * 100 : null;
-        const pnlColor  = pnlDollar == null ? '' : pnlDollar >= 0 ? 'var(--good)' : 'var(--bad)';
-        const curPrice  = d.price ? d.price.toFixed(2) : (h.cost || '');
-        return `
       <div class="alert-row" style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px;">
         <span class="alert-label">Shares:</span>
         <input class="alert-input${h.qty ? ' active' : ''}" type="number" step="any" min="0"
@@ -4473,8 +4513,7 @@ function renderStockGrid() {
           style="width:100%;padding:8px;font-size:13px;font-weight:800;border-radius:7px;border:none;background:#00c853;color:#001a08;cursor:pointer;">
           ✓ Record Sale &amp; Log to Journal
         </button>
-      </div>` : ''}`;
-      })()}
+      </div>` : ''}
       <div class="alert-row">
         <span class="alert-label">&#128276; Dip alert ↓</span>
         <input class="alert-input${dipTgt ? ' active' : ''}" type="number" step="any" min="0"
@@ -4490,7 +4529,23 @@ function renderStockGrid() {
           onclick="event.stopPropagation()" />
       </div>
     </div>`;
-  }).join('');
+  }
+
+  // Group watchlist symbols by sector and render with headers
+  const parts = [];
+  const placed = new Set();
+  for (const sg of SECTOR_GROUPS) {
+    const matches = stockWatchlist.filter(s => sg.syms.includes(s));
+    if (!matches.length) continue;
+    parts.push(`<div class="sector-header"><span class="sh-icon">${sg.icon}</span>${sg.label}<span class="sh-count">${matches.length} stock${matches.length > 1 ? 's' : ''}</span></div>`);
+    matches.forEach(s => { parts.push(buildStockCard(s)); placed.add(s); });
+  }
+  const other = stockWatchlist.filter(s => !placed.has(s));
+  if (other.length) {
+    parts.push(`<div class="sector-header"><span class="sh-icon">📌</span>Other<span class="sh-count">${other.length} stock${other.length > 1 ? 's' : ''}</span></div>`);
+    other.forEach(s => parts.push(buildStockCard(s)));
+  }
+  grid.innerHTML = parts.join('');
   renderStockPortfolioSummary();
 }
 
