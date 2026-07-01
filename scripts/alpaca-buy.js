@@ -9,31 +9,10 @@ const MIN_PRICE      = 15;  // hard floor — filters falling knives / penny sto
 const TREND_DAYS     = 60;  // require 60-day uptrend (mirrors SA's 75-day sustained signal)
 const CONGRESS_BOOST = 15;  // bonus points when congress members recently bought
 
-// Expanded universe — bot scores all of these, picks the best each morning
-const WATCHLIST = [
-  // Broad market
-  'SPY','QQQ','DIA','IWM',
-  // Defense / Gov't IT
-  'LMT','RTX','PLTR','NOC','GD','BAH','SAIC','LDOS',
-  // Energy & Industrials
-  'CAT','XLE','OXY','CVX','HAL','MRO','WMB','DE','GE',
-  // Nuclear & Data Center infrastructure
-  'CEG','VST','CCJ','BWXT','EQIX','DLR','VRT','ETN',
-  // Mega-cap tech
-  'NVDA','MSFT','AAPL','TSLA','AMZN','META','GOOGL',
-  // Semiconductors / Hardware
-  'AMD','AVGO','IBM','DELL','CRWD','FLEX','MTSI','QCOM','AMAT',
-  // Enterprise software
-  'ORCL','CRM','PANW','SNOW',
-  // Financials
-  'JPM','GS','V','MA','PYPL','COIN','BRK.B',
-  // Healthcare
-  'UNH','ABBV',
-  // Commodities / Fixed income
-  'GLD','SLV','TLT',
-  // Misc
-  'BE','LUMN',
-];
+// Full S&P 500 universe — bot scores all ~500 stocks each morning and picks the best setups.
+// Loaded from scripts/sp500-symbols.js so the list can be maintained separately.
+const SP500 = require('./sp500-symbols');
+const WATCHLIST = SP500;
 
 const WATCHLIST_SET    = new Set(WATCHLIST);
 const TICKER_BLOCKLIST = new Set([
@@ -75,43 +54,73 @@ async function alpaca(path, options = {}) {
   return data;
 }
 
-// Batch fetch EPS data for all candidates
+// Batch fetch EPS data — chunked so Yahoo doesn't rate-limit on 500 symbols
 async function fetchAllFundamentals(symbols) {
-  try {
-    const r = await fetch(
-      `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols.join(',')}`,
-      { headers: { 'User-Agent': UA } }
-    );
-    if (!r.ok) return {};
-    const data = await r.json();
-    const out = {};
-    for (const q of (data?.quoteResponse?.result || [])) {
-      out[q.symbol] = {
-        epsTrailing: q.epsTrailingTwelveMonths ?? null,
-        epsForward:  q.epsForward ?? null,
-      };
-    }
-    return out;
-  } catch { return {}; }
+  const CHUNK = 40;
+  const out = {};
+  for (let i = 0; i < symbols.length; i += CHUNK) {
+    const chunk = symbols.slice(i, i + CHUNK);
+    try {
+      for (const host of ['query1', 'query2']) {
+        const r = await fetch(
+          `https://${host}.finance.yahoo.com/v7/finance/quote?symbols=${chunk.join(',')}`,
+          { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(10000) }
+        );
+        if (!r.ok) continue;
+        const data = await r.json();
+        for (const q of (data?.quoteResponse?.result || [])) {
+          out[q.symbol] = {
+            epsTrailing: q.epsTrailingTwelveMonths ?? null,
+            epsForward:  q.epsForward ?? null,
+          };
+        }
+        break;
+      }
+    } catch { /* non-fatal — missing EPS just skips that filter */ }
+    if (i + CHUNK < symbols.length) await new Promise(r => setTimeout(r, 250));
+  }
+  return out;
 }
 
-// Fetch last N daily bars for multiple symbols in one request
-async function fetchAllBars(symbols, limit = 70) {
-  try {
-    const syms = symbols.join(',');
-    const r = await fetch(
-      `${ALPACA_DATA}/v2/stocks/bars?symbols=${syms}&timeframe=1Day&limit=${limit}&feed=iex&sort=asc`,
-      {
-        headers: {
-          'APCA-API-KEY-ID':     process.env.ALPACA_KEY_ID,
-          'APCA-API-SECRET-KEY': process.env.ALPACA_SECRET_KEY,
-        },
+// Fetch last N daily bars for multiple symbols — batched to stay under URL limits
+async function fetchAllBars(symbols, limit = 260) {
+  const CHUNK = 100; // Alpaca handles up to ~150 symbols per request safely
+  const out = {};
+  for (let i = 0; i < symbols.length; i += CHUNK) {
+    const chunk = symbols.slice(i, i + CHUNK);
+    try {
+      const r = await fetch(
+        `${ALPACA_DATA}/v2/stocks/bars?symbols=${chunk.join(',')}&timeframe=1Day&limit=${limit}&feed=iex&sort=asc`,
+        {
+          headers: {
+            'APCA-API-KEY-ID':     process.env.ALPACA_KEY_ID,
+            'APCA-API-SECRET-KEY': process.env.ALPACA_SECRET_KEY,
+          },
+          signal: AbortSignal.timeout(20000),
+        }
+      );
+      if (r.ok) {
+        const data = await r.json();
+        Object.assign(out, data?.bars || {});
       }
-    );
-    if (!r.ok) return {};
-    const data = await r.json();
-    return data?.bars || {};
-  } catch { return {}; }
+    } catch (e) { console.warn(`fetchAllBars chunk ${i}-${i+CHUNK} failed:`, e.message); }
+    if (i + CHUNK < symbols.length) await new Promise(r => setTimeout(r, 300));
+  }
+  return out;
+}
+
+// Derive price + 52W high/low directly from bar data — avoids per-symbol Yahoo calls
+function deriveFromBars(sym, bars) {
+  if (!bars || bars.length < 5) return null;
+  const last   = bars[bars.length - 1];
+  const price  = last.c;
+  const prev   = bars[bars.length - 2]?.c || price;
+  const changePct = prev ? ((price - prev) / prev) * 100 : null;
+  // Use up to last 252 bars (~1 trading year) for 52W high/low
+  const yr = bars.slice(-252);
+  const high52 = Math.max(...yr.map(b => b.h));
+  const low52  = Math.min(...yr.map(b => b.l));
+  return { symbol: sym, name: sym, price, changePct, high52, low52 };
 }
 
 // Positive = uptrend, negative = downtrend, null = insufficient data
@@ -289,11 +298,10 @@ async function main() {
   const allCandidates = [...new Set([...WATCHLIST, ...congressExtras])];
   const allSymbols    = [...new Set(['SPY', ...allCandidates])];
 
-  console.log(`Fetching bars + fundamentals for ${allCandidates.length} symbols...`);
-  const [barsMap, fundamentals] = await Promise.all([
-    fetchAllBars(allSymbols, 70),
-    fetchAllFundamentals(allCandidates),
-  ]);
+  console.log(`Fetching bars for ${allCandidates.length} symbols (S&P 500 universe)...`);
+  // Fetch bars first — bars give us price, 52W H/L, trend, volume without per-symbol calls
+  const barsMap = await fetchAllBars(allSymbols, 260);
+  console.log(`Got bars for ${Object.keys(barsMap).length}/${allCandidates.length} symbols`);
 
   // SPY regime filter — pause all buys when broad market is in downtrend
   const spyTrend = calcTrend(barsMap['SPY'], TREND_DAYS);
@@ -303,15 +311,22 @@ async function main() {
   }
   console.log(`SPY ${TREND_DAYS}-day trend: ${spyTrend !== null ? (spyTrend * 100).toFixed(1) + '% ✓' : 'unknown (proceeding)'}`);
 
+  // Fetch fundamentals (EPS) in chunks — non-blocking, missing EPS just skips that filter
+  console.log('Fetching EPS fundamentals in batches...');
+  const fundamentals = await fetchAllFundamentals(allCandidates);
+  console.log(`Got fundamentals for ${Object.keys(fundamentals).length} symbols`);
+
   const contractSignals = loadContractSignals();
   const signalCount     = Object.keys(contractSignals).length;
   if (signalCount) {
     console.log(`Contract signals active: ${Object.keys(contractSignals).join(', ')}`);
   }
 
-  console.log(`Open slots: ${slots} — fetching stock data...`);
-  const allData = (await Promise.all(allCandidates.map(fetchStock))).filter(Boolean);
-  console.log(`Got data for ${allData.length}/${allCandidates.length} symbols`);
+  // Derive stock data from bars — no per-symbol HTTP calls needed
+  const allData = allCandidates
+    .map(sym => deriveFromBars(sym, barsMap[sym]))
+    .filter(Boolean);
+  console.log(`Derived price data for ${allData.length}/${allCandidates.length} symbols`);
 
   const scored = allData
     .map(d => {
