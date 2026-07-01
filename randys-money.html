@@ -2893,17 +2893,16 @@ async function fetchMarketStrip() {
   // Gold hasn't been < $500 since 2005; Brent/WTI always trade within $20 of each other above $50
   const PRICE_BOUNDS = { 'GLD': [500, 15000], 'SLV': [10, 500], 'USO': [40, 130], 'BNO': [40, 130] };
 
-  // Always wipe futures prices before fetching — they must come from a live browser fetch,
-  // never from stale localStorage (Stooq expired-contract prices pass bounds checks but are years old)
-  for (const id of Object.keys(MARKETS_FUTURES)) {
-    if (stockData[id]) stockData[id].price = null;
-  }
-  // Also bounds-check non-futures in case something else got corrupted
+  // Bounds-check cached futures prices — reject anything outside realistic range.
+  // We no longer pre-clear ALL futures prices because that causes "--" during rate-limit windows.
+  // Protection against stale Stooq overwrites is now handled by fetchStock52W (which is
+  // blocked from writing to any MARKETS_FUTURES display ID), so fetchMarketStrip owns
+  // all futures prices and simply overwrites with fresh Yahoo data when available.
   for (const [id, [min, max]] of Object.entries(PRICE_BOUNDS)) {
     const p = stockData[id]?.price;
     if (p != null && (p < min || p > max)) { if (stockData[id]) stockData[id].price = null; }
   }
-  renderMarketsStrip(); // show cached values (bad commodity prices now cleared to --)
+  renderMarketsStrip(); // show cached values while live fetch runs
 
   const fetchSyms = MARKETS_SYMS.map(s => MARKETS_FUTURES[s] || s);
   const futureSet = new Set(Object.values(MARKETS_FUTURES)); // GC=F, SI=F, CL=F, BZ=F
