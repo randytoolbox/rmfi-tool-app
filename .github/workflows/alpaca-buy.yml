@@ -4,6 +4,13 @@ on:
   schedule:
     - cron: '35 13 * * 1-5'   # 9:35am ET (13:35 UTC) Mon–Fri
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run — score S&P 500 but skip order placement'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['false', 'true']
 
 permissions:
   contents: write
@@ -21,6 +28,7 @@ jobs:
           ALPACA_KEY_ID:     ${{ secrets.ALPACA_KEY_ID }}
           ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
           RESEND_API_KEY:    ${{ secrets.RESEND_API_KEY }}
+          DRY_RUN:           ${{ github.event.inputs.dry_run || 'false' }}
         run: node scripts/alpaca-buy.js
       - name: Commit buy log
         run: |

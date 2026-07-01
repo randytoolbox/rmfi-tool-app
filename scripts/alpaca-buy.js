@@ -276,8 +276,13 @@ async function main() {
     console.error('ALPACA_KEY_ID or ALPACA_SECRET_KEY not set'); process.exit(1);
   }
 
-  const clock = await alpaca('/v2/clock');
-  if (!clock.is_open) { console.log('Market closed — skipping buys'); return; }
+  const DRY_RUN = process.env.DRY_RUN === 'true';
+  if (DRY_RUN) {
+    console.log('🧪 DRY RUN — scoring S&P 500, no orders will be placed');
+  } else {
+    const clock = await alpaca('/v2/clock');
+    if (!clock.is_open) { console.log('Market closed — skipping buys'); return; }
+  }
 
   const positions   = await alpaca('/v2/positions');
   const heldSymbols = new Set(positions.map(p => p.symbol));
@@ -350,16 +355,23 @@ async function main() {
     );
   }
 
-  const picks = scored.slice(0, slots);
+  const picks = scored.slice(0, DRY_RUN ? 5 : slots);
   if (!picks.length) { console.log('\nNo eligible picks'); return; }
 
   const today = new Date().toISOString().slice(0, 10);
-  console.log('');
+  console.log(DRY_RUN ? '\n🧪 DRY RUN — would place these orders tomorrow:' : '');
 
   const executed = [];
   for (const pick of picks) {
     const notional = budgetForScore(pick._score);
     const qty = Math.max(1, Math.floor(notional / pick.price));
+    if (DRY_RUN) {
+      console.log(`  WOULD BUY ${qty} x ${pick.symbol} @ ~$${pick.price.toFixed(2)} = ~$${(qty * pick.price).toFixed(2)} (score ${pick._score} → $${notional} budget)`);
+      console.log(`    WHY: ${buildTradeReason(pick._breakdown)}`);
+      executed.push({ symbol: pick.symbol, name: pick.name, qty, price: pick.price,
+                      value: qty * pick.price, notional, score: pick._score, breakdown: pick._breakdown });
+      continue;
+    }
     try {
       await alpaca('/v2/orders', {
         method: 'POST',
