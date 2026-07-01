@@ -3280,7 +3280,17 @@ async function fetchStockHistory() {
       }
       if (closes?.length >= 8) {
         stockHistory[sym] = closes;
-        if (stockData[sym]) stockData[sym].ytdPct = computeYTD(sym, stockData[sym].price);
+        if (stockData[sym]) {
+          stockData[sym].ytdPct = computeYTD(sym, stockData[sym].price);
+          // Derive 52W high/low from weekly closes if the Yahoo quote batch hasn't filled them in yet.
+          // Last 52 weekly closes ≈ trailing 52 weeks. Slightly conservative vs intraday highs but
+          // far better than showing -- indefinitely when the batch quote endpoint is rate-limited.
+          if (stockData[sym].high52 == null && closes.length >= 8) {
+            const last52 = closes.slice(-52);
+            stockData[sym].high52 = parseFloat(Math.max(...last52).toFixed(2));
+            stockData[sym].low52  = parseFloat(Math.min(...last52).toFixed(2));
+          }
+        }
       }
     } catch(e) { console.warn('StockHistory', sym, e.message); }
     await new Promise(r => setTimeout(r, 200));
