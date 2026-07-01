@@ -3185,7 +3185,9 @@ async function fetchStock52W() {
         const sym = q.symbol;
         if (!stockData[sym]) stockData[sym] = { name: STOCK_NAMES[sym] || sym };
         // Use Yahoo Finance price when Alpaca didn't provide one (market closed, IEX gap, etc.)
-        if (q.regularMarketPrice != null && !stockData[sym].price) {
+        // Skip futures-mapped display IDs (GLD/SLV/USO/BNO) — fetchMarketStrip() owns those via browser-side fetch;
+        // writing the ETF price from Stooq here would overwrite the force-cleared null with a stale value.
+        if (q.regularMarketPrice != null && !stockData[sym].price && !(sym in MARKETS_FUTURES)) {
           stockData[sym].price     = q.regularMarketPrice;
           stockData[sym].changePct = sanePct(q.regularMarketChangePercent);
           stockData[sym].change    = null;
