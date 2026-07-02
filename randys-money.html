@@ -3367,7 +3367,7 @@ function renderNotable() {
   // Robot P&L + positions
   if (robotData?.positions?.length) {
     const totalPL = robotData.positions.reduce((s, p) => s + p.pl, 0);
-    const sign = totalPL >= 0 ? '+' : '';
+    const sign = totalPL >= 0 ? '+' : '-';
     const clr  = totalPL >= 0 ? '#7fff7f' : '#ff6b6b';
     const syms = robotData.positions.map(p => p.symbol.replace(/USD$/,'')).join(' · ');
     rows.push(`<div style="display:flex;align-items:center;gap:10px;">
@@ -3954,8 +3954,10 @@ async function fetchTradeHistory() {
     if (r.ok) {
       tradeHistData = await r.json();
       updateTLDRFromHistory();
+      return;
     }
   } catch(e) { /* silent */ }
+  renderTradeScoreboard(); // show empty state instead of "Loading record…"
 }
 
 function buildWhyStr(symbol) {
