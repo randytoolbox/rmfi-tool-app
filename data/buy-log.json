@@ -1,85 +1,136 @@
 {
-  "date": "2026-07-01",
-  "generatedAt": "2026-07-01T16:08:14.531Z",
-  "spyTrend": null,
+  "date": "2026-07-02",
+  "generatedAt": "2026-07-02T16:41:37.144Z",
+  "spyTrend": 9.92,
   "trades": [
     {
-      "symbol": "GOOGL",
-      "name": "Alphabet Inc.",
-      "qty": 1,
-      "price": 359.28,
-      "value": 359.28,
-      "notional": 275,
-      "score": 23,
+      "symbol": "BAX",
+      "name": "BAX",
+      "qty": 886,
+      "price": 22.56,
+      "value": 19988.16,
+      "notional": 20000,
+      "score": 37,
       "breakdown": {
-        "fromHighPts": 8,
-        "momentumPts": 0,
+        "fromHighPts": 15,
+        "momentumPts": 10,
         "epsPts": 0,
-        "relStrengthPts": 0,
+        "relStrengthPts": 12,
         "volPts": 0,
         "contractPts": 0,
-        "congressPts": 15,
-        "fromHighPct": -12.07263649935147,
-        "trendLong": null,
-        "volSurge": null
+        "congressPts": 0,
+        "rsi": 64.79885057471262,
+        "ma200": 19.560625000000012,
+        "fromHighPct": -28.04975283048956,
+        "changePct": 3.9631336405529933,
+        "trendLong": 0.30782608695652164,
+        "volSurge": 0.802354891390836
+      }
+    },
+    {
+      "symbol": "RHI",
+      "name": "RHI",
+      "qty": 596,
+      "price": 33.54,
+      "value": 19989.84,
+      "notional": 20000,
+      "score": 37,
+      "breakdown": {
+        "fromHighPts": 15,
+        "momentumPts": 10,
+        "epsPts": 0,
+        "relStrengthPts": 12,
+        "volPts": 0,
+        "contractPts": 0,
+        "congressPts": 0,
+        "rsi": 57.46521248589696,
+        "ma200": 28.109524999999994,
+        "fromHighPct": -23.2318608377203,
+        "changePct": 1.7288444040036404,
+        "trendLong": 0.39662710805746404,
+        "volSurge": 0.5689486528620746
+      }
+    },
+    {
+      "symbol": "DLTR",
+      "name": "DLTR",
+      "qty": 161,
+      "price": 124.02,
+      "value": 19967.22,
+      "notional": 20000,
+      "score": 30,
+      "breakdown": {
+        "fromHighPts": 8,
+        "momentumPts": 10,
+        "epsPts": 0,
+        "relStrengthPts": 12,
+        "volPts": 0,
+        "contractPts": 0,
+        "congressPts": 0,
+        "rsi": 62.87943262411348,
+        "ma200": 110.25027500000006,
+        "fromHighPct": -12.8705915413798,
+        "changePct": 2.3098498597591135,
+        "trendLong": 0.1742650191734129,
+        "volSurge": 0.5048117826556541
       }
     }
   ],
   "topCandidates": [
     {
+      "symbol": "BAX",
+      "score": 37,
+      "price": 22.56,
+      "fromHighPct": -28,
+      "congressBuy": false
+    },
+    {
+      "symbol": "RHI",
+      "score": 37,
+      "price": 33.54,
+      "fromHighPct": -23.2,
+      "congressBuy": false
+    },
+    {
+      "symbol": "DLTR",
+      "score": 30,
+      "price": 124.02,
+      "fromHighPct": -12.9,
+      "congressBuy": false
+    },
+    {
+      "symbol": "GEN",
+      "score": 30,
+      "price": 26.46,
+      "fromHighPct": -17.9,
+      "congressBuy": false
+    },
+    {
       "symbol": "GOOGL",
-      "score": 23,
-      "price": 359.28,
-      "fromHighPct": -12.1,
+      "score": 29,
+      "price": 355.345,
+      "fromHighPct": -13,
       "congressBuy": true
     },
     {
-      "symbol": "NOC",
-      "score": 20,
-      "price": 523.21,
-      "fromHighPct": -32.4,
+      "symbol": "ON",
+      "score": 27,
+      "price": 90.96,
+      "fromHighPct": -32.5,
       "congressBuy": false
     },
     {
-      "symbol": "BAH",
-      "score": 20,
-      "price": 60.93,
-      "fromHighPct": -49.2,
+      "symbol": "PRU",
+      "score": 25,
+      "price": 112.6,
+      "fromHighPct": -6,
       "congressBuy": false
     },
     {
-      "symbol": "LDOS",
-      "score": 20,
-      "price": 104.87,
-      "fromHighPct": -49,
-      "congressBuy": false
-    },
-    {
-      "symbol": "CEG",
-      "score": 20,
-      "price": 235.225,
-      "fromHighPct": -43,
-      "congressBuy": false
-    },
-    {
-      "symbol": "VST",
-      "score": 20,
-      "price": 153,
-      "fromHighPct": -30.4,
-      "congressBuy": false
-    },
-    {
-      "symbol": "ORCL",
-      "score": 20,
-      "price": 145.55,
-      "fromHighPct": -57.9,
-      "congressBuy": false
-    },
-    {
-      "symbol": "CRM",
-      "score": 20,
-      "price": 165.355,
-      "fromHighPct": -40.3,
+      "symbol": "DXCM",
+      "score": 25,
+      "price": 71.16,
+      "fromHighPct": -20.9,
       "congressBuy": false
     }
   ]
