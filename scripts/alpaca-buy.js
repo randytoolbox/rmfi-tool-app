@@ -131,6 +131,29 @@ function calcTrend(bars, days) {
   return (slice[slice.length - 1].c - slice[0].c) / slice[0].c;
 }
 
+// RSI (14-day) — above 70 = overbought (don't chase), below 35 = in freefall (avoid)
+function calcRSI(bars, period = 14) {
+  if (!bars || bars.length < period + 1) return null;
+  const slice = bars.slice(-(period + 1));
+  let gains = 0, losses = 0;
+  for (let i = 1; i < slice.length; i++) {
+    const diff = slice[i].c - slice[i - 1].c;
+    if (diff > 0) gains += diff;
+    else losses += Math.abs(diff);
+  }
+  const avgGain = gains / period;
+  const avgLoss = losses / period;
+  if (avgLoss === 0) return 100;
+  return 100 - (100 / (1 + avgGain / avgLoss));
+}
+
+// 200-day moving average — price below MA200 = long-term downtrend, skip
+function calcMA200(bars) {
+  if (!bars || bars.length < 200) return null;
+  const slice = bars.slice(-200);
+  return slice.reduce((sum, b) => sum + b.c, 0) / 200;
+}
+
 // Volume surge: recent 2-day avg vs 20-day avg — >1.5 = above-average institutional interest
 function calcVolumeSurge(bars) {
   if (!bars || bars.length < 22) return null;
@@ -214,10 +237,19 @@ function score(d, contractSignals, barsMap, fundamentals, spyTrend, congressBuys
   if (trendLong !== null && trendLong <= 0) return FAIL;
   if (trend5    !== null && trend5    <= 0) return FAIL;
 
+  // RSI gate: sweet spot is 45–68; above 70 = overbought (chasing), below 35 = freefall
+  const rsi = calcRSI(bars);
+  if (rsi !== null && (rsi > 70 || rsi < 35)) return FAIL;
+
+  // 200-day MA gate: only buy stocks trading above their long-term average
+  const ma200 = calcMA200(bars);
+  if (ma200 !== null && d.price < ma200) return FAIL;
+
   let s = 0;
   const bd = {
     fromHighPts: 0, momentumPts: 0, epsPts: 0,
     relStrengthPts: 0, volPts: 0, contractPts: 0, congressPts: 0,
+    rsi, ma200,
   };
 
   const fromHigh = d.high52 ? (d.price - d.high52) / d.high52 * 100 : null;
@@ -365,9 +397,11 @@ async function main() {
     const epsStr = eps?.epsTrailing != null ? `  eps:$${eps.epsTrailing.toFixed(2)}→$${(eps.epsForward ?? eps.epsTrailing).toFixed(2)}` : '';
     const volStr = bd.volSurge != null ? `  vol:${bd.volSurge.toFixed(1)}x` : '';
     const conStr = bd.congressPts > 0 ? '  🏛congress' : '';
+    const rsiStr = bd.rsi != null ? `  RSI:${bd.rsi.toFixed(0)}` : '';
+    const maStr  = bd.ma200 != null ? `  MA200:$${bd.ma200.toFixed(2)}` : '';
     console.log(
       `  ${d.symbol.padEnd(6)} score:${String(d._score).padStart(3)}  $${d.price.toFixed(2).padStart(8)}` +
-      `  fromHigh:${fh}%  t${TREND_DAYS}:${bd.trendLong !== null && bd.trendLong !== undefined ? (bd.trendLong*100).toFixed(1)+'%' : 'n/a'}${epsStr}${volStr}${conStr}`
+      `  fromHigh:${fh}%  t${TREND_DAYS}:${bd.trendLong !== null && bd.trendLong !== undefined ? (bd.trendLong*100).toFixed(1)+'%' : 'n/a'}${rsiStr}${maStr}${epsStr}${volStr}${conStr}`
     );
   }
 
