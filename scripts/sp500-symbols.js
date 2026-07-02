@@ -46,7 +46,7 @@ module.exports = [
   'GNRC','GWW','HON','HWM','IEX','ITW','JCI','LHX','LMT','LUV',
   'MAS','MMM','NOC','NSC','ODFL','OTIS','PH','PNR','PWR','ROK',
   'ROP','RTX','SNA','SWK','TDG','TT','UAL','UNP','UPS','URI',
-  'VRSK','WAB','WM','XYL','J','RHI','ROL',
+  'VRSK','WAB','WM','XYL','J','RHI','ROL','AVAV',
 
   // ── Information Technology ────────────────────────────────────────────────
   'AAPL','ACN','ADBE','ADI','AKAM','AMAT','AMD','ANET','ANSS','APH',
