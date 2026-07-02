@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Runs via GitHub Actions at 3:45pm ET (19:45 UTC) Mon-Fri.
-// Stocks: trailing stop (2.5% from peak after 3% gain) or −3% hard stop or 5 trading days.
+// Stocks: trailing stop (2.5% from peak after 8% gain) or −5% hard stop or 5 trading days.
 // Crypto: +10%, −5%, or after 7 calendar days.
 // Sends daily portfolio report email via Resend.
 
@@ -8,9 +8,9 @@ const ALPACA_BASE = 'https://paper-api.alpaca.markets';
 
 // Stock rules — trailing stop is the primary exit for winners
 const STOCK_TAKE_PROFIT    = 0.15;  // safety net only (parabolic moves)
-const STOCK_STOP_LOSS      = -0.03;
+const STOCK_STOP_LOSS      = -0.05;
 const STOCK_MAX_DAYS       = 5;
-const STOCK_TRAIL_TRIGGER  = 0.03;  // start trailing after 3% gain from entry
+const STOCK_TRAIL_TRIGGER  = 0.08;  // start trailing after 8% gain from entry
 const STOCK_TRAIL_PCT      = 0.025; // exit if current drops 2.5% from peak
 
 // Crypto rules (more volatile — wider thresholds)
@@ -183,7 +183,7 @@ function buildEmail(stockPositions, cryptoPositions, sold, account, dateStr) {
     ${soldSection}
     <div style="font-size:11px;color:#9ca3af;text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid #f3f4f6;">
       Paper trading only — no real money.<br>
-      Stocks: trailing stop / −3% / 5 days &nbsp;·&nbsp; Crypto: +10% / −5% / 7 days<br><br>
+      Stocks: trailing stop / −5% / 5 days &nbsp;·&nbsp; Crypto: +10% / −5% / 7 days<br><br>
       <a href="https://rmfi-tool-app.vercel.app/randys-money.html" style="color:#3b82f6;">Open full app →</a>
     </div>
   </div>
