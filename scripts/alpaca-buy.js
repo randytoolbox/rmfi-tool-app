@@ -83,29 +83,59 @@ async function fetchAllFundamentals(symbols) {
   return out;
 }
 
-// Fetch last N daily bars for multiple symbols — batched to stay under URL limits
-async function fetchAllBars(symbols, limit = 260) {
-  const CHUNK = 100; // Alpaca handles up to ~150 symbols per request safely
-  const out = {};
+// Fetch ~14 months of daily bars for multiple symbols with full pagination.
+// Uses explicit start date so we always get 260+ trading days regardless of page limits.
+async function fetchAllBars(symbols) {
+  const CHUNK = 20; // smaller batches → more bars per symbol per page
+  const out   = {};
+  // ~14 months back guarantees 260+ trading days
+  const start = new Date(Date.now() - 420 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
   for (let i = 0; i < symbols.length; i += CHUNK) {
     const chunk = symbols.slice(i, i + CHUNK);
-    try {
-      const r = await fetch(
-        `${ALPACA_DATA}/v2/stocks/bars?symbols=${chunk.join(',')}&timeframe=1Day&limit=${limit}&feed=iex&sort=asc`,
-        {
+    let pageToken = null;
+
+    do {
+      try {
+        const params = new URLSearchParams({
+          symbols:   chunk.join(','),
+          timeframe: '1Day',
+          start,
+          limit:     '1000',
+          feed:      'iex',
+          sort:      'asc',
+        });
+        if (pageToken) params.set('page_token', pageToken);
+
+        const r = await fetch(`${ALPACA_DATA}/v2/stocks/bars?${params}`, {
           headers: {
             'APCA-API-KEY-ID':     process.env.ALPACA_KEY_ID,
             'APCA-API-SECRET-KEY': process.env.ALPACA_SECRET_KEY,
           },
-          signal: AbortSignal.timeout(20000),
-        }
-      );
-      if (r.ok) {
+          signal: AbortSignal.timeout(25000),
+        });
+        if (!r.ok) { console.warn(`bars HTTP ${r.status} chunk ${i}`); break; }
+
         const data = await r.json();
-        Object.assign(out, data?.bars || {});
+        for (const [sym, bars] of Object.entries(data?.bars || {})) {
+          if (!out[sym]) out[sym] = [];
+          out[sym].push(...bars);
+        }
+        pageToken = data.next_page_token || null;
+      } catch (e) {
+        console.warn(`fetchAllBars chunk ${i}–${i + CHUNK} failed:`, e.message);
+        break;
       }
-    } catch (e) { console.warn(`fetchAllBars chunk ${i}-${i+CHUNK} failed:`, e.message); }
-    if (i + CHUNK < symbols.length) await new Promise(r => setTimeout(r, 300));
+    } while (pageToken);
+
+    if (i + CHUNK < symbols.length) await new Promise(r => setTimeout(r, 350));
+  }
+
+  // Log bar counts to help diagnose future issues
+  const counts = Object.values(out).map(b => b.length);
+  if (counts.length) {
+    const avg = (counts.reduce((a, b) => a + b, 0) / counts.length).toFixed(0);
+    console.log(`Bars per symbol: avg ${avg}, min ${Math.min(...counts)}, max ${Math.max(...counts)}`);
   }
   return out;
 }
@@ -343,8 +373,7 @@ async function main() {
   const allSymbols    = [...new Set(['SPY', ...allCandidates])];
 
   console.log(`Fetching bars for ${allCandidates.length} symbols (S&P 500 universe)...`);
-  // Fetch bars first — bars give us price, 52W H/L, trend, volume without per-symbol calls
-  const barsMap = await fetchAllBars(allSymbols, 260);
+  const barsMap = await fetchAllBars(allSymbols);
   console.log(`Got bars for ${Object.keys(barsMap).length}/${allCandidates.length} symbols`);
 
   // SPY regime filter — pause all buys when broad market is in downtrend
