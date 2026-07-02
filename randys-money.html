@@ -3211,8 +3211,8 @@ function scorePickStock(sym) {
   }
 
   // Congress members buying (smart money signal)
-  const cbuy = cBuysData.find(([s]) => s === sym);
-  if (cbuy) score += Math.min(cbuy[1] * 4, 20);
+  const cbuy = cBuysData.find(d => d.sym === sym);
+  if (cbuy) score += Math.min((cbuy.score || 1) * 4, 20);
 
   // In today's policy/news radar
   if (policyNews.some(n => getPolicyImpact(n.title).includes(sym))) score += 15;
