@@ -75,4 +75,7 @@ module.exports = [
 
   // ── Nuclear & Defense additions (high conviction, some S&P 500) ───────────
   'CCJ','BWXT','KTOS','AXON','HII','L3H','HEI',
+
+  // ── Nuclear energy / SMR — data center power demand theme ────────────────
+  'SMR','NNE','OKLO','TLN','DNN','UUUU','LEU',
 ];

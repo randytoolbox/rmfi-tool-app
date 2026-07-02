@@ -693,6 +693,27 @@ function acceptDisclaimer() {
       <div style="color:var(--muted);font-size:13px;padding:12px 0;">Loading robot trades…</div>
     </div>
 
+    <!-- HUMAN OVERRIDE — MANUAL BUY -->
+    <div style="margin:14px 0;background:linear-gradient(135deg,#071a07,#0d1f0d);border:1px solid #2d5a2d;border-radius:14px;padding:14px 16px;">
+      <div style="font-size:11px;font-weight:800;color:#4ade80;text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px;">✋ Human Override — Manual Buy</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;">
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:10px;color:#7a9cc0;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Ticker</label>
+          <input id="mbSymbol" placeholder="AVAV" maxlength="6" style="width:80px;text-transform:uppercase;background:#071a07;border:1px solid #2d5a2d;border-radius:8px;padding:7px 10px;font-size:15px;color:#fff;font-weight:800;" />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:10px;color:#7a9cc0;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Amount $</label>
+          <input id="mbAmount" placeholder="10000" type="number" min="1" max="100000" style="width:120px;background:#071a07;border:1px solid #2d5a2d;border-radius:8px;padding:7px 10px;font-size:14px;color:#fff;font-weight:700;" />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:180px;">
+          <label style="font-size:10px;color:#7a9cc0;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Why buying</label>
+          <input id="mbReason" placeholder="Drone contract, earnings beat, news catalyst…" style="background:#071a07;border:1px solid #2d5a2d;border-radius:8px;padding:7px 10px;font-size:13px;color:#d0e0d0;" />
+        </div>
+        <button onclick="manualBuy()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;letter-spacing:.03em;">Buy Now</button>
+      </div>
+      <div id="mbStatus" style="margin-top:10px;font-size:12px;display:none;padding:6px 10px;border-radius:6px;background:#0a280a;"></div>
+    </div>
+
     <!-- CLOSED TRADE SCOREBOARD -->
     <div id="tradeScoreboard" style="margin-top:14px;background:linear-gradient(135deg,#080f08,#0d1a0d);border:1px solid #1a3a1a;border-radius:14px;padding:14px 16px;">
       <div style="font-size:11px;font-weight:800;color:#4ade80;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;">🏆 Closed Trade Scoreboard</div>
@@ -3878,6 +3899,44 @@ function renderCongressBuys() {
 // ── Buy Log (why the bot bought) ─────────────────────────────────────────────
 let buyLogData = null;
 let tradeHistData = null;
+
+async function manualBuy() {
+  const symbol   = (document.getElementById('mbSymbol').value || '').toUpperCase().trim();
+  const notional = Number(document.getElementById('mbAmount').value);
+  const reason   = (document.getElementById('mbReason').value || '').trim() || 'Manual buy';
+  const statusEl = document.getElementById('mbStatus');
+
+  const show = (msg, color) => {
+    statusEl.style.display = 'block';
+    statusEl.style.color = color;
+    statusEl.textContent = msg;
+  };
+
+  if (!symbol) return show('Enter a ticker symbol.', '#f87171');
+  if (!notional || notional < 1) return show('Enter a dollar amount.', '#f87171');
+
+  show(`Placing $${notional.toLocaleString()} market buy for ${symbol}…`, '#a78bfa');
+
+  try {
+    const r = await fetch('/api/buylog', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ symbol, notional, reason }),
+    });
+    const d = await r.json();
+    if (d.success) {
+      show(`✅ Bought $${notional.toLocaleString()} of ${symbol} — order ${d.orderId}`, '#4ade80');
+      document.getElementById('mbSymbol').value  = '';
+      document.getElementById('mbAmount').value  = '';
+      document.getElementById('mbReason').value  = '';
+      setTimeout(() => fetchRobotPositions(true), 3000);
+    } else {
+      show(`❌ ${d.error || 'Order failed'}`, '#f87171');
+    }
+  } catch (e) {
+    show(`❌ Network error: ${e.message}`, '#f87171');
+  }
+}
 
 async function fetchBuyLog() {
   try {
