@@ -618,6 +618,17 @@ function acceptDisclaimer() {
 
 <div class="main">
 
+  <!-- WHAT'S NOTABLE TODAY -->
+  <div id="notableCard" style="background:linear-gradient(135deg,#060f1a,#0a1828);border:1px solid #1a3a5c;border-radius:14px;padding:14px 18px;margin-bottom:18px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <span style="font-size:11px;font-weight:800;color:#6aaeff;text-transform:uppercase;letter-spacing:.12em;">🔥 What's Notable Today</span>
+      <span id="notableDate" style="font-size:10px;color:#2a4a6a;"></span>
+    </div>
+    <div id="notableRows" style="display:flex;flex-direction:column;gap:7px;">
+      <div style="color:var(--muted);font-size:12px;">Loading…</div>
+    </div>
+  </div>
+
   <!-- TLDR STRIP -->
   <div id="tldrStrip" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;">
     <div style="flex:1;min-width:130px;background:#071a07;border:1px solid #2d5a2d;border-radius:10px;padding:10px 14px;text-align:center;">
@@ -1576,14 +1587,14 @@ async function refreshAll() {
     document.getElementById('lastUpdated').textContent = 'Updated ' + now;
     setStatus('ok', 'Crypto loaded — fetching stocks...');
     checkAlerts();
-    renderMarketsStrip(); renderDailyPicks(); renderTicker(); // render from cache immediately (shows picks if cache is fresh)
+    renderMarketsStrip(); renderDailyPicks(); renderTicker(); renderNotable(); // render from cache immediately (shows picks if cache is fresh)
     fetchMarketStrip(); // fast batch fetch for GLD/SLV/USO/BNO — non-blocking
     if (Date.now() - lastStockFetch >= STOCK_REFRESH_MS) {
       try {
         await fetchStocks();
         renderStockGrid(); checkStockAlerts(); lastStockFetch = Date.now();
-        renderMarketsStrip(); renderDailyPicks(); renderTicker(); // re-render now that fresh stock prices are in
-      } catch(se) { console.warn('Stocks:', se); renderMarketsStrip(); renderDailyPicks(); renderTicker(); }
+        renderMarketsStrip(); renderDailyPicks(); renderTicker(); renderNotable(); // re-render now that fresh stock prices are in
+      } catch(se) { console.warn('Stocks:', se); renderMarketsStrip(); renderDailyPicks(); renderTicker(); renderNotable(); }
     }
     setTimeout(() => fetchStockHistory(), 8000); // non-blocking, delayed to avoid racing with fetchStocks v8 calls
     setTimeout(() => fetchStock52W(), 3000);     // non-blocking, fills in 52W high/low
@@ -3287,6 +3298,89 @@ function renderTicker() {
   itemsB.innerHTML = html;
 }
 
+function renderNotable() {
+  const el = document.getElementById('notableRows');
+  const dateEl = document.getElementById('notableDate');
+  if (!el) return;
+
+  const today = new Date();
+  if (dateEl) dateEl.textContent = today.toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' });
+
+  const rows = [];
+
+  // Biggest mover from watchlist
+  const movers = stockWatchlist
+    .filter(s => stockData[s]?.changePct != null)
+    .map(s => ({ sym: s, pct: stockData[s].changePct }))
+    .sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct));
+  if (movers.length) {
+    const m = movers[0];
+    const sign = m.pct >= 0 ? '+' : '';
+    const clr  = m.pct >= 0 ? '#4ade80' : '#f87171';
+    rows.push(`<div style="display:flex;align-items:center;gap:10px;">
+      <span style="font-size:13px;width:20px;">📈</span>
+      <span style="font-size:11px;color:#7a9cc0;width:110px;">Biggest Mover</span>
+      <span style="font-size:13px;font-weight:800;color:#7fb8f0;">${m.sym}</span>
+      <span style="font-size:13px;font-weight:700;color:${clr};margin-left:6px;">${sign}${m.pct.toFixed(2)}%</span>
+    </div>`);
+  }
+
+  // Robot P&L + positions
+  if (robotData?.positions?.length) {
+    const totalPL = robotData.positions.reduce((s, p) => s + p.pl, 0);
+    const sign = totalPL >= 0 ? '+' : '';
+    const clr  = totalPL >= 0 ? '#7fff7f' : '#ff6b6b';
+    const syms = robotData.positions.map(p => p.symbol.replace(/USD$/,'')).join(' · ');
+    rows.push(`<div style="display:flex;align-items:center;gap:10px;">
+      <span style="font-size:13px;width:20px;">🤖</span>
+      <span style="font-size:11px;color:#7a9cc0;width:110px;">Robot P&amp;L</span>
+      <span style="font-size:13px;font-weight:800;color:${clr};">${sign}$${Math.abs(totalPL).toFixed(2)}</span>
+      <span style="font-size:11px;color:#5a7a9a;margin-left:6px;">${syms}</span>
+    </div>`);
+  }
+
+  // Congress buys
+  if (cBuysData.length) {
+    const names = cBuysData.slice(0,3).map(d => d.sym).join(', ');
+    rows.push(`<div style="display:flex;align-items:center;gap:10px;">
+      <span style="font-size:13px;width:20px;">🏛</span>
+      <span style="font-size:11px;color:#7a9cc0;width:110px;">Congress Buying</span>
+      <span style="font-size:12px;font-weight:700;color:#a78bfa;">${names}</span>
+      <span style="font-size:10px;color:#5a7a9a;margin-left:4px;">&amp; ${cBuysData.length} more</span>
+    </div>`);
+  }
+
+  // Bitcoin
+  const btc = liveData['BTC']?.price || liveData['bitcoin']?.price;
+  const btcChg = liveData['BTC']?.change24h || liveData['bitcoin']?.change24h;
+  if (btc) {
+    const sign = btcChg >= 0 ? '+' : '';
+    const clr  = btcChg >= 0 ? '#4ade80' : '#f87171';
+    rows.push(`<div style="display:flex;align-items:center;gap:10px;">
+      <span style="font-size:13px;width:20px;">₿</span>
+      <span style="font-size:11px;color:#7a9cc0;width:110px;">Bitcoin</span>
+      <span style="font-size:13px;font-weight:800;color:#f7931a;">$${btc.toLocaleString('en-US',{maximumFractionDigits:0})}</span>
+      ${btcChg != null ? `<span style="font-size:12px;font-weight:700;color:${clr};margin-left:6px;">${sign}${btcChg.toFixed(2)}% 24h</span>` : ''}
+    </div>`);
+  }
+
+  // Top pick from daily picks scoring
+  const topPick = stockWatchlist
+    .filter(s => stockData[s]?.price)
+    .map(s => ({ sym: s, score: scorePickStock(s) }))
+    .sort((a, b) => b.score - a.score)[0];
+  if (topPick && topPick.score > 0) {
+    rows.push(`<div style="display:flex;align-items:center;gap:10px;">
+      <span style="font-size:13px;width:20px;">⭐</span>
+      <span style="font-size:11px;color:#7a9cc0;width:110px;">Top Pick</span>
+      <span style="font-size:13px;font-weight:800;color:#7fb8f0;">${topPick.sym}</span>
+      <span style="font-size:11px;color:#5a7a9a;margin-left:6px;">score ${topPick.score}</span>
+    </div>`);
+  }
+
+  el.innerHTML = rows.length ? rows.join('') : '<div style="color:var(--muted);font-size:12px;">Refresh data to populate.</div>';
+}
+
 function renderMarketsStrip() {
   MARKETS_SYMS.forEach(sym => {
     const d = stockData[sym];
@@ -3425,7 +3519,7 @@ async function fetchStock52W() {
     }
   }
 
-  if (updated) { save('rm_stockData', stockData); renderStockGrid(); renderMarketsStrip(); renderDailyPicks(); renderCongressBuys(); renderTicker(); }
+  if (updated) { save('rm_stockData', stockData); renderStockGrid(); renderMarketsStrip(); renderDailyPicks(); renderCongressBuys(); renderTicker(); renderNotable(); }
 }
 
 async function fetchStockHistory() {
@@ -3760,6 +3854,7 @@ function renderCongressBuys() {
       </div>`;
     }).join('')
   }</div><div style="font-size:10px;color:var(--muted);padding:6px 0;">Based on STOCK Act purchase disclosures and congressional trade news. ×N = times mentioned in recent filings.</div>`;
+  renderNotable();
 }
 
 // ── Buy Log (why the bot bought) ─────────────────────────────────────────────
@@ -3884,6 +3979,8 @@ function renderRobotPositions() {
     document.getElementById('robotCash').textContent     = '$' + account.cash.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
     document.getElementById('robotPosCount').textContent = positions.length;
   }
+
+  renderNotable();
 
   if (!positions.length) {
     posEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px 0;">No open positions — robot buys Mon–Fri at 9:40am ET.</div>';
