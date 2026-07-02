@@ -115,6 +115,26 @@ function isCrypto(pos) {
   return pos.asset_class === 'crypto';
 }
 
+const UA = 'Mozilla/5.0 (compatible; randy-money/1.0)';
+
+async function fetchEarningsDates(symbols) {
+  if (!symbols.length) return {};
+  const out = {};
+  try {
+    const r = await fetch(
+      `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols.join(',')}`,
+      { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) }
+    );
+    if (r.ok) {
+      const data = await r.json();
+      for (const q of (data?.quoteResponse?.result || [])) {
+        if (q.earningsTimestamp != null) out[q.symbol] = q.earningsTimestamp;
+      }
+    }
+  } catch (e) { console.warn('Earnings fetch failed (non-fatal):', e.message); }
+  return out;
+}
+
 function fmt(n)    { return n == null ? '--' : '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function fmtPct(n) { const p = Number(n) * 100; return (p >= 0 ? '+' : '') + p.toFixed(2) + '%'; }
 
@@ -202,6 +222,12 @@ async function main() {
     alpaca('/v2/account'),
   ]);
 
+  const stockSymbols  = positions.filter(p => !isCrypto(p)).map(p => p.symbol);
+  const earningsDates = await fetchEarningsDates(stockSymbols);
+  if (Object.keys(earningsDates).length) {
+    console.log('Earnings dates fetched for:', stockSymbols.join(', '));
+  }
+
   const peaks = loadPeaks();
   console.log(`Open positions: ${positions.length}`);
 
@@ -231,14 +257,25 @@ async function main() {
       : 0;
 
     let reason = null;
-    if (plpc >= takeProfit) {
-      reason = `Take profit at ${(plpc*100).toFixed(2)}% ✅`;
-    } else if (peakGainPct >= trailTrig && pullbackFromPeak <= -trailPct) {
-      reason = `Trailing stop: peaked +${(peakGainPct*100).toFixed(1)}%, pulled back ${(pullbackFromPeak*100).toFixed(1)}% from peak 📉`;
-    } else if (plpc <= stopLoss) {
-      reason = `Stop loss at ${(plpc*100).toFixed(2)}% 🛑`;
-    } else if (daysHeld >= maxDays) {
-      reason = `${daysHeld} ${crypto?'calendar':'trading'} days — time's up ⏱`;
+
+    // Earnings exit — highest priority, beats all other rules for stocks
+    if (!crypto && earningsDates[pos.symbol]) {
+      const daysToEarnings = (earningsDates[pos.symbol] * 1000 - Date.now()) / (24 * 60 * 60 * 1000);
+      if (daysToEarnings >= 0 && daysToEarnings <= 3) {
+        reason = `Earnings in ${Math.ceil(daysToEarnings)}d — exiting to avoid gap risk 📅`;
+      }
+    }
+
+    if (!reason) {
+      if (plpc >= takeProfit) {
+        reason = `Take profit at ${(plpc*100).toFixed(2)}% ✅`;
+      } else if (peakGainPct >= trailTrig && pullbackFromPeak <= -trailPct) {
+        reason = `Trailing stop: peaked +${(peakGainPct*100).toFixed(1)}%, pulled back ${(pullbackFromPeak*100).toFixed(1)}% from peak 📉`;
+      } else if (plpc <= stopLoss) {
+        reason = `Stop loss at ${(plpc*100).toFixed(2)}% 🛑`;
+      } else if (daysHeld >= maxDays) {
+        reason = `${daysHeld} ${crypto?'calendar':'trading'} days — time's up ⏱`;
+      }
     }
 
     if (reason) {

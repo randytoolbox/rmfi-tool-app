@@ -70,8 +70,9 @@ async function fetchAllFundamentals(symbols) {
         const data = await r.json();
         for (const q of (data?.quoteResponse?.result || [])) {
           out[q.symbol] = {
-            epsTrailing: q.epsTrailingTwelveMonths ?? null,
-            epsForward:  q.epsForward ?? null,
+            epsTrailing:  q.epsTrailingTwelveMonths ?? null,
+            epsForward:   q.epsForward ?? null,
+            earningsDate: q.earningsTimestamp ?? null,
           };
         }
         break;
@@ -199,6 +200,12 @@ function score(d, contractSignals, barsMap, fundamentals, spyTrend, congressBuys
   if (eps?.epsForward !== null && eps?.epsForward !== undefined &&
       eps?.epsTrailing !== null && eps?.epsTrailing !== undefined && eps.epsTrailing > 0) {
     if (eps.epsForward < eps.epsTrailing * 0.95) return FAIL;
+  }
+
+  // Skip stocks with earnings within 7 days — gap risk is unacceptable
+  if (eps?.earningsDate) {
+    const daysToEarnings = (eps.earningsDate * 1000 - Date.now()) / (24 * 60 * 60 * 1000);
+    if (daysToEarnings >= 0 && daysToEarnings <= 7) return FAIL;
   }
 
   const bars      = barsMap[d.symbol] || [];
@@ -336,6 +343,15 @@ async function main() {
   const scored = allData
     .map(d => {
       const { total, breakdown } = score(d, contractSignals, barsMap, fundamentals, spyTrend, congressBuys);
+      if (total === -1) {
+        const eps = fundamentals?.[d.symbol];
+        if (eps?.earningsDate) {
+          const days = (eps.earningsDate * 1000 - Date.now()) / (24 * 60 * 60 * 1000);
+          if (days >= 0 && days <= 7) {
+            console.log(`  SKIP ${d.symbol} — earnings in ${Math.ceil(days)}d`);
+          }
+        }
+      }
       return { ...d, _score: total, _breakdown: breakdown };
     })
     .filter(d => d._score >= 0 && !heldSymbols.has(d.symbol))
