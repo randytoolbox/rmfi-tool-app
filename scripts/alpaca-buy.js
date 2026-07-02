@@ -4,7 +4,7 @@
 
 const ALPACA_BASE    = 'https://paper-api.alpaca.markets';
 const ALPACA_DATA    = 'https://data.alpaca.markets';
-const MAX_POSITIONS  = 3;
+const MAX_POSITIONS  = 5;
 const MIN_PRICE      = 15;  // hard floor — filters falling knives / penny stocks
 const TREND_DAYS     = 60;  // require 60-day uptrend (mirrors SA's 75-day sustained signal)
 const CONGRESS_BOOST = 15;  // bonus points when congress members recently bought
@@ -180,12 +180,12 @@ async function fetchStock(sym) {
   } catch { return null; }
 }
 
-// Scale position size to conviction — let high-score picks go bigger
+// Scale position size to conviction across full $100k account (5 slots)
 function budgetForScore(s) {
-  if (s >= 45) return 500;
-  if (s >= 30) return 400;
-  if (s >= 15) return 275;
-  return 200;
+  if (s >= 45) return 25000;
+  if (s >= 30) return 20000;
+  if (s >= 15) return 15000;
+  return 10000;
 }
 
 // Pull tickers recently bought by congress members (last 30 days)
