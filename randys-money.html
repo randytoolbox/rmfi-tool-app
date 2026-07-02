@@ -677,6 +677,18 @@ function acceptDisclaimer() {
         <div id="robotPosCount" style="font-size:22px;font-weight:800;color:#e0d7ff;">--</div>
       </div>
     </div>
+    <!-- EQUITY CURVE CHART -->
+    <div id="equityCurveWrap" style="margin:12px 0 4px;background:linear-gradient(135deg,#080818,#0d0d2e);border:1px solid #2a1a5a;border-radius:14px;padding:14px 16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <span style="font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.1em;">📈 Portfolio Equity Curve</span>
+        <span id="equityCurveStats" style="font-size:11px;color:#5a4a7a;"></span>
+      </div>
+      <div id="equityCurveChart" style="width:100%;height:130px;display:flex;align-items:center;justify-content:center;">
+        <span style="font-size:12px;color:var(--muted);">Loading chart…</span>
+      </div>
+      <div id="equityCurveLabels" style="display:flex;justify-content:space-between;margin-top:4px;"></div>
+    </div>
+
     <div id="robotPositions" style="margin-top:8px;">
       <div style="color:var(--muted);font-size:13px;padding:12px 0;">Loading robot trades…</div>
     </div>
@@ -3957,8 +3969,115 @@ async function fetchRobotPositions(force = false) {
     lastRobotFetch = Date.now();
     renderRobotPositions();
     updateTLDRFromRobot();
+    fetchEquityCurve();
   } catch(e) {
     if (posEl) posEl.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:12px 0;">⚠ Alpaca error: ${e.message}</div>`;
+  }
+}
+
+let equityHistory = null;
+let lastEquityFetch = 0;
+
+async function fetchEquityCurve(force = false) {
+  if (!force && equityHistory && Date.now() - lastEquityFetch < 5 * 60 * 1000) {
+    renderEquityCurve(); return;
+  }
+  try {
+    const r = await fetch('/api/portfolio-history', { signal: AbortSignal.timeout(10000) });
+    if (r.ok) {
+      equityHistory = await r.json();
+      lastEquityFetch = Date.now();
+      renderEquityCurve();
+    }
+  } catch(e) { /* silent — chart just stays loading */ }
+}
+
+function renderEquityCurve() {
+  const chartEl  = document.getElementById('equityCurveChart');
+  const statsEl  = document.getElementById('equityCurveStats');
+  const labelsEl = document.getElementById('equityCurveLabels');
+  if (!chartEl || !equityHistory) return;
+
+  const eq = equityHistory.equity || [];
+  const ts = equityHistory.timestamps || [];
+  if (eq.length < 2) {
+    chartEl.innerHTML = '<span style="font-size:12px;color:var(--muted);">Not enough data yet — check back after a few trading days.</span>';
+    return;
+  }
+
+  const W = 600, H = 130, PX = 8, PY = 12;
+  const base  = equityHistory.baseValue || eq[0];
+  const mn    = Math.min(...eq);
+  const mx    = Math.max(...eq);
+  const range = mx - mn || 1;
+  const last  = eq[eq.length - 1];
+  const totalPL   = last - base;
+  const totalPct  = base ? (totalPL / base) * 100 : 0;
+  const up        = totalPL >= 0;
+  const lineClr   = up ? '#7fff7f' : '#ff6b6b';
+  const gradClr   = up ? '#26d48c' : '#ef5350';
+
+  // Build coordinate points
+  const pts = eq.map((v, i) => {
+    const x = PX + (i / (eq.length - 1)) * (W - PX * 2);
+    const y = H - PY - ((v - mn) / range) * (H - PY * 2);
+    return { x: x.toFixed(1), y: y.toFixed(1) };
+  });
+  const polyLine = pts.map(p => `${p.x},${p.y}`).join(' ');
+  const lastPt   = pts[pts.length - 1];
+  const firstPt  = pts[0];
+
+  // Gradient fill polygon
+  const fillPoly = `${polyLine} ${lastPt.x},${(H - PY + 2).toFixed(1)} ${firstPt.x},${(H - PY + 2).toFixed(1)}`;
+
+  // Baseline (zero P&L line)
+  const baseY = H - PY - ((base - mn) / range) * (H - PY * 2);
+  const baseLineY = Math.max(PY, Math.min(H - PY, baseY)).toFixed(1);
+
+  // Date labels — show first and last
+  const fmtDate = ts => {
+    if (!ts) return '';
+    const d = new Date(ts * 1000);
+    return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+  };
+
+  const gid = 'eq_grad';
+  const svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:130px;" preserveAspectRatio="none">
+    <defs>
+      <linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${gradClr}" stop-opacity="0.35"/>
+        <stop offset="100%" stop-color="${gradClr}" stop-opacity="0.03"/>
+      </linearGradient>
+    </defs>
+    <!-- baseline dashed -->
+    <line x1="${PX}" y1="${baseLineY}" x2="${W - PX}" y2="${baseLineY}"
+      stroke="#3a2a6a" stroke-width="1" stroke-dasharray="4,4"/>
+    <!-- gradient fill -->
+    <polygon points="${fillPoly}" fill="url(#${gid})"/>
+    <!-- equity line -->
+    <polyline points="${polyLine}" fill="none" stroke="${lineClr}" stroke-width="2.2" stroke-linejoin="round"/>
+    <!-- current value dot -->
+    <circle cx="${lastPt.x}" cy="${lastPt.y}" r="4" fill="${lineClr}" stroke="#0d0d2e" stroke-width="2"/>
+    <!-- current value label -->
+    <text x="${Math.min(parseFloat(lastPt.x) + 6, W - 60)}" y="${Math.max(parseFloat(lastPt.y) - 6, PY + 10)}"
+      font-size="11" fill="${lineClr}" font-weight="700" font-family="monospace">
+      $${last.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
+    </text>
+  </svg>`;
+
+  chartEl.innerHTML = svg;
+
+  // Stats badge
+  const sign = totalPL >= 0 ? '+' : '';
+  if (statsEl) statsEl.innerHTML =
+    `<span style="color:${lineClr};font-weight:800;">${sign}$${Math.abs(totalPL).toFixed(2)}</span>` +
+    `<span style="color:${lineClr};margin-left:5px;">(${sign}${totalPct.toFixed(2)}%)</span>`;
+
+  // Date labels
+  if (labelsEl && ts.length >= 2) {
+    labelsEl.innerHTML =
+      `<span style="font-size:9px;color:#3a3a6a;">${fmtDate(ts[0])}</span>` +
+      `<span style="font-size:9px;color:#3a3a6a;">${fmtDate(ts[ts.length - 1])}</span>`;
   }
 }
 

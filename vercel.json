@@ -11,6 +11,7 @@
     "api/earnings.js":         { "maxDuration": 15 },
     "api/subcontractors.js":   { "maxDuration": 40 },
     "api/buylog.js":           { "maxDuration": 10 },
-    "api/telegram.js":         { "maxDuration": 10 }
+    "api/telegram.js":         { "maxDuration": 10 },
+    "api/portfolio-history.js":{ "maxDuration": 10 }
   }
 }
