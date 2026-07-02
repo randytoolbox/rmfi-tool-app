@@ -692,6 +692,12 @@ function acceptDisclaimer() {
     <div id="robotPositions" style="margin-top:8px;">
       <div style="color:var(--muted);font-size:13px;padding:12px 0;">Loading robot trades…</div>
     </div>
+
+    <!-- CLOSED TRADE SCOREBOARD -->
+    <div id="tradeScoreboard" style="margin-top:14px;background:linear-gradient(135deg,#080f08,#0d1a0d);border:1px solid #1a3a1a;border-radius:14px;padding:14px 16px;">
+      <div style="font-size:11px;font-weight:800;color:#4ade80;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;">🏆 Closed Trade Scoreboard</div>
+      <div id="scoreboardInner"><div style="font-size:12px;color:var(--muted);">Loading record…</div></div>
+    </div>
   </div>
 
   <!-- TODAY'S TOP PICKS -->
@@ -3925,7 +3931,81 @@ function updateTLDRFromHistory() {
   const wr = document.getElementById('tldrWinRate');
   const pl = document.getElementById('tldrTotalPL');
   if (wr) { wr.textContent = s.totalTrades ? s.winRate + '%' : '--'; wr.style.color = s.winRate >= 50 ? '#4ade80' : '#f87171'; }
-  if (pl) pl.textContent = `${s.totalPL >= 0 ? '+' : ''}$${s.totalPL.toFixed(0)} · ${s.totalTrades} trades`;
+  if (pl) pl.textContent = `${s.totalPL >= 0 ? '+' : ''}$${Math.abs(s.totalPL).toFixed(2)} · ${s.totalTrades} trade${s.totalTrades !== 1 ? 's' : ''}`;
+  renderTradeScoreboard();
+}
+
+function renderTradeScoreboard() {
+  const el = document.getElementById('scoreboardInner');
+  if (!el) return;
+  const data = tradeHistData;
+  if (!data?.trades?.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--muted);">No closed trades yet — first trades close after 5 days or when stop/target hits.</div>';
+    return;
+  }
+  const s = data.summary;
+  const wins   = s.wins   || 0;
+  const losses = s.losses || 0;
+  const total  = s.totalTrades || 0;
+  const wr     = total ? Math.round(wins / total * 100) : 0;
+  const plClr  = s.totalPL >= 0 ? '#4ade80' : '#f87171';
+  const plSign = s.totalPL >= 0 ? '+' : '';
+
+  // Progress bar
+  const barW = total ? Math.round((wins / total) * 100) : 0;
+  const barClr = wr >= 50 ? '#4ade80' : wr >= 40 ? '#f59e0b' : '#f87171';
+
+  let html = `
+    <!-- Summary row -->
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+      <div style="text-align:center;min-width:50px;">
+        <div style="font-size:28px;font-weight:900;color:${barClr};">${wr}%</div>
+        <div style="font-size:9px;color:#4a6a4a;text-transform:uppercase;letter-spacing:.06em;">Win Rate</div>
+      </div>
+      <div style="flex:1;min-width:120px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:11px;font-weight:700;color:#4ade80;">✅ ${wins} Win${wins!==1?'s':''}</span>
+          <span style="font-size:11px;font-weight:700;color:#f87171;">❌ ${losses} Loss${losses!==1?'es':''}</span>
+        </div>
+        <div style="background:#0d1a0d;border-radius:6px;height:8px;overflow:hidden;">
+          <div style="background:${barClr};height:100%;width:${barW}%;border-radius:6px;transition:width .6s;"></div>
+        </div>
+        <div style="margin-top:5px;font-size:12px;font-weight:800;color:${plClr};">Total Closed P&L: ${plSign}$${Math.abs(s.totalPL).toFixed(2)}</div>
+      </div>
+    </div>
+    <!-- Target tracker -->
+    <div style="font-size:10px;color:#3a5a3a;margin-bottom:10px;padding:6px 8px;background:#060f06;border-radius:6px;">
+      🎯 Goal: 50%+ win rate by Jul 15 to go live with real money
+      <div style="margin-top:4px;background:#0d1a0d;border-radius:4px;height:4px;">
+        <div style="background:${barClr};height:100%;width:${Math.min(barW,100)}%;border-radius:4px;"></div>
+      </div>
+    </div>
+    <!-- Trade rows -->
+    <div style="display:flex;flex-direction:column;gap:6px;">`;
+
+  // Sort newest first
+  const sorted = [...data.trades].sort((a,b) => new Date(b.date) - new Date(a.date));
+  for (const t of sorted) {
+    const win   = t.pl > 0;
+    const clr   = win ? '#4ade80' : '#f87171';
+    const bg    = win ? '#071407' : '#1a0707';
+    const border= win ? '#1a4a1a' : '#4a1a1a';
+    const icon  = win ? '✅' : '❌';
+    const sign  = t.pl >= 0 ? '+' : '';
+    const days  = t.daysHeld ? `${t.daysHeld}d` : '';
+    html += `
+      <div style="display:flex;align-items:center;gap:10px;background:${bg};border:1px solid ${border};border-radius:10px;padding:9px 12px;">
+        <span style="font-size:16px;">${icon}</span>
+        <span style="font-size:14px;font-weight:800;color:${clr};min-width:50px;">${t.symbol}</span>
+        <span style="flex:1;font-size:10px;color:#5a7a5a;">${t.reason || ''}</span>
+        <div style="text-align:right;">
+          <div style="font-size:13px;font-weight:800;color:${clr};">${sign}$${Math.abs(t.pl).toFixed(2)}</div>
+          <div style="font-size:9px;color:#3a5a3a;">${t.date}${days ? ' · ' + days : ''}</div>
+        </div>
+      </div>`;
+  }
+  html += '</div>';
+  el.innerHTML = html;
 }
 
 function updateTLDRFromPicks(picks) {
