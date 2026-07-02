@@ -202,7 +202,7 @@ function buildEmail(stockPositions, cryptoPositions, sold, account, dateStr) {
     ${cryptoCards}
     ${soldSection}
     <div style="font-size:11px;color:#9ca3af;text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid #f3f4f6;">
-      Paper trading only — no real money.<br>
+      Alpaca account · 5 positions · $100k deployed.<br>
       Stocks: trailing stop / −5% / 5 days &nbsp;·&nbsp; Crypto: +10% / −5% / 7 days<br><br>
       <a href="https://rmfi-tool-app.vercel.app/randys-money.html" style="color:#3b82f6;">Open full app →</a>
     </div>
